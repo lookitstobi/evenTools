@@ -58,9 +58,58 @@ $types = [
   'ttf'  => 'font/ttf',
 ];
 if (in_array($ext, ['html', 'htm'], true)) {
-  header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
+  header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https://www.gve-essen.de; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
 }
 header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
 header('X-Content-Type-Options: nosniff');
+
+if (in_array($ext, ['html', 'htm'], true)) {
+  $html = file_get_contents($target);
+
+  $style = '<style>' .
+    '.tool-home-btn{' .
+    'position:fixed;right:16px;top:16px;z-index:9999;' .
+    'background:#111827;color:#fff;text-decoration:none;' .
+    'padding:8px 12px;border-radius:8px;font:600 12px/1 system-ui,Segoe UI,Roboto,Arial,sans-serif;' .
+    'box-shadow:0 6px 18px rgba(0,0,0,0.25);' .
+    '}' .
+    '.tool-home-btn:hover{opacity:0.9}' .
+    '.tool-home-inline{margin-right:8px}' .
+    '</style>';
+
+  $inlineButton = '<a class="icon-btn subtle tool-home-inline" href="/index.php" title="Zum Dashboard">Home</a>';
+  $floatingButton = '<a class="tool-home-btn" href="/index.php">Home</a>';
+
+  $headPos = stripos($html, '</head>');
+  if ($headPos !== false) {
+    $html = substr_replace($html, $style . "\n", $headPos, 0);
+  } else {
+    $html = $style . "\n" . $html;
+  }
+
+  $injectedInline = false;
+  $html = preg_replace(
+    '/(<div\s+class=["\"]header-controls["\"]\s*>|<div\s+class=\'header-controls\'\s*>)/i',
+    '$1' . $inlineButton,
+    $html,
+    1,
+    $count
+  );
+  if (!empty($count)) {
+    $injectedInline = true;
+  }
+
+  if (!$injectedInline) {
+    $bodyPos = stripos($html, '</body>');
+    if ($bodyPos !== false) {
+      $html = substr_replace($html, $floatingButton . "\n", $bodyPos, 0);
+    } else {
+      $html .= "\n" . $floatingButton;
+    }
+  }
+
+  echo $html;
+  exit;
+}
 
 readfile($target);

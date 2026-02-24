@@ -4,55 +4,78 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>XL3 DIN 15905-5 Messbericht</title>
+<link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
-  --bg:#1b1f24;
-  --primary-panel:#23282f;
-  --secondary-panel:#262c34;
-  --border:#2f353d;
-  --border-strong:#3a424c;
-  --text:#e6e9ed;
-  --text-secondary:#9aa3ad;
-  --accent:#90caf9;
-  --ok:#66bb6a;
-  --warn:#ffb74d;
-  --danger:#ff6b6b;
-  --scrollbar-track:#1f242a;
-  --scrollbar-thumb:#2b323a;
-  --scrollbar-thumb-hover:#36404b;
+  --bg:#0b1020;
+  --primary-panel:rgba(255,255,255,.06);
+  --secondary-panel:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.12);
+  --border-strong:rgba(255,255,255,.18);
+  --text:rgba(255,255,255,.92);
+  --text-secondary:rgba(255,255,255,.66);
+  --accent:#7c5cff;
+  --ok:#2dd4bf;
+  --warn:#fbbf24;
+  --danger:#fb7185;
+  --scrollbar-track:rgba(255,255,255,.06);
+  --scrollbar-thumb:rgba(255,255,255,.16);
+  --scrollbar-thumb-hover:rgba(255,255,255,.22);
+  --radius:16px;
+  --radius2:12px;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --sans:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f6f7fb;
+    --primary-panel:rgba(0,0,0,.04);
+    --secondary-panel:rgba(0,0,0,.06);
+    --border:rgba(0,0,0,.12);
+    --border-strong:rgba(0,0,0,.18);
+    --text:rgba(0,0,0,.88);
+    --text-secondary:rgba(0,0,0,.62);
+    --scrollbar-track:rgba(0,0,0,.06);
+    --scrollbar-thumb:rgba(0,0,0,.16);
+    --scrollbar-thumb-hover:rgba(0,0,0,.22);
+  }
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;font-size:17px;color:var(--text);background:var(--bg);overflow:hidden}
+html,body{height:100%;margin:0;font-family:var(--sans);font-size:17px;color:var(--text);background:
+  radial-gradient(1200px 700px at 10% 10%, rgba(124,92,255,.18), transparent 55%),
+  radial-gradient(900px 600px at 90% 10%, rgba(61,214,255,.14), transparent 60%),
+  radial-gradient(1100px 800px at 30% 100%, rgba(45,212,191,.10), transparent 60%),
+  var(--bg);overflow:hidden}
 *{scrollbar-width:thin;scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track)}
 *::-webkit-scrollbar{width:10px;height:10px}
 *::-webkit-scrollbar-track{background:var(--scrollbar-track)}
 *::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:999px;border:2px solid var(--scrollbar-track)}
 *::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
-.header{position:fixed;top:0;left:0;right:0;height:60px;background:var(--primary-panel);display:flex;align-items:center;padding:0 24px;z-index:100;box-sizing:border-box}
+.header{position:fixed;top:0;left:0;right:0;height:60px;background:linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,.15));border-bottom:1px solid var(--border);backdrop-filter:blur(10px);display:flex;align-items:center;padding:0 24px;z-index:100;box-sizing:border-box}
 .header h1{font-size:20px;margin:0;font-weight:700}
 h3{font-size:18px;margin:0;font-weight:700}
 .compliance{font-weight:900;margin-left:auto;color:var(--accent)}
 #main{position:absolute;top:60px;bottom:0;left:0;right:0;display:flex;gap:32px}
-#leftColumn{width:50%;overflow:auto;background:var(--secondary-panel);padding:32px 24px;box-sizing:border-box}
+#leftColumn{width:50%;overflow:auto;background:var(--primary-panel);padding:32px 24px;box-sizing:border-box}
 .header{flex-wrap:wrap;height:auto;min-height:60px;display:flex;align-items:center;justify-content:space-between}
 .header .title{flex:1 1 auto}
 .header-controls{display:flex;align-items:center;gap:12px;margin-left:24px}
-.icon-btn{background:var(--primary-panel);border:1px solid var(--border);color:var(--accent);padding:6px 8px;border-radius:6px;font-size:16px;cursor:pointer}
-.icon-btn.subtle{background:var(--primary-panel);color:var(--accent);border:1px solid var(--border);opacity:.75}
+.icon-btn{background:var(--primary-panel);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:var(--radius2);font-size:13px;cursor:pointer;font-weight:650;transition:transform .06s ease, background .2s ease, border-color .2s ease}
+.icon-btn.subtle{background:var(--primary-panel);color:var(--text);border:1px solid var(--border);opacity:.85}
 .icon-btn:hover{opacity:1}
 .icon-btn:disabled{opacity:.35;cursor:not-allowed}
-.compliance-dot{width:20px;height:20px;border-radius:50%;margin-left:0;flex-shrink:0;margin-right:16px;align-self:center}
+.compliance-dot{width:20px;height:20px;border-radius:50%;margin-left:10px;flex-shrink:0;margin-right:16px;align-self:center}
 .compliance-dot.status-empty{background:transparent;border:1px solid var(--border)}
 .compliance-dot.status-ok{background:var(--ok)}
 .status-bad{background:var(--danger)}
 .status-warn{background:var(--warn)}
 input.input-required,select.input-required,textarea.input-required{background:rgba(144,202,249,0.1);border-color:var(--accent)}
-#rightColumn{width:50%;overflow-y:auto;background:var(--secondary-panel);padding:32px 24px;box-sizing:border-box}
-.section{background:var(--primary-panel);border:1.5px solid var(--border);border-radius:12px;padding:28px;margin-bottom:28px}
+#rightColumn{width:50%;overflow-y:auto;background:var(--primary-panel);padding:32px 24px;box-sizing:border-box}
+.section{background:var(--secondary-panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:32px}
 @media(max-width:900px){.grid-2{grid-template-columns:1fr}}
 @media(max-width:900px){
@@ -60,25 +83,25 @@ input.input-required,select.input-required,textarea.input-required{background:rg
   #leftColumn,#rightColumn{width:100%;height:50%;overflow:auto}
 }
 label{font-size:12px;color:var(--text-secondary);margin-top:6px;display:block;text-transform:uppercase;letter-spacing:0.5px}
-input,select,textarea{width:100%;background:#1f242a;border:2px solid var(--border);color:var(--text);padding:14px;border-radius:10px;font-size:17px;outline:none}
+input,select,textarea{width:100%;background:rgba(0,0,0,.10);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:var(--radius2);font-size:16px;outline:none}
 textarea#organisator{min-height:120px;}
-input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+input:focus,select:focus,textarea:focus{border-color:rgba(124,92,255,.55);box-shadow:0 0 0 4px rgba(124,92,255,.18)}
 textarea{resize:vertical;min-height:44px}
-button{background:var(--accent);border:none;color:white;padding:10px 12px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:800}
-button.secondary{background:var(--border)}
+button{background:linear-gradient(135deg, rgba(124,92,255,.95), rgba(61,214,255,.75));border:1px solid var(--border);color:white;padding:10px 12px;border-radius:var(--radius2);font-size:13px;cursor:pointer;font-weight:700}
+button.secondary{background:var(--primary-panel);color:var(--text)}
 button:disabled{opacity:.55;cursor:not-allowed}
 .table{width:100%;border-collapse:collapse;font-size:13px}
 .table th,.table td{border-bottom:1px solid var(--border);padding:7px;text-align:left;vertical-align:top}
 .table th{color:var(--text-secondary);font-weight:800;font-size:12px}
 .status-ok{color:var(--ok);font-weight:900}
 .status-bad{color:var(--danger);font-weight:900}
-canvas{border:1px solid var(--border);border-radius:10px;margin-top:8px;background:var(--secondary-panel);aspect-ratio:16/10;width:100%;height:auto}
+canvas{border:1px solid var(--border);border-radius:var(--radius2);margin-top:8px;background:var(--primary-panel);aspect-ratio:16/10;width:100%;height:auto}
 .signature-box{height:52px;border:1px dashed var(--border);border-radius:8px;margin-top:6px}
 .compact-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .compact-row select,.compact-row input{flex:1;min-width:160px}
 .small{font-size:12px;color:var(--text-secondary)}
 .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#1f242a;color:var(--text-secondary);font-size:12px;font-weight:800}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--primary-panel);color:var(--text-secondary);font-size:12px;font-weight:800}
 .dot{width:9px;height:9px;border-radius:999px;background:var(--warn)}
 .dot.ok{background:var(--ok)}
 .dot.bad{background:var(--danger)}
@@ -277,6 +300,32 @@ let logLoaded = false;
 
 const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
+
+const CHART_THEMES = {
+  dark: {
+    bg: '#262c34',
+    grid: 'rgba(47,53,61,0.2)',
+    tick: '#e6e9ed',
+    label: '#e6e9ed',
+    line: '#90caf9',
+    limit: '#ffb74d',
+    exceed: '#ff6b6b',
+    tooltipBg: '#23282f',
+    tooltipText: '#e6e9ed'
+  },
+  light: {
+    bg: '#ffffff',
+    grid: 'rgba(0,0,0,0.12)',
+    tick: '#1f2937',
+    label: '#1f2937',
+    line: '#2563eb',
+    limit: '#f59e0b',
+    exceed: '#ef4444',
+    tooltipBg: '#ffffff',
+    tooltipText: '#111827'
+  }
+};
+let currentChartTheme = 'dark';
 
 const PA_DEFAULT_QTY = {
   "L-ACOUSTIC KARA II": 24,
@@ -729,11 +778,49 @@ const whiteBgPlugin = {
     const {ctx, chartArea} = chart;
     if(!chartArea) return;
     ctx.save();
-    ctx.fillStyle = '#262c34';
+    const bg = chart.options?.plugins?.darkBgPlugin?.background || '#262c34';
+    ctx.fillStyle = bg;
     ctx.fillRect(chartArea.left, chartArea.top, chartArea.right-chartArea.left, chartArea.bottom-chartArea.top);
     ctx.restore();
   }
 };
+
+function updateChartTheme(chart, theme){
+  if(!chart || !theme) return;
+  const options = chart.config?.options || {};
+  options.plugins = options.plugins || {};
+  options.plugins.darkBgPlugin = options.plugins.darkBgPlugin || {};
+  options.plugins.darkBgPlugin.background = theme.bg;
+  options.plugins.tooltip = options.plugins.tooltip || {};
+  options.plugins.tooltip.backgroundColor = theme.tooltipBg;
+  options.plugins.tooltip.titleColor = theme.tooltipText;
+  options.plugins.tooltip.bodyColor = theme.tooltipText;
+  options.scales = options.scales || {};
+  options.scales.x = options.scales.x || {};
+  options.scales.y = options.scales.y || {};
+  options.scales.x.ticks = options.scales.x.ticks || {};
+  options.scales.y.ticks = options.scales.y.ticks || {};
+  options.scales.x.grid = options.scales.x.grid || {};
+  options.scales.y.grid = options.scales.y.grid || {};
+  options.scales.y.title = options.scales.y.title || {};
+  options.scales.x.ticks.color = theme.tick;
+  options.scales.y.ticks.color = theme.tick;
+  options.scales.x.grid.color = theme.grid;
+  options.scales.y.grid.color = theme.grid;
+  options.scales.y.title.color = theme.label;
+  if(chart.data.datasets[0]) chart.data.datasets[0].borderColor = theme.line;
+  if(chart.data.datasets[1]) chart.data.datasets[1].borderColor = theme.limit;
+  if(chart.data.datasets[2]) chart.data.datasets[2].backgroundColor = theme.exceed;
+}
+
+function applyChartTheme(name){
+  currentChartTheme = name;
+  const theme = CHART_THEMES[name] || CHART_THEMES.dark;
+  updateChartTheme(chartLAeq, theme);
+  updateChartTheme(chartLCpeak, theme);
+  if(chartLAeq) chartLAeq.update('none');
+  if(chartLCpeak) chartLCpeak.update('none');
+}
 
 function updateComplianceStatus(){
   const badCount = document.querySelectorAll('#pegelTabelle .status-bad').length;
@@ -754,15 +841,16 @@ function updateComplianceStatus(){
 }
 
 function mkChart(canvas, label, values, limit, limitLabel){
+  const theme = CHART_THEMES[currentChartTheme] || CHART_THEMES.dark;
   return new Chart(canvas,{
     type:'line',
     plugins:[whiteBgPlugin],
     data:{
       labels: chartSamples.map((_,i)=>i),
       datasets:[
-        { label, data: values, borderWidth: 2, pointRadius: 0, tension: 0.2, borderColor: '#90caf9' },
-        { label: limitLabel, data: chartSamples.map(()=>limit), borderWidth: 2, pointRadius: 0, borderDash: [6,4], borderColor: '#ffb74d' },
-        { label: 'Überschreitung', data: values.map(v => (v!=null && v>limit) ? v : null), showLine:false, pointRadius: 4, backgroundColor:'#ff6b6b' }
+        { label, data: values, borderWidth: 2, pointRadius: 0, tension: 0.2, borderColor: theme.line },
+        { label: limitLabel, data: chartSamples.map(()=>limit), borderWidth: 2, pointRadius: 0, borderDash: [6,4], borderColor: theme.limit },
+        { label: 'Überschreitung', data: values.map(v => (v!=null && v>limit) ? v : null), showLine:false, pointRadius: 4, backgroundColor: theme.exceed }
       ]
     },
     options:{
@@ -771,9 +859,12 @@ function mkChart(canvas, label, values, limit, limitLabel){
       animation:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
+        darkBgPlugin:{ background: theme.bg },
         legend:{display:false},
         tooltip:{
-          backgroundColor:'#23282f',
+          backgroundColor: theme.tooltipBg,
+          titleColor: theme.tooltipText,
+          bodyColor: theme.tooltipText,
           titleFont:{size:12},
           bodyFont:{size:12},
           padding:8,
@@ -792,17 +883,17 @@ function mkChart(canvas, label, values, limit, limitLabel){
       scales:{
         x:{
           ticks:{
-            color:'#e6e9ed',
+            color: theme.tick,
             font:{size:11},
             maxTicksLimit: 10,
             callback:(val)=>{ const s=chartSamples[Number(val)]; return s ? s.time : ''; }
           },
-          grid:{color:'rgba(47,53,61,0.2)'}
+          grid:{color: theme.grid}
         },
         y:{
-          ticks:{color:'#e6e9ed', font:{size:12}},
-          grid:{color:'rgba(47,53,61,0.2)'},
-          title:{display:true,text:'dB',color:'#e6e9ed', font:{size:12}}
+          ticks:{color: theme.tick, font:{size:12}},
+          grid:{color: theme.grid},
+          title:{display:true,text:'dB',color: theme.label, font:{size:12}}
         }
       }
     }
@@ -946,6 +1037,37 @@ function getPASetupInline(){
 }
 
 function wrap(doc, text, maxWidth){ return doc.splitTextToSize(String(text ?? ''), maxWidth); }
+
+function getChartImageData(chart, scale){
+  const src = chart?.canvas;
+  if(!src) return null;
+  const s = Math.max(1, Number(scale) || 1);
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, src.width * s);
+  out.height = Math.max(1, src.height * s);
+  const ctx = out.getContext('2d');
+  ctx.scale(s, s);
+  ctx.drawImage(src, 0, 0);
+  return out.toDataURL('image/png');
+}
+
+function addChartImage(doc, chart, x, y, maxW, maxH, scale){
+  if(!chart) return 0;
+  const w = chart.canvas?.width || 1;
+  const h = chart.canvas?.height || 1;
+  const ratio = w / h;
+  let drawW = maxW;
+  let drawH = drawW / ratio;
+  if(drawH > maxH){
+    drawH = maxH;
+    drawW = drawH * ratio;
+  }
+  const data = getChartImageData(chart, scale);
+  if(!data) return 0;
+  const offsetX = x + (maxW - drawW) / 2;
+  doc.addImage(data, 'PNG', offsetX, y, drawW, drawH);
+  return drawH;
+}
 
 async function generatePDF(){
   const { jsPDF } = window.jspdf;
@@ -1178,7 +1300,8 @@ async function generatePDF(){
 
   drawFooter(1);
 
-  // Seite 2: Diagramme
+  // Seite 2: Diagramme (helle Export-Optik)
+  applyChartTheme('light');
   doc.addPage();
   await drawHeader();
   y = 28;
@@ -1191,8 +1314,7 @@ async function generatePDF(){
     doc.setFont(undefined,'bold');
     doc.setTextColor(40, 40, 40);
     doc.text('LAeq mit Grenzwert 99 dB(A)', M, y);
-    const chartH = 100;
-    doc.addImage(chartLAeq.toBase64Image(), 'PNG', M, y+5, pageW, chartH);
+    const chartH = addChartImage(doc, chartLAeq, M, y+5, pageW, 110, 2);
     y += chartH + 12;
   }
 
@@ -1201,9 +1323,10 @@ async function generatePDF(){
     doc.setFont(undefined,'bold');
     doc.setTextColor(40, 40, 40);
     doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
-    const chartH2 = 100;
-    doc.addImage(chartLCpeak.toBase64Image(), 'PNG', M, y+5, pageW, chartH2);
+    addChartImage(doc, chartLCpeak, M, y+5, pageW, 110, 2);
   }
+
+  applyChartTheme('dark');
 
   drawFooter(2);
 

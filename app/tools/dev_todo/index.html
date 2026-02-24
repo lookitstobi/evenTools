@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dev To-Do Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0c0d12;
+  --panel:#141723;
+  --panel-2:#191c2a;
+  --panel-3:#10131c;
+  --border:rgba(255,255,255,.12);
+  --border-strong:rgba(255,255,255,.2);
+  --ink:#f1f5f9;
+  --ink-muted:rgba(241,245,249,.7);
+  --accent:#2dd4bf;
+  --accent-2:#f59e0b;
+  --accent-3:#38bdf8;
+  --danger:#fb7185;
+  --ok:#22c55e;
+  --shadow:0 18px 40px rgba(0,0,0,.35);
+  --radius:18px;
+  --radius-2:12px;
+  --font-sans:"Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:var(--font-sans);
+  color:var(--ink);
+  background:
+    radial-gradient(800px 500px at 10% 10%, rgba(56,189,248,.18), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(245,158,11,.18), transparent 60%),
+    radial-gradient(900px 600px at 30% 100%, rgba(45,212,191,.15), transparent 55%),
+    var(--bg);
+}
+
+.page{
+  min-height:100%;
+  display:flex;
+  flex-direction:column;
+}
+
+.header{
+  padding:28px clamp(16px, 4vw, 40px) 12px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.header h1{
+  font-size:clamp(24px, 3.4vw, 36px);
+  letter-spacing:-0.02em;
+  margin:0;
+}
+.header .badge{
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:var(--ink-muted);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:6px 10px;
+  background:var(--panel-3);
+}
+.header .stats{
+  margin-left:auto;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.shell{
+  display:grid;
+  grid-template-columns:360px 1fr;
+  gap:24px;
+  padding:12px clamp(16px, 4vw, 40px) 36px;
+  flex:1;
+}
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+
+.card{
+  padding:18px;
+  background:var(--panel-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-2);
+}
+
+.section-title{
+  font-size:14px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--ink-muted);
+  margin:0 0 12px;
+}
+
+.form{
+  display:grid;
+  gap:12px;
+}
+
+label{
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--ink-muted);
+}
+input,select,textarea{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:#0f1320;
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:15px;
+}
+textarea{min-height:90px;resize:vertical}
+
+button{
+  border:none;
+  border-radius:12px;
+  padding:10px 14px;
+  font-weight:700;
+  cursor:pointer;
+  color:#081015;
+  background:linear-gradient(135deg, var(--accent), var(--accent-3));
+  transition:transform .08s ease, box-shadow .2s ease;
+}
+button.secondary{
+  color:var(--ink);
+  background:var(--panel-3);
+  border:1px solid var(--border);
+}
+button.danger{
+  background:linear-gradient(135deg, #fb7185, #f43f5e);
+  color:#1a070b;
+}
+button:active{transform:translateY(1px)}
+
+.filters{
+  display:grid;
+  gap:10px;
+}
+
+.badge-row{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.badge-pill{
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:#0f1320;
+  color:var(--ink-muted);
+}
+
+.board{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:16px;
+}
+
+.column{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:14px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  min-height:300px;
+}
+
+.column header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.column h3{
+  margin:0;
+  font-size:16px;
+}
+
+.count{
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:var(--ink-muted);
+}
+
+.task{
+  background:var(--panel-2);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px;
+  display:grid;
+  gap:8px;
+  animation:rise .5s ease;
+}
+
+.task h4{
+  margin:0;
+  font-size:16px;
+}
+
+.task p{
+  margin:0;
+  color:var(--ink-muted);
+  font-size:14px;
+}
+
+.meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.meta .tag{
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:#0f1320;
+}
+
+.meta .tag.accent{border-color:rgba(45,212,191,.5);color:#8ff3e8}
+.meta .tag.warn{border-color:rgba(245,158,11,.55);color:#fcd34d}
+.meta .tag.info{border-color:rgba(56,189,248,.55);color:#7dd3fc}
+
+.task-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.task-actions button{
+  font-size:12px;
+  padding:6px 10px;
+  border-radius:10px;
+}
+
+.empty{
+  color:var(--ink-muted);
+  font-size:13px;
+  text-align:center;
+  padding:14px 0;
+}
+
+.footer-note{
+  font-size:12px;
+  color:var(--ink-muted);
+  padding:16px 0 0;
+}
+
+@keyframes rise{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@media (max-width: 1100px){
+  .shell{grid-template-columns:1fr}
+}
+@media (max-width: 900px){
+  .board{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <h1>Dev To-Do Board</h1>
+    <div class="badge">Toolsapp Entwicklung</div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <main class="shell">
+    <section class="panel" style="padding:18px;display:grid;gap:18px">
+      <div class="card">
+        <h2 class="section-title">Neue Aufgabe</h2>
+        <form class="form" id="taskForm">
+          <div>
+            <label for="title">Titel</label>
+            <input id="title" name="title" required placeholder="z.B. CSP für Tool-Assets prüfen" />
+          </div>
+          <div>
+            <label for="detail">Beschreibung</label>
+            <textarea id="detail" name="detail" placeholder="Kurz notieren, was zu tun ist"></textarea>
+          </div>
+          <div>
+            <label for="areaType">Zuordnung</label>
+            <select id="areaType" name="areaType">
+              <option value="tool">Tool</option>
+              <option value="page">Seite</option>
+              <option value="infra">Infrastruktur</option>
+            </select>
+          </div>
+          <div>
+            <label for="areaValue">Tool/Seite</label>
+            <select id="areaValue" name="areaValue">
+              <optgroup label="Tools">
+                <option value="cuesheet">cuesheet</option>
+                <option value="nti_tool">nti_tool</option>
+                <option value="patchmatrix">patchmatrix</option>
+              </optgroup>
+              <optgroup label="Seiten">
+                <option value="index.php">index.php</option>
+                <option value="login.php">login.php</option>
+                <option value="admin_users.php">admin_users.php</option>
+                <option value="admin_edit.php">admin_edit.php</option>
+                <option value="tool.php">tool.php</option>
+                <option value="toolserve.php">toolserve.php</option>
+                <option value="assets/app.css">assets/app.css</option>
+                <option value="app/config.php">app/config.php</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label for="customArea">Eigene Zuordnung (optional)</label>
+            <input id="customArea" name="customArea" placeholder="z.B. neue Tool-Idee" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label for="priority">Prioritat</label>
+              <select id="priority" name="priority">
+                <option value="high">Hoch</option>
+                <option value="medium" selected>Mittel</option>
+                <option value="low">Niedrig</option>
+              </select>
+            </div>
+            <div>
+              <label for="due">Faellig bis</label>
+              <input id="due" type="date" name="due" />
+            </div>
+          </div>
+          <div>
+            <label for="status">Status</label>
+            <select id="status" name="status">
+              <option value="backlog">Backlog</option>
+              <option value="in_progress">In Arbeit</option>
+              <option value="done">Erledigt</option>
+            </select>
+          </div>
+          <button type="submit">Aufgabe speichern</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Filter</h2>
+        <div class="filters">
+          <div>
+            <label for="filterQuery">Suche</label>
+            <input id="filterQuery" placeholder="Titel oder Beschreibung" />
+          </div>
+          <div>
+            <label for="filterArea">Bereich</label>
+            <select id="filterArea">
+              <option value="all">Alle</option>
+              <option value="tool">Nur Tools</option>
+              <option value="page">Nur Seiten</option>
+              <option value="infra">Nur Infrastruktur</option>
+            </select>
+          </div>
+          <div>
+            <label for="filterValue">Tool/Seite</label>
+            <select id="filterValue">
+              <option value="all">Alle</option>
+            </select>
+          </div>
+          <div>
+            <label for="filterPriority">Prioritat</label>
+            <select id="filterPriority">
+              <option value="all">Alle</option>
+              <option value="high">Hoch</option>
+              <option value="medium">Mittel</option>
+              <option value="low">Niedrig</option>
+            </select>
+          </div>
+          <button class="secondary" id="resetFilters" type="button">Filter zurucksetzen</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Schnellaktionen</h2>
+        <div class="badge-row" id="quickFilters"></div>
+        <p class="footer-note">Tipp: Jede Aufgabe wird im Browser gespeichert (LocalStorage). Export/Import kann spaeter nachgerustet werden.</p>
+      </div>
+    </section>
+
+    <section class="board" id="board">
+      <div class="column" data-status="backlog">
+        <header><h3>Backlog</h3><span class="count" id="countBacklog">0</span></header>
+        <div class="column-body" id="colBacklog"></div>
+      </div>
+      <div class="column" data-status="in_progress">
+        <header><h3>In Arbeit</h3><span class="count" id="countInProgress">0</span></header>
+        <div class="column-body" id="colInProgress"></div>
+      </div>
+      <div class="column" data-status="done">
+        <header><h3>Erledigt</h3><span class="count" id="countDone">0</span></header>
+        <div class="column-body" id="colDone"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const STORAGE_KEY = "toolsapp_dev_todos_v1";
+const form = document.getElementById("taskForm");
+const stats = document.getElementById("stats");
+const filterQuery = document.getElementById("filterQuery");
+const filterArea = document.getElementById("filterArea");
+const filterValue = document.getElementById("filterValue");
+const filterPriority = document.getElementById("filterPriority");
+const resetFilters = document.getElementById("resetFilters");
+const quickFilters = document.getElementById("quickFilters");
+
+const colBacklog = document.getElementById("colBacklog");
+const colInProgress = document.getElementById("colInProgress");
+const colDone = document.getElementById("colDone");
+const countBacklog = document.getElementById("countBacklog");
+const countInProgress = document.getElementById("countInProgress");
+const countDone = document.getElementById("countDone");
+
+const presetTargets = [
+  {type:"tool", value:"cuesheet"},
+  {type:"tool", value:"nti_tool"},
+  {type:"tool", value:"patchmatrix"},
+  {type:"page", value:"index.php"},
+  {type:"page", value:"login.php"},
+  {type:"page", value:"admin_users.php"},
+  {type:"page", value:"admin_edit.php"},
+  {type:"page", value:"tool.php"},
+  {type:"page", value:"toolserve.php"},
+  {type:"page", value:"assets/app.css"},
+  {type:"infra", value:"deployment"}
+];
+
+function loadTasks(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function saveTasks(tasks){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function makeId(){
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function priorityLabel(p){
+  if(p === "high") return "Hoch";
+  if(p === "low") return "Niedrig";
+  return "Mittel";
+}
+
+function areaLabel(t, v, custom){
+  const base = custom && custom.trim() ? custom.trim() : v;
+  if(t === "tool") return `Tool: ${base}`;
+  if(t === "page") return `Seite: ${base}`;
+  return `Infra: ${base}`;
+}
+
+function statusLabel(s){
+  if(s === "in_progress") return "In Arbeit";
+  if(s === "done") return "Erledigt";
+  return "Backlog";
+}
+
+function tagClass(t){
+  if(t === "tool") return "accent";
+  if(t === "page") return "info";
+  return "warn";
+}
+
+function buildQuickFilters(){
+  quickFilters.innerHTML = "";
+  const unique = new Map();
+  presetTargets.forEach(item => unique.set(`${item.type}:${item.value}`, item));
+  unique.forEach(item => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.textContent = `${item.type === "tool" ? "Tool" : item.type === "page" ? "Seite" : "Infra"}: ${item.value}`;
+    btn.addEventListener("click", () => {
+      filterArea.value = item.type;
+      refreshFilterValues();
+      filterValue.value = item.value;
+      render();
+    });
+    quickFilters.appendChild(btn);
+  });
+}
+
+function refreshFilterValues(){
+  const tasks = loadTasks();
+  const currentArea = filterArea.value;
+  const values = new Set();
+  tasks.forEach(task => {
+    if(currentArea !== "all" && task.areaType !== currentArea) return;
+    values.add(task.areaValue);
+    if(task.customArea && task.customArea.trim()) values.add(task.customArea.trim());
+  });
+
+  filterValue.innerHTML = "<option value=\"all\">Alle</option>";
+  Array.from(values).sort().forEach(value => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = value;
+    filterValue.appendChild(opt);
+  });
+}
+
+function applyFilters(tasks){
+  const query = filterQuery.value.trim().toLowerCase();
+  const area = filterArea.value;
+  const value = filterValue.value;
+  const priority = filterPriority.value;
+
+  return tasks.filter(task => {
+    if(area !== "all" && task.areaType !== area) return false;
+    if(priority !== "all" && task.priority !== priority) return false;
+    if(value !== "all"){
+      const matchesArea = task.areaValue === value;
+      const matchesCustom = (task.customArea || "").trim() === value;
+      if(!matchesArea && !matchesCustom) return false;
+    }
+    if(query){
+      const haystack = `${task.title} ${task.detail || ""}`.toLowerCase();
+      if(!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+}
+
+function renderStats(tasks){
+  const total = tasks.length;
+  const open = tasks.filter(t => t.status !== "done").length;
+  const dueSoon = tasks.filter(t => t.due && t.status !== "done").length;
+
+  stats.innerHTML = "";
+  [
+    {label:"Gesamt", value: total},
+    {label:"Offen", value: open},
+    {label:"Mit Termin", value: dueSoon}
+  ].forEach(item => {
+    const span = document.createElement("span");
+    span.className = "badge";
+    span.textContent = `${item.label}: ${item.value}`;
+    stats.appendChild(span);
+  });
+}
+
+function render(){
+  const tasks = loadTasks();
+  refreshFilterValues();
+  renderStats(tasks);
+  const filtered = applyFilters(tasks);
+
+  const columns = {
+    backlog: [],
+    in_progress: [],
+    done: []
+  };
+
+  filtered.forEach(task => columns[task.status].push(task));
+
+  renderColumn(columns.backlog, colBacklog, countBacklog);
+  renderColumn(columns.in_progress, colInProgress, countInProgress);
+  renderColumn(columns.done, colDone, countDone);
+}
+
+function renderColumn(tasks, columnEl, countEl){
+  columnEl.innerHTML = "";
+  countEl.textContent = tasks.length;
+
+  if(tasks.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "Keine Aufgaben";
+    columnEl.appendChild(empty);
+    return;
+  }
+
+  tasks
+    .sort((a,b) => (a.priority === "high" ? -1 : a.priority === "low" ? 1 : 0) - (b.priority === "high" ? -1 : b.priority === "low" ? 1 : 0))
+    .forEach(task => columnEl.appendChild(buildTaskCard(task)));
+}
+
+function buildTaskCard(task){
+  const card = document.createElement("div");
+  card.className = "task";
+
+  const title = document.createElement("h4");
+  title.textContent = task.title;
+
+  const detail = document.createElement("p");
+  detail.textContent = task.detail || "Ohne Beschreibung";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  const tag = document.createElement("span");
+  tag.className = `tag ${tagClass(task.areaType)}`;
+  tag.textContent = areaLabel(task.areaType, task.areaValue, task.customArea);
+
+  const prio = document.createElement("span");
+  prio.className = "tag";
+  prio.textContent = `Prioritat: ${priorityLabel(task.priority)}`;
+
+  const status = document.createElement("span");
+  status.className = "tag";
+  status.textContent = statusLabel(task.status);
+
+  meta.append(tag, prio, status);
+
+  if(task.due){
+    const due = document.createElement("span");
+    due.className = "tag warn";
+    due.textContent = `Termin: ${task.due}`;
+    meta.appendChild(due);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "task-actions";
+
+  const btnBacklog = actionButton("Backlog", () => updateStatus(task.id, "backlog"));
+  const btnProgress = actionButton("In Arbeit", () => updateStatus(task.id, "in_progress"));
+  const btnDone = actionButton("Erledigt", () => updateStatus(task.id, "done"));
+  const btnDelete = actionButton("Loschen", () => deleteTask(task.id), "danger");
+
+  actions.append(btnBacklog, btnProgress, btnDone, btnDelete);
+
+  card.append(title, detail, meta, actions);
+  return card;
+}
+
+function actionButton(label, handler, variant){
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = label;
+  if(variant === "danger") btn.classList.add("danger");
+  if(variant === "secondary") btn.classList.add("secondary");
+  btn.addEventListener("click", handler);
+  return btn;
+}
+
+function updateStatus(id, status){
+  const tasks = loadTasks();
+  const next = tasks.map(task => task.id === id ? {...task, status} : task);
+  saveTasks(next);
+  render();
+}
+
+function deleteTask(id){
+  const tasks = loadTasks();
+  const next = tasks.filter(task => task.id !== id);
+  saveTasks(next);
+  render();
+}
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
+  const data = new FormData(form);
+  const task = {
+    id: makeId(),
+    title: data.get("title").toString().trim(),
+    detail: data.get("detail").toString().trim(),
+    areaType: data.get("areaType").toString(),
+    areaValue: data.get("areaValue").toString(),
+    customArea: data.get("customArea").toString().trim(),
+    priority: data.get("priority").toString(),
+    due: data.get("due").toString(),
+    status: data.get("status").toString(),
+    createdAt: new Date().toISOString()
+  };
+
+  if(!task.title){
+    return;
+  }
+
+  const tasks = loadTasks();
+  tasks.push(task);
+  saveTasks(tasks);
+  form.reset();
+  document.getElementById("priority").value = "medium";
+  document.getElementById("status").value = "backlog";
+  render();
+});
+
+[filterQuery, filterArea, filterValue, filterPriority].forEach(el => {
+  el.addEventListener("input", render);
+  el.addEventListener("change", render);
+});
+
+resetFilters.addEventListener("click", () => {
+  filterQuery.value = "";
+  filterArea.value = "all";
+  filterPriority.value = "all";
+  render();
+});
+
+buildQuickFilters();
+render();
+</script>
+</body>
+</html>

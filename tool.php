@@ -23,6 +23,58 @@ if (!$path || !$base || strncmp($path, $base, strlen($base)) !== 0) {
 }
 
 // Erlaubt externe CDNs für Tool-Libraries + Inline-Skripte der Tools
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https://www.gve-essen.de; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
 
-readfile($path);
+$html = file_get_contents($path);
+$style = '<style>' .
+  '.tool-home-link{' .
+  'display:inline-flex;align-items:center;gap:6px;' .
+  'text-decoration:none;color:inherit;font-weight:700;font-size:13px;' .
+  'padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);' .
+  'background:rgba(0,0,0,.18);' .
+  '}' .
+  '.tool-home-link:hover{opacity:0.9}' .
+  '.tool-home-icon{width:14px;height:14px;display:inline-block}' .
+  '.tool-global-header{' .
+  'display:flex;align-items:center;gap:12px;padding:10px 16px;' .
+  'border-bottom:1px solid rgba(255,255,255,.12);' .
+  'background:rgba(0,0,0,.25);backdrop-filter:blur(10px);' .
+  '}' .
+  '</style>';
+$homeIcon = '<svg class="tool-home-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' .
+  '<path fill="currentColor" d="M12 3 2.5 10.5l1.4 1.4L5 11v8h5v-5h4v5h5v-8l1.1.9 1.4-1.4L12 3z"/>' .
+  '</svg>';
+$homeLink = '<a class="tool-home-link" href="/index.php" title="Zum Dashboard">' . $homeIcon . '<span>Home</span></a>';
+
+$headPos = stripos($html, '</head>');
+if ($headPos !== false) {
+  $html = substr_replace($html, $style . "\n", $headPos, 0);
+} else {
+  $html = $style . "\n" . $html;
+}
+
+$injectedHeader = false;
+$html = preg_replace(
+  '/(<header\b[^>]*class=["\"][^"\"]*header[^"\"]*["\"][^>]*>)/i',
+  '$1' . $homeLink,
+  $html,
+  1,
+  $count
+);
+if (!empty($count)) {
+  $injectedHeader = true;
+}
+
+if (!$injectedHeader) {
+  $bodyPos = stripos($html, '<body');
+  if ($bodyPos !== false) {
+    $bodyEnd = stripos($html, '>', $bodyPos);
+    if ($bodyEnd !== false) {
+      $headerBar = '<header class="tool-global-header">' . $homeLink . '</header>';
+      $html = substr_replace($html, $headerBar, $bodyEnd + 1, 0);
+      $injectedHeader = true;
+    }
+  }
+}
+
+echo $html;

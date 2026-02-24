@@ -21,7 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['uid'] = (int)$row['id'];
     $_SESSION['username'] = $username;
     $_SESSION['is_admin'] = (int)$row['is_admin'];
-    $_SESSION['tools'] = json_decode($row['tools'], true) ?: [];
+    if ((int)$row['is_admin'] === 1) {
+      $_SESSION['tools'] = all_tools();
+    } else {
+      $_SESSION['tools'] = json_decode($row['tools'], true) ?: [];
+    }
     redirect('/index.php');
   } else {
     $error = 'Login fehlgeschlagen.';

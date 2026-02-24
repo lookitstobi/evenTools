@@ -34,6 +34,19 @@ function require_admin(): void {
   }
 }
 
+function all_tools(): array {
+  $tools = [];
+  $toolsBase = realpath($GLOBALS['config']['tools_dir'] ?? '');
+  if (!$toolsBase) {
+    return $tools;
+  }
+  foreach (glob($toolsBase . '/*', GLOB_ONLYDIR) as $dir) {
+    $tools[] = basename($dir);
+  }
+  sort($tools);
+  return $tools;
+}
+
 function page_start(string $title, bool $show_nav = true): void {
   $site = h(($GLOBALS['config']['site_name'] ?? 'Tools'));
   $t = h($title);
@@ -65,6 +78,7 @@ function page_start(string $title, bool $show_nav = true): void {
         <nav class=\"nav\">";
 
     if ($is_authed) {
+      echo "<a class=\"btn\" href=\"/index.php\">Home</a>";
       echo "<span class=\"chip\">Angemeldet als <strong>{$user}</strong></span>";
       if ($is_admin) {
         echo "<a class=\"btn\" href=\"/admin_users.php\">Admin</a>";

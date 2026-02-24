@@ -29,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   $is_admin = !empty($_POST['is_admin']) ? 1 : 0;
 
+  if ($is_admin === 1) {
+    $newTools = $allTools;
+  }
+
   $db->prepare("UPDATE users SET tools = ?, is_admin = ? WHERE id = ?")
      ->execute([json_encode($newTools, JSON_THROW_ON_ERROR), $is_admin, $id]);
 
@@ -44,6 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $currentTools = json_decode($user['tools'], true) ?: [];
+if ((int)$user['is_admin'] === 1) {
+  $currentTools = $allTools;
+}
 
 page_start('Admin · User bearbeiten');
 ?>
