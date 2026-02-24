@@ -39,9 +39,9 @@ if [ -n "$1" ]; then
   
   lftp -u "$STRATO_USER,$STRATO_PASS" "$STRATO_HOST" <<EOF
 set cmd:fail-exit yes
-set net:timeout 20
-set net:max-retries 2
-set net:reconnect-interval-base 5
+set net:timeout 60
+set net:max-retries 5
+set net:reconnect-interval-base 10
 set net:reconnect-interval-multiplier 1
 set sftp:auto-confirm yes
 set ssl:verify-certificate no
@@ -64,9 +64,9 @@ else
   LOCAL_DIR="$(dirname "$0")"
   cat > "$LFTP_SCRIPT" <<LFTP_EOF
 set cmd:fail-exit yes
-set net:timeout 20
-set net:max-retries 2
-set net:reconnect-interval-base 5
+set net:timeout 60
+set net:max-retries 5
+set net:reconnect-interval-base 10
 set net:reconnect-interval-multiplier 1
 set sftp:auto-confirm yes
 set ssl:verify-certificate no
