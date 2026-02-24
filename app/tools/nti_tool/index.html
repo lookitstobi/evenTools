@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>XL3 DIN 15905-5 Messbericht</title>
+  <!-- favicon: user-provided SVG -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#1b1f24;
+  --primary-panel:#23282f;
+  --secondary-panel:#262c34;
+  --border:#2f353d;
+  --border-strong:#3a424c;
+  --text:#e6e9ed;
+  --text-secondary:#9aa3ad;
+  --accent:#90caf9;
+  --ok:#66bb6a;
+  --warn:#ffb74d;
+  --danger:#ff6b6b;
+  --scrollbar-track:#1f242a;
+  --scrollbar-thumb:#2b323a;
+  --scrollbar-thumb-hover:#36404b;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;font-size:17px;color:var(--text);background:var(--bg);overflow:hidden}
+*{scrollbar-width:thin;scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track)}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:var(--scrollbar-track)}
+*::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:999px;border:2px solid var(--scrollbar-track)}
+*::-webkit-scrollbar-thumb:hover{background:var(--scrollbar-thumb-hover)}
+.header{position:fixed;top:0;left:0;right:0;height:60px;background:var(--primary-panel);display:flex;align-items:center;padding:0 24px;z-index:100;box-sizing:border-box}
+.header h1{font-size:20px;margin:0;font-weight:700}
+h3{font-size:18px;margin:0;font-weight:700}
+.compliance{font-weight:900;margin-left:auto;color:var(--accent)}
+#main{position:absolute;top:60px;bottom:0;left:0;right:0;display:flex;gap:32px}
+#leftColumn{width:50%;overflow:auto;background:var(--secondary-panel);padding:32px 24px;box-sizing:border-box}
+.header{flex-wrap:wrap;height:auto;min-height:60px;display:flex;align-items:center;justify-content:space-between}
+.header .title{flex:1 1 auto}
+.header-controls{display:flex;align-items:center;gap:12px;margin-left:24px}
+.icon-btn{background:var(--primary-panel);border:1px solid var(--border);color:var(--accent);padding:6px 8px;border-radius:6px;font-size:16px;cursor:pointer}
+.icon-btn.subtle{background:var(--primary-panel);color:var(--accent);border:1px solid var(--border);opacity:.75}
+.icon-btn:hover{opacity:1}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed}
+.compliance-dot{width:20px;height:20px;border-radius:50%;margin-left:0;flex-shrink:0;margin-right:16px;align-self:center}
+.compliance-dot.status-empty{background:transparent;border:1px solid var(--border)}
+.compliance-dot.status-ok{background:var(--ok)}
+.status-bad{background:var(--danger)}
+.status-warn{background:var(--warn)}
+input.input-required,select.input-required,textarea.input-required{background:rgba(144,202,249,0.1);border-color:var(--accent)}
+#rightColumn{width:50%;overflow-y:auto;background:var(--secondary-panel);padding:32px 24px;box-sizing:border-box}
+.section{background:var(--primary-panel);border:1.5px solid var(--border);border-radius:12px;padding:28px;margin-bottom:28px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+@media(max-width:900px){
+  #main{flex-direction:column}
+  #leftColumn,#rightColumn{width:100%;height:50%;overflow:auto}
+}
+label{font-size:12px;color:var(--text-secondary);margin-top:6px;display:block;text-transform:uppercase;letter-spacing:0.5px}
+input,select,textarea{width:100%;background:#1f242a;border:2px solid var(--border);color:var(--text);padding:14px;border-radius:10px;font-size:17px;outline:none}
+textarea#organisator{min-height:120px;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:44px}
+button{background:var(--accent);border:none;color:white;padding:10px 12px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:800}
+button.secondary{background:var(--border)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th,.table td{border-bottom:1px solid var(--border);padding:7px;text-align:left;vertical-align:top}
+.table th{color:var(--text-secondary);font-weight:800;font-size:12px}
+.status-ok{color:var(--ok);font-weight:900}
+.status-bad{color:var(--danger);font-weight:900}
+canvas{border:1px solid var(--border);border-radius:10px;margin-top:8px;background:var(--secondary-panel);aspect-ratio:16/10;width:100%;height:auto}
+.signature-box{height:52px;border:1px dashed var(--border);border-radius:8px;margin-top:6px}
+.compact-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.compact-row select,.compact-row input{flex:1;min-width:160px}
+.small{font-size:12px;color:var(--text-secondary)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#1f242a;color:var(--text-secondary);font-size:12px;font-weight:800}
+.dot{width:9px;height:9px;border-radius:999px;background:var(--warn)}
+.dot.ok{background:var(--ok)}
+.dot.bad{background:var(--danger)}
+.dot.warn{background:var(--warn)}
+details summary{cursor:pointer;user-select:none;color:var(--text);font-weight:800}
+details .inner{margin-top:8px}
+label.label-required::after{
+  content:' *';
+  color:var(--accent);
+  font-weight:900;
+  margin-left:4px;
+}
+</style>
+</head>
+<body>
+<header class="header">
+  <div id="complianceDot" class="compliance-dot status-empty"></div>
+  <div class="title"><h1>Schallpegelmessung – DIN 15905‑5</h1></div>
+  <div class="header-controls">
+    <button id="btnImport" class="icon-btn subtle" title="Log importieren">Log importieren</button>
+    <button id="btnPdf" class="icon-btn subtle" onclick="generatePDF()" disabled title="PDF exportieren">PDF exportieren</button>
+    <button id="btnExportHtml" class="icon-btn subtle" disabled title="Stand speichern (derzeit deaktiviert)">Stand speichern</button>
+    <input type="file" id="fileInput" accept=".txt" style="display:none" />
+    <div class="chips" style="margin-left:16px">
+      <div class="chip"><span class="dot warn" id="dotLog"></span><span id="chipLog">Log: nicht geladen</span></div>
+      <div class="chip"><span class="dot warn" id="dotSummary"></span><span id="chipSummary">Summary: —</span></div>
+    </div>
+  </div>
+</header>
+<div id="main">
+  <div id="leftColumn">
+    <div class="section">
+      <h3>Pegel</h3>
+      <table class="table" id="pegelTabelle">
+        <thead>
+          <tr>
+            <th>Wert</th>
+            <th>Gemessen</th>
+            <th>Grenzwert</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="small" id="chartInfo" style="margin-top:6px"></div>
+    </div>
+
+    <div class="section">
+      <h3>Diagramme (Vorschau)</h3>
+      <div class="grid-2" style="margin-top:10px; gap:24px">
+        <div>
+          <div class="small" id="laeqChartLabel">LAeq mit Grenzwert 99 dB(A)</div>
+          <canvas id="chartLAeq" height="260"></canvas>
+        </div>
+        <div>
+          <div class="small">LCpeak mit Grenzwert 135 dB(C)</div>
+          <canvas id="chartLCpeak" height="260"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Log Daten (automatisch)</h3>
+      <div class="grid-2">
+        <div><label>Start der Messung</label><input id="startMessung" readonly /></div>
+        <div><label>Ende der Messung</label><input id="endeMessung" readonly /></div>
+
+        <div><label>Messgerät</label><input id="messgeraet" readonly /></div>
+        <div><label>Messgerät SN</label><input id="messgeraetSN" readonly /></div>
+
+        <div><label>Firmware</label><input id="firmware" readonly /></div>
+        <div><label>Log-Intervall</label><input id="logInterval" readonly /></div>
+
+        <div><label>Mikrofon (Typ, S/N)</label><input id="mikrofon" readonly /></div>
+        <div><label>Mic Kalibrierung (Datum/Uhrzeit)</label><input id="micCal" readonly /></div>
+
+        <div><label>Mikrofon Sensitivität</label><input id="mikroSens" readonly /></div>
+        <div><label>kset date</label><input id="kset" readonly /></div>
+
+        <div><label>Korrekturwert k1</label><input id="k1" readonly /></div>
+        <div><label>Korrekturwert k2</label><input id="k2" readonly /></div>
+      </div>
+
+      <details style="margin-top:8px">
+        <summary>Parser / Debug</summary>
+        <div class="inner small" id="parseInfo"></div>
+      </details>
+    </div>
+
+
+  </div>
+
+  <div id="rightColumn">
+    <div class="section grid-2">
+      <div>
+        <label>Veranstaltung (Name)</label>
+        <input id="eventName" placeholder="z.B. Verstärktes Musical" tabindex="1" autofocus />
+
+        <label>Datum der Messung</label>
+        <input id="datumMessung" />
+
+        <label>Location</label>
+        <select id="location">
+          <option>Philharmonie Essen, Alfried-Krupp-Saal</option>
+          <option>Philharmonie Essen, Nationalbank-Pavillon</option>
+          <option>Eigene Angabe</option>
+        </select>
+
+        <label>Umgebungsbedingungen</label>
+        <input id="umwelt" value="21°C, Indoor" />
+      </div>
+
+      <div>
+        <label>Messung durchgeführt von (Firma, Person)</label>
+        <input id="messungVon" tabindex="2" />
+
+        <div class="grid-2">
+          <div>
+            <label>Messposition</label>
+            <input id="messposition" tabindex="3" />
+          </div>
+          <div>
+            <label>Lauteste Position</label>
+            <input id="lautestePosition" tabindex="4" />
+          </div>
+        </div>
+
+        <label>Zugeständiger FOH-Techniker</label>
+        <input id="foh" tabindex="5" />
+
+        <div class="grid-2">
+          <div>
+            <label>Kalibrator</label>
+            <input id="kalibratorModell" value="CENTER 326" />
+          </div>
+          <div>
+            <label>Kalibrator SN</label>
+            <input id="kalibratorSN" value="140408454" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section grid-2">
+      <div>
+        <label>Organisator (Anschrift / Verantwortliche)</label>
+        <textarea id="organisator" style="min-height:140px">Theater und Philharmonie Essen GmbH
+Opernplatz 10, 45128 Essen
+Geschäftsführer: Fritz Frömming
+Intendanz Philharmonie Essen: Babette Nierenz</textarea>
+      </div>
+      <div>
+        <label>Beschreibung</label>
+        <textarea id="beschreibung" style="min-height:140px" placeholder="z.B. Verstärkte Live-Band" tabindex="6"></textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Unterschrift</h3>
+      <div class="grid-2">
+        <div>
+          <label>Datum</label>
+          <input id="berichtDatum" />
+        </div>
+        <div>
+          <label>Name</label>
+          <input id="berichtName" tabindex="7" />
+        </div>
+      </div>
+      <label>Unterschrift (Platzhalter)</label>
+      <div class="signature-box"></div>
+    </div>
+
+    <div class="section">
+      <div class="compact-row" style="justify-content:space-between">
+        <h3 style="margin:0">PA Setup</h3>
+        <div class="small" id="paPresetInfo"></div>
+      </div>
+      <div id="paContainer"></div>
+      <div class="compact-row" style="margin-top:8px">
+        <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
+        <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let samples = [];
+let chartSamples = [];
+let chartLAeq = null;
+let chartLCpeak = null;
+let lastLogText = '';
+let lastLogFileName = '';
+let logLoaded = false;
+
+const LIMIT_LAEQ_30 = 99;
+const LIMIT_LCPEAK  = 135;
+
+const PA_DEFAULT_QTY = {
+  "L-ACOUSTIC KARA II": 24,
+  "L-ACOUSTIC KS21": 4,
+  "L-ACOUSTIC A10 Wide": 2,
+  "L-ACOUSTIC A10 Focus": 2,
+  "L-ACOUSTIC 5XT": 8
+};
+
+const PA_PRESETS = {
+  "Philharmonie Essen, Alfried-Krupp-Saal": [
+    {type:"L-ACOUSTIC KARA II", qty:24},
+    {type:"L-ACOUSTIC KS21", qty:4},
+    {type:"L-ACOUSTIC A10 Wide", qty:2},
+    {type:"L-ACOUSTIC A10 Focus", qty:2},
+    {type:"L-ACOUSTIC 5XT", qty:8}
+  ],
+  "Philharmonie Essen, Nationalbank-Pavillon": [
+    {type:"L-ACOUSTIC A10 Focus", qty:4},
+    {type:"L-ACOUSTIC A10 Wide", qty:2},
+    {type:"L-ACOUSTIC KS21", qty:4},
+    {type:"L-ACOUSTIC 5XT", qty:6}
+  ]
+};
+
+let header = {
+  deviceModel:"", deviceSN:"", firmware:"",
+  micType:"", micSN:"", micCal:"", micSens:"",
+  k1:"", k2:"", kset:"",
+  start:"", end:"",
+  logIntervalText:"", logIntervalSec:1
+};
+
+let parsedColumns = { available:[], used:{} };
+let summary = { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null };
+
+function el(id){ return document.getElementById(id); }
+function setText(id, t){ if(el(id)) el(id).textContent = String(t ?? ""); }
+function getVal(id){ return (el(id)?.value ?? "").toString(); }
+function setVal(id, v){ if(el(id)) el(id).value = (v ?? "").toString(); }
+
+function setDot(dotId, state){
+  const d = el(dotId);
+  if(!d) return;
+  d.classList.remove('ok','bad','warn');
+  d.classList.add(state);
+}
+
+function markRequiredFields(){
+  const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName'];
+  for(const id of requiredIds){
+    const field = el(id);
+    const label = field ? field.previousElementSibling : null;
+    if(field){
+      const isEmpty = !field.value || field.value.trim() === '';
+      if(isEmpty){
+        // mark label and input for visual hint
+        field.classList.add('input-required');
+        if(label && label.tagName === 'LABEL') label.classList.add('label-required');
+      } else {
+        field.classList.remove('input-required');
+        if(label && label.tagName === 'LABEL') label.classList.remove('label-required');
+      }
+    }
+  }
+}
+
+function splitLines(text){
+  return String(text ?? "").replace(/\r/g, "").split("\n");
+}
+
+function parseNumber(s){
+  if(s == null) return null;
+  const t = String(s).trim();
+  if(!t) return null;
+  if(t.includes('---')) return null;
+  const v = Number(t.replace(',', '.'));
+  return Number.isFinite(v) ? v : null;
+}
+
+function parseIntervalSeconds(v){
+  if(!v) return 1;
+  const s = String(v).trim();
+  const main = s.split(',')[0].trim();
+  const parts = main.split(':');
+  if(parts.length === 3){
+    const hh = Number(parts[0]), mm = Number(parts[1]), ss = Number(parts[2]);
+    if([hh,mm,ss].every(Number.isFinite)) return hh*3600 + mm*60 + ss;
+  }
+  if(parts.length === 2){
+    const mm = Number(parts[0]), ss = Number(parts[1]);
+    if([mm,ss].every(Number.isFinite)) return mm*60 + ss;
+  }
+  const n = Number(main);
+  return (Number.isFinite(n) && n>0) ? n : 1;
+}
+
+function secondsToHMS(sec){
+  sec = Math.max(0, Math.round(sec||0));
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = sec%60;
+  const mm = String(m).padStart(2,'0');
+  const ss = String(s).padStart(2,'0');
+  return h>0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+}
+
+function normalizeColName(s){
+  const t = String(s ?? "").trim().toLowerCase();
+  return t.replace(/[^a-z0-9]+/g,'');
+}
+
+function buildColumnIndex(headerLine){
+  const colsRaw = headerLine.replace(/\t/g,' ').trim().split(/\s+/).filter(Boolean);
+  const norm = colsRaw.map(c => normalizeColName(c));
+  const map = new Map();
+  norm.forEach((n,i)=>{ if(n) map.set(n,i); });
+  parsedColumns.available = colsRaw;
+  return { colsRaw, norm, map };
+}
+
+function findCol(map, candidates){
+  for(const c of candidates){ if(map.has(c)) return map.get(c); }
+  for(const [k, idx] of map.entries()){
+    for(const c of candidates){ if(k.includes(c)) return idx; }
+  }
+  return null;
+}
+
+function setUsedColumns(col){
+  const idxDate  = findCol(col.map, ['yyyymmdd','date']);
+  const idxTime  = findCol(col.map, ['hhmmss','time']);
+  const idxTimer = findCol(col.map, ['timer']);
+  const idxLAeqDT = findCol(col.map, ['laeqdtk1','laeqdt','laeqk1','laeq']);
+  const idxG30    = findCol(col.map, ['laeqg30k1','laeqg30','g30']);
+  const idxLCpk   = findCol(col.map, ['lcpkmaxdtk2','lcpkmaxdt','lcpkmax','lcpeak','lcpk']);
+  parsedColumns.used = { date:idxDate, time:idxTime, timer:idxTimer, laeq_dt:idxLAeqDT, laeq_g30:idxG30, lcpkmax:idxLCpk };
+}
+
+function parseHeaderAndMeta(text){
+  header = {
+    deviceModel:"", deviceSN:"", firmware:"",
+    micType:"", micSN:"", micCal:"", micSens:"",
+    k1:"", k2:"", kset:"",
+    start:"", end:"",
+    logIntervalText:"", logIntervalSec:1
+  };
+
+  const lines = splitLines(text);
+
+  // Robust value finder:
+  // - matches if the line CONTAINS the key (case-insensitive)
+  // - returns text after the first ':' if present, otherwise the remainder after the key
+  function findValueContains(key){
+    const k = String(key||"").toLowerCase();
+    for(const l of lines){
+      const s = String(l||"");
+      const sl = s.toLowerCase();
+      const pos = sl.indexOf(k);
+      if(pos < 0) continue;
+      const colon = s.indexOf(":");
+      if(colon >= 0) return s.slice(colon+1).trim();
+      return s.slice(pos + String(key||"").length).trim();
+    }
+    return "";
+  }
+
+  // Device
+  const devLine = findValueContains("Device Info") || findValueContains("Device information") || "";
+  if(devLine){
+    const parts = devLine.split(",").map(x=>x.trim()).filter(Boolean);
+    header.deviceModel = parts[0] || "";
+    for(const p of parts){
+      const pl = p.toLowerCase();
+      // XL3 often writes "SNo" or "SN" variants
+      if(pl.includes("sno") || pl.includes("sn")) header.deviceSN = p.split(/\s+/).slice(-1)[0].trim();
+      if(pl.includes("fw") || pl.includes("firmware")){
+        const tail = p.replace(/firmware/i,"").replace(/fw/i,"").trim();
+        header.firmware = tail.split(/\s+/).slice(-1)[0].trim();
+      }
+    }
+  }
+
+  // Mic
+  const micLine = findValueContains("Mic Type") || findValueContains("Microphone Type") || "";
+  if(micLine){
+    const parts = micLine.split(",").map(x=>x.trim()).filter(Boolean);
+    header.micType = parts[0] || "";
+    for(const p of parts){
+      const pl = p.toLowerCase();
+      if(pl.includes("sno") || pl.includes("sn")) header.micSN = p.split(/\s+/).slice(-1)[0].trim();
+      if(pl.includes("calibrated")) header.micCal = p.replace(/calibrated/i, "").trim();
+    }
+  }
+
+  // Some logs store calibration as separate line
+  if(!header.micCal){
+    header.micCal = findValueContains("Mic calibrated") || findValueContains("Microphone calibrated") || "";
+  }
+
+  header.micSens = findValueContains("Mic Sensitivity") || findValueContains("Microphone Sensitivity") || "";
+  header.kset = findValueContains("kset date") || "";
+  header.logIntervalText = findValueContains("Log-Interval") || findValueContains("Log Interval") || "";
+  header.logIntervalSec = parseIntervalSeconds(header.logIntervalText);
+
+  // k1 / k2 often appear as "k1:" in arbitrary lines
+  for(const l of lines){
+    const s = String(l||"");
+    const sl = s.toLowerCase();
+    if(sl.includes("k1:") && !header.k1){
+      const i = sl.indexOf("k1:");
+      header.k1 = s.slice(i+3).trim().split(/\s+/)[0];
+    }
+    if(sl.includes("k2:") && !header.k2){
+      const i = sl.indexOf("k2:");
+      header.k2 = s.slice(i+3).trim().split(/\s+/)[0];
+    }
+  }
+
+  // Start / End can be written as "Start"/"End" or "Start:"/"End:" somewhere in header.
+  const start = findValueContains("Start");
+  const end   = findValueContains("End");
+  header.start = (start||"").replace(/,/g," ").trim();
+  header.end   = (end||"").replace(/,/g," ").trim();
+}
+
+
+function locateTimeSeriesBlock(lines){
+  let idxHdr = -1;
+  for(let i=0;i<lines.length;i++){
+    const t = String(lines[i]||"").trim().toLowerCase();
+    if(t === '# broadband log results') { idxHdr = i; break; }
+  }
+  if(idxHdr < 0) return { ok:false, reason:"Header '# Broadband Log Results' nicht gefunden." };
+
+  let idxPlaceholder = -1;
+  for(let i=idxHdr+1;i<lines.length;i++){
+    const t = String(lines[i]||"");
+    if(t.includes('[YYYY-MM-DD]')){ idxPlaceholder = i; break; }
+  }
+
+  let headerIdx = -1;
+  let dataStartIdx = -1;
+
+  if(idxPlaceholder >= 0){
+    for(let i=idxPlaceholder-1;i>idxHdr;i--){
+      const t = String(lines[i]||"").trim();
+      if(!t) continue;
+      if(t.startsWith('#')) break;
+      headerIdx = i;
+      break;
+    }
+    dataStartIdx = idxPlaceholder + 1;
+  } else {
+    let idxFirstData = -1;
+    for(let i=idxHdr+1;i<lines.length;i++){
+      const t = String(lines[i]||"").trim();
+      if(!t) continue;
+      if(t.startsWith('#')) break;
+      if(/^\d{4}-\d{2}-\d{2}/.test(t)){ idxFirstData = i; break; }
+    }
+    if(idxFirstData < 0) return { ok:false, reason:"Keine Datenzeilen nach '# Broadband Log Results' gefunden." };
+
+    for(let i=idxFirstData-1;i>idxHdr;i--){
+      const t = String(lines[i]||"").trim();
+      if(!t) continue;
+      if(t.startsWith('#')) break;
+      headerIdx = i;
+      break;
+    }
+    dataStartIdx = idxFirstData;
+  }
+
+  if(headerIdx < 0) return { ok:false, reason:"Keine Spalten-Headerzeile im Broadband-Block gefunden." };
+
+  let blockEndIdx = -1;
+  for(let i=dataStartIdx;i<lines.length;i++){
+    const t = String(lines[i]||"").trim();
+    if(t.startsWith('#')){ blockEndIdx = i; break; }
+  }
+  if(blockEndIdx < 0) blockEndIdx = lines.length;
+
+  return { ok:true, headerIdx, dataStartIdx, blockEndIdx };
+}
+
+function parseBroadbandTimeSeries(text){
+  const lines = splitLines(text);
+  samples = [];
+  parsedColumns = { available:[], used:{} };
+
+  const loc = locateTimeSeriesBlock(lines);
+  if(!loc.ok){
+    setText('parseInfo', loc.reason);
+    return { ok:false, reason:loc.reason };
+  }
+
+  const headerLine = String(lines[loc.headerIdx]||"").trim();
+  const col = buildColumnIndex(headerLine);
+  setUsedColumns(col);
+
+  const u = parsedColumns.used;
+
+  for(let i=loc.dataStartIdx;i<loc.blockEndIdx;i++){
+    const raw = String(lines[i]||"");
+    const t = raw.trim();
+    if(!t) continue;
+    if(t.startsWith('#')) break;
+
+    const parts = raw.replace(/\t/g,' ').trim().split(/\s+/).filter(Boolean);
+    if(parts.length < 3) continue;
+
+    const date = (u.date != null && u.date < parts.length) ? parts[u.date] : parts[0];
+    const time = (u.time != null && u.time < parts.length) ? parts[u.time] : parts[1];
+
+    const laeq_dt  = parseNumber((u.laeq_dt != null && u.laeq_dt < parts.length) ? parts[u.laeq_dt] : null);
+    const laeq_g30 = parseNumber((u.laeq_g30 != null && u.laeq_g30 < parts.length) ? parts[u.laeq_g30] : null);
+    const lcpkmax  = parseNumber((u.lcpkmax != null && u.lcpkmax < parts.length) ? parts[u.lcpkmax] : null);
+
+    if(laeq_dt==null && laeq_g30==null && lcpkmax==null) continue;
+    samples.push({ date, time, LAeq_dt: laeq_dt, LAeq_g30: laeq_g30, LCpk: lcpkmax });
+  }
+
+  setText('parseInfo',
+    `Erkannte Spalten: ${col.colsRaw.length}. Genutzt: Date=${u.date ?? '—'}, Time=${u.time ?? '—'}, Timer=${u.timer ?? '—'}, LAeq_dt=${u.laeq_dt ?? '—'}, LAeq_g30=${u.laeq_g30 ?? '—'}, LCpeak=${u.lcpkmax ?? '—'}. Samples=${samples.length.toLocaleString()}.`
+  );
+
+  if(samples.length){
+    const first = samples[0];
+    const last = samples[samples.length-1];
+    if(!header.start) header.start = `${first.date} ${first.time}`;
+    header.end = `${last.date} ${last.time}`;
+  }
+
+  return { ok:true };
+}
+
+function parseBroadbandSummary(text){
+  summary = { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null };
+  const lines = splitLines(text);
+
+  let idxHdr = -1;
+  for(let i=0;i<lines.length;i++){
+    const t = String(lines[i]||"").trim().toLowerCase();
+    if(t === '# broadband log results over whole log period'){ idxHdr = i; break; }
+  }
+  if(idxHdr < 0) return { ok:false };
+
+  let dataIdx = -1;
+  for(let i=idxHdr+1;i<lines.length;i++){
+    const t = String(lines[i]||"").trim();
+    if(!t) continue;
+    if(t.startsWith('#')) break;
+    dataIdx = i; break;
+  }
+  if(dataIdx < 0) return { ok:false };
+
+  const u = parsedColumns.used || {};
+  const parts = String(lines[dataIdx]||"").replace(/\t/g,' ').trim().split(/\s+/).filter(Boolean);
+
+  summary.source = '# Broadband Log Results over whole log period';
+  summary.laeq_total = parseNumber((u.laeq_dt != null && u.laeq_dt < parts.length) ? parts[u.laeq_dt] : null);
+  summary.laeq_g30   = parseNumber((u.laeq_g30 != null && u.laeq_g30 < parts.length) ? parts[u.laeq_g30] : null);
+  summary.lcpeak_max = parseNumber((u.lcpkmax != null && u.lcpkmax < parts.length) ? parts[u.lcpkmax] : null);
+
+  return { ok:true };
+}
+
+function writeHeaderToUI(){
+  setVal('startMessung', header.start || "");
+  setVal('endeMessung',  header.end   || "");
+  setVal('messgeraet',   header.deviceModel || "");
+  setVal('messgeraetSN', header.deviceSN || "");
+  setVal('firmware',     header.firmware || "");
+  setVal('logInterval',  header.logIntervalText || "");
+  const mic = [header.micType, header.micSN ? `S/N: ${header.micSN}` : ""].filter(Boolean).join(' | ');
+  setVal('mikrofon', mic);
+  setVal('micCal', header.micCal || "");
+  setVal('mikroSens', header.micSens || "");
+  setVal('k1', header.k1 || "");
+  setVal('k2', header.k2 || "");
+  setVal('kset', header.kset || "");
+}
+
+function calcEnergyAvgDb(values){
+  let sum = 0, n = 0;
+  for(const v of values){
+    if(v==null || !Number.isFinite(v)) continue;
+    sum += Math.pow(10, v/10);
+    n++;
+  }
+  if(n===0) return null;
+  return 10*Math.log10(sum/n);
+}
+
+function downsampleForDisplay(raw, maxPoints=900){
+  const n = raw.length;
+  if(n<=maxPoints){
+    return { data: raw.map(s=>({date:s.date, time:s.time, LAeq:(s.LAeq_g30 ?? s.LAeq_dt), LC:s.LCpk})), bucketSize:1 };
+  }
+  const bucketSize = Math.ceil(n/maxPoints);
+  const out=[];
+  for(let i=0;i<n;i+=bucketSize){
+    const chunk = raw.slice(i, i+bucketSize);
+    const laVals = chunk.map(s => (s.LAeq_g30 ?? s.LAeq_dt)).filter(v=>v!=null && Number.isFinite(v));
+    const lcVals = chunk.map(s => s.LCpk).filter(v=>v!=null && Number.isFinite(v));
+    const LAeq = calcEnergyAvgDb(laVals);
+    const LC   = lcVals.length ? Math.max(...lcVals) : null;
+    out.push({ date: chunk[0].date, time: chunk[0].time, LAeq, LC });
+  }
+  return { data: out, bucketSize };
+}
+
+function countExceedDuration(values, limit){
+  let count = 0;
+  for(const v of values){ if(v!=null && Number.isFinite(v) && v>limit) count++; }
+  return count * (header.logIntervalSec || 1);
+}
+
+function addRow(name, value, limit, isDuration=false){
+  const tbody = document.querySelector('#pegelTabelle tbody');
+  let ok = null;
+  let valueText = '—';
+  if(isDuration){
+    valueText = (typeof value === 'number') ? secondsToHMS(value) : '—';
+    ok = (typeof value === 'number') ? (value <= 0) : null;
+  } else {
+    if(typeof value === 'number') valueText = value.toFixed(2) + ' dB';
+    if(typeof limit === 'number' && typeof value === 'number') ok = value <= limit;
+  }
+  let limitText = '—';
+  if(isDuration){
+    limitText = '0:00';
+  } else if(typeof limit === 'number'){
+    limitText = limit + ' dB';
+  }
+  const status = ok===null ? '—' : (ok ? 'OK' : 'NICHT OK');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${name}</td>
+    <td>${valueText}</td>
+    <td>${limitText}</td>
+    <td class='${ok===null ? '' : (ok ? 'status-ok' : 'status-bad')}'>${status}</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+const whiteBgPlugin = {
+  id: 'darkBgPlugin',
+  beforeDraw: (chart) => {
+    const {ctx, chartArea} = chart;
+    if(!chartArea) return;
+    ctx.save();
+    ctx.fillStyle = '#262c34';
+    ctx.fillRect(chartArea.left, chartArea.top, chartArea.right-chartArea.left, chartArea.bottom-chartArea.top);
+    ctx.restore();
+  }
+};
+
+function updateComplianceStatus(){
+  const badCount = document.querySelectorAll('#pegelTabelle .status-bad').length;
+  const dot = document.getElementById('complianceDot');
+  if(!dot) return;
+  dot.classList.remove('status-ok','status-warn','status-bad','status-empty');
+  if(!logLoaded){
+    dot.classList.add('status-empty');
+    return;
+  }
+  if(badCount === 0){
+    dot.classList.add('status-ok');
+  } else if(badCount === 1){
+    dot.classList.add('status-warn');
+  } else {
+    dot.classList.add('status-bad');
+  }
+}
+
+function mkChart(canvas, label, values, limit, limitLabel){
+  return new Chart(canvas,{
+    type:'line',
+    plugins:[whiteBgPlugin],
+    data:{
+      labels: chartSamples.map((_,i)=>i),
+      datasets:[
+        { label, data: values, borderWidth: 2, pointRadius: 0, tension: 0.2, borderColor: '#90caf9' },
+        { label: limitLabel, data: chartSamples.map(()=>limit), borderWidth: 2, pointRadius: 0, borderDash: [6,4], borderColor: '#ffb74d' },
+        { label: 'Überschreitung', data: values.map(v => (v!=null && v>limit) ? v : null), showLine:false, pointRadius: 4, backgroundColor:'#ff6b6b' }
+      ]
+    },
+    options:{
+      responsive:true,
+      devicePixelRatio: 2,
+      animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#23282f',
+          titleFont:{size:12},
+          bodyFont:{size:12},
+          padding:8,
+          cornerRadius:8,
+          displayColors:false,
+          callbacks:{
+            title:(items)=>{
+              const idx = items[0]?.dataIndex;
+              const s = chartSamples[idx];
+              return s ? `#${idx} ${s.time}` : '';
+            },
+            label:(ctx)=>`${ctx.dataset.label}: ${ctx.formattedValue}`
+          }
+        }
+      },
+      scales:{
+        x:{
+          ticks:{
+            color:'#e6e9ed',
+            font:{size:11},
+            maxTicksLimit: 10,
+            callback:(val)=>{ const s=chartSamples[Number(val)]; return s ? s.time : ''; }
+          },
+          grid:{color:'rgba(47,53,61,0.2)'}
+        },
+        y:{
+          ticks:{color:'#e6e9ed', font:{size:12}},
+          grid:{color:'rgba(47,53,61,0.2)'},
+          title:{display:true,text:'dB',color:'#e6e9ed', font:{size:12}}
+        }
+      }
+    }
+  });
+}
+
+function renderCharts(){
+  if(chartLAeq) chartLAeq.destroy();
+  if(chartLCpeak) chartLCpeak.destroy();
+  if(!chartSamples.length) return;
+  const la = chartSamples.map(s=>s.LAeq);
+  const lc = chartSamples.map(s=>s.LC);
+  chartLAeq = mkChart(el('chartLAeq'), 'LAeq', la, LIMIT_LAEQ_30, `Grenzwert ${LIMIT_LAEQ_30} dB(A)`);
+  chartLCpeak = mkChart(el('chartLCpeak'), 'LCpeak', lc, LIMIT_LCPEAK, `Grenzwert ${LIMIT_LCPEAK} dB(C)`);
+}
+
+function calculateAndRender(){
+  const tbody = document.querySelector('#pegelTabelle tbody');
+  tbody.innerHTML = "";
+
+  const hasSummary = summary && (summary.source && (summary.laeq_total!=null || summary.laeq_g30!=null || summary.lcpeak_max!=null));
+
+  const laeqTotal = hasSummary ? summary.laeq_total : calcEnergyAvgDb(samples.map(s=>s.LAeq_dt));
+  const laeqG30   = hasSummary ? summary.laeq_g30 : (samples.length ? Math.max(...samples.map(s=>s.LAeq_g30).filter(v=>v!=null && Number.isFinite(v))) : null);
+  const lcPeakMax = hasSummary ? summary.lcpeak_max : (samples.length ? Math.max(...samples.map(s=>s.LCpk).filter(v=>v!=null && Number.isFinite(v))) : null);
+
+  const durLA = countExceedDuration(samples.map(s=> (s.LAeq_g30 ?? s.LAeq_dt)).filter(v=>v!=null), LIMIT_LAEQ_30);
+  const durLC = countExceedDuration(samples.map(s=> s.LCpk).filter(v=>v!=null), LIMIT_LCPEAK);
+
+  addRow('LAeq,30min (g30)', laeqG30, LIMIT_LAEQ_30);
+  addRow('Überschreitungsdauer LAeq', durLA, 0, true);
+  addRow('LCpeak (max)', lcPeakMax, LIMIT_LCPEAK);
+  addRow('Überschreitungsdauer LCpeak', durLC, 0, true);
+  addRow('LAeq (Gesamt)', laeqTotal, null);
+
+  const ds = downsampleForDisplay(samples, 900);
+  chartSamples = ds.data;
+  setText('chartInfo', `Diagramme: ${samples.length.toLocaleString()} Originalpunkte → ${chartSamples.length.toLocaleString()} Punkte (je Punkt ~${ds.bucketSize*(header.logIntervalSec||1)}s).`);
+  setText('laeqChartLabel', (summary && summary.laeq_g30!=null) ? 'LAeq,30min (g30) Verlauf mit Grenzwert 99 dB(A)' : 'LAeq Verlauf mit Grenzwert 99 dB(A)');
+
+  renderCharts();
+
+  if(hasSummary){ setDot('dotSummary','ok'); setText('chipSummary','Summary: verwendet'); }
+  else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden (Fallback)'); }
+
+  // update header compliance indicator based on table results
+  updateComplianceStatus();
+
+  el('btnPdf').disabled = false;
+}
+
+function paRow(type="", qty=""){
+  const row = document.createElement('div');
+  row.className = 'compact-row';
+
+  const sel = document.createElement('select');
+  sel.innerHTML = `
+    <option value="" ${type===""?'selected':''}>Typ wählen…</option>
+    <option value="L-ACOUSTIC KARA II">L-ACOUSTIC KARA II</option>
+    <option value="L-ACOUSTIC KS21">L-ACOUSTIC KS21</option>
+    <option value="L-ACOUSTIC A10 Wide">L-ACOUSTIC A10 Wide</option>
+    <option value="L-ACOUSTIC A10 Focus">L-ACOUSTIC A10 Focus</option>
+    <option value="L-ACOUSTIC 5XT">L-ACOUSTIC 5XT</option>
+    <option value="custom">Eigener Typ</option>
+  `;
+  if(type && type !== 'custom') sel.value = type;
+
+  const custom = document.createElement('input');
+  custom.placeholder = 'Eigener Typ';
+  custom.style.display = 'none';
+
+  const num = document.createElement('input');
+  num.type = 'number';
+  num.placeholder = 'Anzahl';
+  num.value = qty;
+
+  const btnDel = document.createElement('button');
+  btnDel.type = 'button';
+  btnDel.className = 'secondary';
+  btnDel.textContent = '✕';
+  btnDel.style.padding = '10px 12px';
+  btnDel.addEventListener('click', ()=> row.remove());
+
+  sel.addEventListener('change', ()=>{
+    custom.style.display = (sel.value === 'custom') ? 'block' : 'none';
+    if(sel.value !== 'custom') custom.value = '';
+    const t = (sel.value === 'custom') ? '' : sel.value;
+    if(t && !String(num.value||'').trim() && PA_DEFAULT_QTY[t] != null){
+      num.value = PA_DEFAULT_QTY[t];
+    }
+  });
+
+  row.appendChild(sel);
+  row.appendChild(custom);
+  row.appendChild(num);
+  row.appendChild(btnDel);
+
+  return row;
+}
+
+function applyLocationPreset(loc){
+  const preset = PA_PRESETS[loc];
+  const container = el('paContainer');
+  container.innerHTML = '';
+  if(preset && preset.length){
+    for(const it of preset){ container.appendChild(paRow(it.type, it.qty)); }
+    setText('paPresetInfo', `Preset aktiv: ${loc}`);
+  } else {
+    container.appendChild(paRow('L-ACOUSTIC KARA II', PA_DEFAULT_QTY['L-ACOUSTIC KARA II']));
+    setText('paPresetInfo', 'Preset aktiv: (nur Kara)');
+  }
+}
+
+el('btnAddPA').addEventListener('click', ()=> el('paContainer').appendChild(paRow('', '')) );
+el('btnClearPA').addEventListener('click', ()=> applyLocationPreset(getVal('location')) );
+el('location').addEventListener('change', ()=> applyLocationPreset(getVal('location')) );
+
+const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName'];
+for(const id of requiredIds){
+  const field = el(id);
+  if(field){
+    field.addEventListener('input', markRequiredFields);
+    field.addEventListener('change', markRequiredFields);
+  }
+}
+
+function getPASetupInline(){
+  const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
+  const items = [];
+  for(const r of rows){
+    const sel = r.querySelector('select');
+    const custom = r.querySelector('input[placeholder="Eigener Typ"]');
+    const num = r.querySelector('input[type="number"]');
+    const type = sel.value === 'custom' ? (custom.value || 'Eigener Typ') : (sel.value || '');
+    const qtyRaw = String(num.value || '').trim();
+    const qty = qtyRaw ? Number(qtyRaw) : null;
+    if(!type) continue;
+    items.push({ type, qty: (qty!=null && Number.isFinite(qty)) ? qty : null });
+  }
+  return items.map(x => x.qty!=null ? `${x.qty}x ${x.type}` : `${x.type}`).join(', ');
+}
+
+function wrap(doc, text, maxWidth){ return doc.splitTextToSize(String(text ?? ''), maxWidth); }
+
+async function generatePDF(){
+  const { jsPDF } = window.jspdf;
+  if(!jsPDF) { alert('jsPDF konnte nicht geladen werden.'); return; }
+
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const M = 12;
+  const pageW = 210 - 2*M;
+
+  async function drawHeader(){
+    const logoUrl = 'https://www.gve-essen.de/typo3conf/ext/sg_sitepackage/Resources/Public/gve/Assets/Images/gve-logo.png';
+    // shrink to header height (mm)
+    const maxH = 12; // header height in mm
+    const maxW = 40; // allow some width if needed
+    try {
+      await new Promise((resolve)=>{
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = ()=>{
+          try{
+            const iw = img.naturalWidth || img.width;
+            const ih = img.naturalHeight || img.height;
+            const imgAspect = iw/ih;
+            const boxAspect = maxW/maxH;
+            let wmm, hmm;
+            if(imgAspect > boxAspect){
+              wmm = maxW;
+              hmm = maxW / imgAspect;
+            } else {
+              hmm = maxH;
+              wmm = maxH * imgAspect;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = iw; canvas.height = ih;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img,0,0);
+            const dataUrl = canvas.toDataURL('image/png');
+            // place logo on the right, within header area
+            const x = M + pageW - wmm;
+            const y = 6; // keep logo within header height
+            doc.addImage(dataUrl, 'PNG', x, y, wmm, hmm);
+          }catch(e){
+            console.warn('Logo load/draw failed', e);
+          }
+          resolve();
+        };
+        img.onerror = ()=>{ resolve(); };
+        img.src = logoUrl;
+        // if cached, onload may not fire in some envs; ensure resolve eventually
+        setTimeout(resolve, 1500);
+      });
+    } catch(e){ console.warn('drawHeader logo error', e); }
+
+    doc.setDrawColor(200, 200, 200);
+    // horizontal rule below header (moved slightly down)
+    doc.line(M, 24, M+pageW, 24);
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(16);
+    doc.setFont(undefined,'bold');
+    // title shifted left
+    doc.text('Schallpegelmessung', M+2, 12);
+    doc.setFontSize(11);
+    doc.setFont(undefined,'normal');
+    // increased spacing between title and subtitle
+    doc.text('gemäß DIN 15905-5', M+2, 21);
+  }
+
+  function drawFooter(pageNum){
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Seite ${pageNum}`, M, 297);
+    const date = new Date().toLocaleDateString('de-DE');
+    doc.text(`Erstellt: ${date}`, M+pageW-40, 297);
+  }
+
+  function section(y, t){
+    doc.setFontSize(11);
+    doc.setFont(undefined,'bold');
+    // Title color set to #0c4391
+    doc.setTextColor(12, 67, 145);
+    doc.text(t, M, y);
+    doc.setDrawColor(12, 67, 145);
+    doc.setLineWidth(0.5);
+    doc.line(M, y+0.8, M+pageW, y+0.8);
+    doc.setTextColor(50, 50, 50);
+    return y + 7;
+  }
+
+  function fieldPair(y, label1, val1, label2, val2){
+    const col1W = pageW/2 - 2;
+    doc.setFontSize(9);
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(label1, M, y);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50, 50, 50);
+    const lines1 = wrap(doc, val1||'—', col1W-5);
+    doc.text(lines1, M, y+4);
+    
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(label2, M+pageW/2+2, y);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50, 50, 50);
+    const lines2 = wrap(doc, val2||'—', col1W-5);
+    doc.text(lines2, M+pageW/2+2, y+4);
+    
+    return y + Math.max(lines1.length, lines2.length)*4 + 6;
+  }
+
+  function resultTable(y, rows){
+    const cols = [
+      {t:'Parameter', w:70},
+      {t:'Messwert', w:36},
+      {t:'Grenzwert', w:36},
+      {t:'Status', w:(pageW-142)}
+    ];
+
+    doc.setFontSize(9);
+    doc.setFont(undefined,'bold');
+    doc.setFillColor(240, 240, 240);
+    doc.setDrawColor(200, 200, 200);
+
+    const h = 7;
+    doc.rect(M, y, pageW, h, 'FD');
+    let x = M;
+    doc.setTextColor(80, 80, 80);
+    for(const c of cols){ doc.text(c.t, x+2, y+5.5); x += c.w; }
+
+    doc.setFont(undefined,'normal');
+    let yy = y + h;
+    doc.setTextColor(50, 50, 50);
+    for(const r of rows){
+      const lineH = 6;
+      doc.setDrawColor(230, 230, 230);
+      doc.rect(M, yy, pageW, lineH);
+      let xx = M;
+      for(let i=0;i<4;i++){
+        const text = String(r[i] ?? '');
+        if(i === 3 && text.includes('OK')) doc.setTextColor(76, 175, 80);
+        else if(i === 3 && text.includes('NICHT OK')) doc.setTextColor(255, 82, 82);
+        else doc.setTextColor(50, 50, 50);
+        doc.text(text, xx+2, yy+5);
+        xx += cols[i].w;
+      }
+      yy += lineH;
+    }
+    return yy;
+  }
+
+  const ev = getVal('eventName').trim() || '(unbenannt)';
+  const dt = getVal('datumMessung').trim() || '';
+
+  // Seite 1: Übersicht
+  await drawHeader();
+  let y = 28;
+
+  y = section(y, 'Details');
+  y += 2;
+  y = fieldPair(y, 'Veranstaltung', ev, 'Datum', dt);
+  y = fieldPair(y, 'Location', getVal('location'), 'Umgebung', getVal('umwelt'));
+
+  // Organisator & Beschreibung am Ende des Details-Blocks
+  const colGapLocal = 10;
+  const colWLocal = (pageW - colGapLocal)/2;
+  doc.setFontSize(10);
+  doc.setFont(undefined,'bold');
+  doc.text('Organisator:', M, y);
+  doc.text('Beschreibung:', M + colWLocal + colGapLocal, y);
+  const boxYLocal = y + 3;
+  const boxHLocal = 26;
+  doc.setDrawColor(210,210,210);
+  doc.rect(M, boxYLocal, colWLocal, boxHLocal);
+  doc.rect(M + colWLocal + colGapLocal, boxYLocal, colWLocal, boxHLocal);
+  doc.setFont(undefined,'normal');
+  doc.text(wrap(doc, getVal('organisator'), colWLocal - 4), M+2, boxYLocal+6);
+  doc.text(wrap(doc, getVal('beschreibung'), colWLocal - 4), M + colWLocal + colGapLocal + 2, boxYLocal+6);
+  y = boxYLocal + boxHLocal + 8;
+
+  y = section(y, 'Messbeteiligte');
+  y += 2;
+  y = fieldPair(y, 'Messung durchgeführt von', getVal('messungVon'), 'FOH-Techniker', getVal('foh'));
+  y = fieldPair(y, 'Messposition', getVal('messposition'), 'Lauteste Position', getVal('lautestePosition'));
+
+  y = section(y, 'Messgerät & Kalibrierung');
+  y += 2;
+  y = fieldPair(y, 'Messgerät', getVal('messgeraet'), 'Messgerät S/N', getVal('messgeraetSN'));
+  y = fieldPair(y, 'Kalibrator', getVal('kalibratorModell'), 'Kalibrator S/N', getVal('kalibratorSN'));
+  y = fieldPair(y, 'Firmware', getVal('firmware'), 'Log-Intervall', header.logIntervalText);
+
+  if(y > 260){
+    doc.addPage();
+    await drawHeader();
+    y = 28;
+  }
+
+  y = section(y, 'Messergebnisse');
+  y += 2;
+
+  const rows = Array.from(document.querySelectorAll('#pegelTabelle tbody tr'))
+    .map(tr => Array.from(tr.children).map(td => td.innerText));
+
+  y = resultTable(y, rows) + 8;
+
+  // Unterschrift-Block am Fuß der ersten Seite
+  const sigTitleY = y + 6;
+  doc.setFontSize(11);
+  doc.setFont(undefined,'bold');
+  doc.setTextColor(50,50,50);
+  doc.text('Unterschrift', M, sigTitleY);
+
+  const sigFieldsY = sigTitleY + 6;
+  doc.setFontSize(9);
+  doc.setFont(undefined,'bold'); doc.setTextColor(100,100,100);
+  doc.text('Datum', M, sigFieldsY);
+  doc.setFont(undefined,'normal'); doc.setTextColor(50,50,50);
+  doc.text(String(getVal('berichtDatum')||''), M+18, sigFieldsY);
+
+  doc.setFont(undefined,'bold'); doc.setTextColor(100,100,100);
+  doc.text('Name', M+pageW/2, sigFieldsY);
+  doc.setFont(undefined,'normal'); doc.setTextColor(50,50,50);
+  doc.text(String(getVal('berichtName')||''), M+pageW/2+18, sigFieldsY);
+
+  const sigBoxY = sigFieldsY + 6;
+  const sigBoxH = 28;
+  doc.setDrawColor(200,200,200);
+  doc.rect(M, sigBoxY, pageW, sigBoxH);
+  doc.setFontSize(9); doc.setTextColor(120,120,120);
+  doc.text('Unterschrift (Platzhalter)', M+2, sigBoxY+6);
+
+  drawFooter(1);
+
+  // Seite 2: Diagramme
+  doc.addPage();
+  await drawHeader();
+  y = 28;
+
+  y = section(y, `Messverlauf – ${ev}`);
+  y += 2;
+
+  if(chartLAeq){
+    doc.setFontSize(12);
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text('LAeq mit Grenzwert 99 dB(A)', M, y);
+    const chartH = 100;
+    doc.addImage(chartLAeq.toBase64Image(), 'PNG', M, y+5, pageW, chartH);
+    y += chartH + 12;
+  }
+
+  if(chartLCpeak){
+    doc.setFontSize(12);
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
+    const chartH2 = 100;
+    doc.addImage(chartLCpeak.toBase64Image(), 'PNG', M, y+5, pageW, chartH2);
+  }
+
+  drawFooter(2);
+
+  const datum = getVal('datumMessung').trim() || 'kein-datum';
+  const veranstaltung = ev || 'unbenannt';
+  const fname = `${datum} - ${veranstaltung} - Messprotokoll nach DIN 15905-5`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
+
+  // instead of forcing an immediate download we open the PDF in a new window/tab
+  // where the user can preview and then decide to save it manually.
+  try {
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // viewer allows saving; if desired we could revoke the URL later.
+  } catch (e) {
+    // fallback to default save if blob/open fails (older browsers)
+    doc.save(`${fname}.pdf`);
+  }
+}
+
+function exportHTML(){
+  try{
+    const state = {
+      header: header,
+      samples: samples,
+      chartSamples: chartSamples,
+      summary: summary,
+      logLoaded: logLoaded,
+      form: {
+        eventName: getVal('eventName'),
+        datumMessung: getVal('datumMessung'),
+        location: getVal('location'),
+        umwelt: getVal('umwelt'),
+        messungVon: getVal('messungVon'),
+        messposition: getVal('messposition'),
+        lautestePosition: getVal('lautestePosition'),
+        foh: getVal('foh'),
+        organisator: getVal('organisator'),
+        beschreibung: getVal('beschreibung'),
+        berichtDatum: getVal('berichtDatum'),
+        berichtName: getVal('berichtName'),
+        kalibratorModell: getVal('kalibratorModell'),
+        kalibratorSN: getVal('kalibratorSN')
+      },
+      paItems: (function(){
+        const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
+        return rows.map(r=>{
+          const sel = r.querySelector('select');
+          const custom = r.querySelector('input[placeholder="Eigener Typ"]');
+          const num = r.querySelector('input[type="number"]');
+          const type = sel ? sel.value : '';
+          const customType = custom ? custom.value : '';
+          const qtyRaw = num ? String(num.value || '').trim() : '';
+          const qty = qtyRaw ? Number(qtyRaw) : null;
+          if(!type && !customType && (qtyRaw === '')) return null;
+          return { type, customType, qty: (qty!=null && Number.isFinite(qty)) ? qty : null };
+        }).filter(Boolean);
+      })(),
+      logText: lastLogText,
+      logFileName: lastLogFileName
+    };
+
+    const __state_json = JSON.stringify(state)
+      .replace(/</g, '\\u003c')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+    const stateTag = `<script>window.__SAVED_STATE__ = ${__state_json};<\/script>`;
+    const restoreScript = `
+<script>
+  (function(){
+    const state = (window.__SAVED_STATE__ || null);
+    if(!state) return;
+    function safeSet(id, val){ const e = document.getElementById(id); if(e) e.value = (val ?? '').toString(); }
+    function restorePA(items){
+      const container = document.getElementById('paContainer');
+      if(!container) return;
+      container.innerHTML = '';
+      if(!items || !items.length){
+        if(typeof applyLocationPreset === 'function') applyLocationPreset(document.getElementById('location')?.value || '');
+        return;
+      }
+      for(const it of items){
+        const row = (typeof paRow === 'function') ? paRow('', '') : null;
+        if(!row) continue;
+        const sel = row.querySelector('select');
+        const custom = row.querySelector('input[placeholder="Eigener Typ"]');
+        const num = row.querySelector('input[type="number"]');
+        const isCustom = it.type === 'custom' || (it.customType && it.type !== 'custom');
+        if(sel){
+          sel.value = isCustom ? 'custom' : (it.type || '');
+          try{ sel.dispatchEvent(new Event('change')); }catch(e){}
+        }
+        if(custom && isCustom){
+          custom.value = it.customType || '';
+          custom.style.display = 'block';
+        }
+        if(num && it.qty!=null) num.value = it.qty;
+        container.appendChild(row);
+      }
+      if(typeof setText === 'function') setText('paPresetInfo','Preset: gespeichert');
+    }
+    function restore(){
+      if(state.form){
+        safeSet('eventName', state.form.eventName);
+        safeSet('datumMessung', state.form.datumMessung);
+        safeSet('location', state.form.location);
+        safeSet('umwelt', state.form.umwelt);
+        safeSet('messungVon', state.form.messungVon);
+        safeSet('messposition', state.form.messposition);
+        safeSet('lautestePosition', state.form.lautestePosition);
+        safeSet('foh', state.form.foh);
+        safeSet('organisator', state.form.organisator);
+        safeSet('beschreibung', state.form.beschreibung);
+        safeSet('berichtDatum', state.form.berichtDatum);
+        safeSet('berichtName', state.form.berichtName);
+        safeSet('kalibratorModell', state.form.kalibratorModell);
+        safeSet('kalibratorSN', state.form.kalibratorSN);
+      }
+      if(state.paItems) restorePA(state.paItems);
+      if(typeof header !== 'undefined' && state.header) header = state.header;
+      if(typeof samples !== 'undefined') samples = state.samples || [];
+      if(typeof chartSamples !== 'undefined') chartSamples = state.chartSamples || [];
+      if(typeof summary !== 'undefined') summary = state.summary || {};
+      if(typeof lastLogText !== 'undefined') lastLogText = state.logText || '';
+      if(typeof lastLogFileName !== 'undefined') lastLogFileName = state.logFileName || '';
+      if(typeof logLoaded !== 'undefined') logLoaded = !!state.logLoaded || (samples && samples.length);
+      if(typeof writeHeaderToUI === 'function') writeHeaderToUI();
+      if(typeof calculateAndRender === 'function' && samples && samples.length){
+        try{ calculateAndRender(); }catch(e){ console.error(e); }
+      } else if(typeof updateComplianceStatus === 'function'){
+        updateComplianceStatus();
+      }
+      if(typeof setDot === 'function' && typeof setText === 'function'){
+        if(logLoaded){
+          setDot('dotLog','ok');
+          const name = lastLogFileName ? (' (' + lastLogFileName + ')') : ' (gespeichert)';
+          setText('chipLog', 'Log: geladen' + name);
+        } else {
+          setDot('dotLog','warn');
+          setText('chipLog', 'Log: nicht geladen');
+        }
+        const hasSummary = summary && (summary.source && (summary.laeq_total!=null || summary.laeq_g30!=null || summary.lcpeak_max!=null));
+        if(hasSummary){ setDot('dotSummary','ok'); setText('chipSummary','Summary: verwendet'); }
+        else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden (Fallback)'); }
+      }
+      if(typeof markRequiredFields === 'function') markRequiredFields();
+    }
+    if(document.readyState === 'complete') restore();
+    else window.addEventListener('load', restore);
+  })();
+<\/script>`;
+
+    const html = document.documentElement.outerHTML.replace('</body>', stateTag + '\n' + restoreScript + '\n</body>');
+
+    const blob = new Blob([html], {type:'text/html'});
+    const fname = `${(getVal('datumMessung')||'kein-datum')} - ${(getVal('eventName')||'unbenannt')} - Messprotokoll.html`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+    try{ window.open(url, '_blank'); }catch(e){ console.warn('Could not open preview tab', e); }
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
+  }catch(err){ alert('Fehler beim Exportieren: '+String(err)); console.error(err); }
+}
+
+// wire import button to hidden file input
+el('btnImport').addEventListener('click', ()=>{
+  const inp = el('fileInput'); if(inp) inp.click();
+});
+
+el('fileInput').addEventListener('change', (e)=>{
+  const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+  if(!f) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const text = String(evt.target.result || '');
+
+      setDot('dotLog','warn');
+      setText('chipLog', `Log: parsing… (${f.name})`);
+
+      parseHeaderAndMeta(text);
+      const ts = parseBroadbandTimeSeries(text);
+      const sm = parseBroadbandSummary(text);
+      writeHeaderToUI();
+
+      // Auto-fill "Datum der Messung" from header start date if user left it empty.
+      if(!getVal('datumMessung').trim() && header.start){
+        const m = String(header.start).match(/\d{4}-\d{2}-\d{2}/);
+        if(m) setVal('datumMessung', m[0]);
+      }
+
+      if(sm.ok){ setDot('dotSummary','ok'); setText('chipSummary','Summary: gefunden'); }
+      else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden'); }
+
+      // store original log text for export
+      lastLogText = text;
+
+      markRequiredFields();
+
+      if(!ts.ok || !samples.length){
+        logLoaded = false;
+        lastLogFileName = '';
+        setDot('dotLog','bad');
+        setText('chipLog','Log: Fehler (keine Daten)');
+        el('btnPdf').disabled = true;
+        updateComplianceStatus();
+        return;
+      }
+
+      logLoaded = true;
+      lastLogFileName = f.name;
+      setDot('dotLog','ok');
+      setText('chipLog', `Log: geladen (${f.name})`);
+      calculateAndRender();
+
+    }catch(err){
+      console.error(err);
+      logLoaded = false;
+      lastLogFileName = '';
+      setDot('dotLog','bad');
+      setText('chipLog','Log: Fehler');
+      setText('parseInfo', 'Fehler beim Parsen: ' + String(err && err.message ? err.message : err));
+      el('btnPdf').disabled = true;
+      updateComplianceStatus();
+    }
+  };
+  reader.readAsText(f);
+});
+
+(function init(){
+  const today = new Date().toISOString().split('T')[0];
+  setVal('berichtDatum', today);
+  applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
+  markRequiredFields();
+})();
+</script>
+
+</body>
+</html>

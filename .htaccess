@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Ignoriere existierende Dateien und Verzeichnisse
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Leite /t/{toolname}/ auf tool.php?name={toolname} um
+  RewriteRule ^t/([a-zA-Z0-9_-]+)/?$ tool.php?name=$1 [QSA,L]
+  
+  # Sicherheit: Blockiere Direktzugriff auf sensible Dateien
+  <FilesMatch "\.env|\.git|deploy\.(py|sh)">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

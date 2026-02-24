@@ -1,0 +1,87 @@
+<?php
+declare(strict_types=1);
+
+$config = require __DIR__ . '/app/config.php';
+
+session_name($config['session_name']);
+session_set_cookie_params([
+  'httponly' => true,
+  'samesite' => 'Lax',
+  'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+  'path'     => '/',
+]);
+session_start();
+
+function h(string $s): string {
+  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function redirect(string $to): never {
+  header("Location: $to");
+  exit;
+}
+
+function require_login(): void {
+  if (empty($_SESSION['uid'])) redirect('/login.php');
+}
+
+function require_admin(): void {
+  require_login();
+  if (empty($_SESSION['is_admin'])) {
+    http_response_code(403);
+    echo "403";
+    exit;
+  }
+}
+
+function page_start(string $title, bool $show_nav = true): void {
+  $site = h(($GLOBALS['config']['site_name'] ?? 'Tools'));
+  $t = h($title);
+
+  $is_authed = !empty($_SESSION['uid']);
+  $is_admin  = !empty($_SESSION['is_admin']);
+  $user      = h((string)($_SESSION['username'] ?? ''));
+
+  echo "<!doctype html>
+<html lang=\"de\">
+<head>
+  <meta charset=\"utf-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+  <title>{$t} · {$site}</title>
+  <link rel=\"stylesheet\" href=\"/assets/app.css\">
+</head>
+<body>";
+
+  if ($show_nav) {
+    echo "<header class=\"topbar\">
+      <div class=\"topbar-inner\">
+        <a class=\"brand\" href=\"/index.php\">
+          <div class=\"brand-badge\"></div>
+          <div>
+            <span>{$site}</span>
+            <small>Hub für deine Web-Tools</small>
+          </div>
+        </a>
+        <nav class=\"nav\">";
+
+    if ($is_authed) {
+      echo "<span class=\"chip\">Angemeldet als <strong>{$user}</strong></span>";
+      if ($is_admin) {
+        echo "<a class=\"btn\" href=\"/admin_users.php\">Admin</a>";
+      }
+      echo "<a class=\"btn btn-ghost\" href=\"/logout.php\">Logout</a>";
+    } else {
+      echo "<a class=\"btn btn-primary\" href=\"/login.php\">Login</a>";
+    }
+
+    echo "</nav>
+      </div>
+    </header>";
+  }
+
+  echo "<main class=\"container\">";
+}
+
+function page_end(): void {
+  echo "</main></body></html>";
+}

@@ -1,0 +1,19 @@
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+
+# Apache 2.2 fallback
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>
+
+RewriteEngine On
+RewriteBase /
+
+# Tool route: /t/<tool>/  -> index.html
+RewriteRule ^t/([A-Za-z0-9_-]+)/?$ /toolserve.php?name=$1&file=index.html [L,QSA]
+
+# Tool assets: /t/<tool>/<file>
+RewriteRule ^t/([A-Za-z0-9_-]+)/(.+)$ /toolserve.php?name=$1&file=$2 [L,QSA]
