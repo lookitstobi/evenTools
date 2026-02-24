@@ -13,10 +13,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Install SFTP client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lftp
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install paramiko
+        run: pip install paramiko
       
       - name: Create .env.local from secrets
         run: |
@@ -29,4 +32,4 @@ jobs:
           chmod 600 .env.local
       
       - name: Deploy to Strato
-        run: chmod +x ./deploy.sh && ./deploy.sh
+        run: python3 deploy.py
