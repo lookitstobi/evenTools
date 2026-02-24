@@ -1,0 +1,25 @@
+# Environment & Credentials (NIEMALS ins Repo!)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/sftp.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Development
+node_modules/
+.git/
+.gitignore
+
+# Deployment
+.htrouter.php
