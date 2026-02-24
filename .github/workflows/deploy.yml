@@ -1,0 +1,32 @@
+name: Deploy to Strato
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install SFTP client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+      
+      - name: Create .env.local from secrets
+        run: |
+          cat > .env.local << EOF
+          STRATO_HOST=${{ secrets.STRATO_HOST }}
+          STRATO_USER=${{ secrets.STRATO_USER }}
+          STRATO_PASS=${{ secrets.STRATO_PASS }}
+          STRATO_PATH=${{ secrets.STRATO_PATH }}
+          EOF
+          chmod 600 .env.local
+      
+      - name: Deploy to Strato
+        run: chmod +x ./deploy.sh && ./deploy.sh
