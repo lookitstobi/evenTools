@@ -49,6 +49,30 @@ body{
   line-height:1.45;
 }
 
+body.user-theme-pink{
+  --accent: #ff4fa3;
+  --accent2: #ff8ac8;
+  background:
+    radial-gradient(1200px 700px at 10% 10%, rgba(255,79,163,.22), transparent 55%),
+    radial-gradient(900px 600px at 90% 10%, rgba(255,138,200,.16), transparent 60%),
+    radial-gradient(1100px 800px at 30% 100%, rgba(251,113,133,.12), transparent 60%),
+    var(--bg);
+}
+
+body.user-theme-pink .brand-badge{
+  background: linear-gradient(135deg, rgba(255,79,163,.95), rgba(255,138,200,.82));
+}
+
+body.user-theme-pink .btn-primary{
+  background: linear-gradient(135deg, rgba(255,79,163,.96), rgba(255,138,200,.82));
+}
+
+body.user-theme-pink .input:focus,
+body.user-theme-pink .select:focus{
+  border-color: rgba(255,79,163,.55);
+  box-shadow: 0 0 0 4px rgba(255,79,163,.18);
+}
+
 a{ color:inherit; text-decoration:none; }
 a:hover{ text-decoration:underline; }
 small,.small{ color: var(--muted); }

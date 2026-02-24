@@ -53,7 +53,9 @@ function page_start(string $title, bool $show_nav = true): void {
 
   $is_authed = !empty($_SESSION['uid']);
   $is_admin  = !empty($_SESSION['is_admin']);
-  $user      = h((string)($_SESSION['username'] ?? ''));
+  $username_raw = (string)($_SESSION['username'] ?? '');
+  $user         = h($username_raw);
+  $body_class   = ($username_raw === 'möhrchen') ? ' class="user-theme-pink"' : '';
 
   echo "<!doctype html>
 <html lang=\"de\">
@@ -63,7 +65,7 @@ function page_start(string $title, bool $show_nav = true): void {
   <title>{$t} · {$site}</title>
   <link rel=\"stylesheet\" href=\"/assets/app.css\">
 </head>
-<body>";
+<body{$body_class}>";
 
   if ($show_nav) {
     echo "<header class=\"topbar\">
