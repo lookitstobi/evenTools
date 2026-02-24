@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 SFTP Deploy Script für Toolsapp → Strato
-Liest Credentials aus .env.local und deployt Dateien via SFTP
+Liest Credentials aus Umgebungsvariablen oder .env.local und deployt Dateien via SFTP
 """
 
 import os
@@ -9,24 +9,31 @@ import sys
 import paramiko
 from pathlib import Path
 
-# Lade .env.local
-env_file = Path(__file__).parent / '.env.local'
-if not env_file.exists():
-    print(f"❌ {env_file} nicht gefunden!")
-    sys.exit(1)
+# Versuche Credentials aus Umgebungsvariablen zu lesen (für GitHub Actions)
+host = os.getenv('STRATO_HOST')
+user = os.getenv('STRATO_USER')
+password = os.getenv('STRATO_PASS')
+remote_path = os.getenv('STRATO_PATH')
 
-env_vars = {}
-with open(env_file) as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith('#'):
-            key, value = line.split('=', 1)
-            env_vars[key.strip()] = value.strip()
-
-host = env_vars.get('STRATO_HOST')
-user = env_vars.get('STRATO_USER')
-password = env_vars.get('STRATO_PASS')
-remote_path = env_vars.get('STRATO_PATH')
+# Fallback: Lese aus .env.local wenn Umgebungsvariablen nicht gesetzt
+if not all([host, user, password, remote_path]):
+    env_file = Path(__file__).parent / '.env.local'
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if key == 'STRATO_HOST':
+                        host = host or value
+                    elif key == 'STRATO_USER':
+                        user = user or value
+                    elif key == 'STRATO_PASS':
+                        password = password or value
+                    elif key == 'STRATO_PATH':
+                        remote_path = remote_path or value
 local_path = Path(__file__).parent
 
 if not all([host, user, password, remote_path]):

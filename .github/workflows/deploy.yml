@@ -21,15 +21,10 @@ jobs:
       - name: Install paramiko
         run: pip install paramiko
       
-      - name: Create .env.local from secrets
-        run: |
-          cat > .env.local << EOF
-          STRATO_HOST=${{ secrets.STRATO_HOST }}
-          STRATO_USER=${{ secrets.STRATO_USER }}
-          STRATO_PASS=${{ secrets.STRATO_PASS }}
-          STRATO_PATH=${{ secrets.STRATO_PATH }}
-          EOF
-          chmod 600 .env.local
-      
       - name: Deploy to Strato
         run: python3 deploy.py
+        env:
+          STRATO_HOST: ${{ secrets.STRATO_HOST }}
+          STRATO_USER: ${{ secrets.STRATO_USER }}
+          STRATO_PASS: ${{ secrets.STRATO_PASS }}
+          STRATO_PATH: ${{ secrets.STRATO_PATH }}
