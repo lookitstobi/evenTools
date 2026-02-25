@@ -34,6 +34,22 @@ function require_admin(): void {
   }
 }
 
+function csrf_token(): string {
+  if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(24));
+  }
+  return (string)$_SESSION['csrf_token'];
+}
+
+function require_csrf_token(string $token): void {
+  $expected = (string)($_SESSION['csrf_token'] ?? '');
+  if ($expected === '' || !hash_equals($expected, $token)) {
+    http_response_code(403);
+    echo "CSRF";
+    exit;
+  }
+}
+
 function all_tools(): array {
   $tools = [];
   $toolsBase = realpath($GLOBALS['config']['tools_dir'] ?? '');
@@ -71,7 +87,7 @@ function page_start(string $title, bool $show_nav = true): void {
     echo "<header class=\"topbar\">
       <div class=\"topbar-inner\">
         <a class=\"brand\" href=\"/index.php\">
-          <div class=\"brand-badge\"></div>
+          <img class=\"brand-logo\" src=\"/assets/Logo.png\" alt=\"{$site} Logo\">
           <div>
             <span>{$site}</span>
             <small>Hub für deine Web-Tools</small>

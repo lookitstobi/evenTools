@@ -10,6 +10,10 @@ $tool_meta = [
   'dev_todo' => [
     'title' => 'Dev To-Do Board',
     'sub' => 'Aufgaben fuer Tools, Seiten und Infrastruktur'
+  ],
+  'dguv_v3' => [
+    'title' => 'DGUV V3 Prüfverwaltung',
+    'sub' => 'Prüflinge, Prüfungen, CSV-Labeldruckjobs'
   ]
 ];
 

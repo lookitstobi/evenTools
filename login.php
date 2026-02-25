@@ -36,8 +36,12 @@ page_start('Login', false);
 ?>
 <div class="container" style="padding-top: 36px;">
   <div class="card" style="max-width:520px;margin:0 auto;">
+    <div class="login-logo-wrap">
+      <img class="login-logo" src="/assets/Logo.png" alt="<?=$config['site_name']?> Logo">
+    </div>
+    <div class="sep"></div>
+
     <div style="display:flex;gap:12px;align-items:center;">
-      <div class="brand-badge" style="width:44px;height:44px;border-radius:16px;"></div>
       <div>
         <div class="h1" style="margin:0;">Login</div>
         <div class="small">Bitte anmelden, um Tools zu öffnen.</div>

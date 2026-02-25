@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DGUV V3 Prüfungen</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --panel:#111827;
+      --panel-soft:#1f2937;
+      --line:#334155;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --ok:#14b8a6;
+      --warn:#f59e0b;
+      --bad:#fb7185;
+      --brand:#8b5cf6;
+      --brand2:#06b6d4;
+      --radius:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:radial-gradient(1100px 580px at 10% 0%, rgba(139,92,246,.22), transparent 55%), var(--bg);
+      line-height:1.45;
+    }
+
+    .wrap{
+      width:min(1200px, calc(100% - 28px));
+      margin:20px auto 40px;
+      display:grid;
+      gap:14px;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+    }
+
+    .card{
+      background:rgba(17,24,39,.88);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .col-12{grid-column:span 12}
+    .col-8{grid-column:span 8}
+    .col-6{grid-column:span 6}
+    .col-4{grid-column:span 4}
+    @media (max-width: 980px){
+      .col-8,.col-6,.col-4{grid-column:span 12}
+    }
+
+    .title{font-size:28px;font-weight:750;margin:4px 0}
+    .subtitle{color:var(--muted);font-size:14px}
+    .sep{height:1px;background:var(--line);margin:12px 0}
+
+    .grid{display:grid;gap:10px;grid-template-columns:repeat(12,minmax(0,1fr))}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .f6{grid-column:span 6}
+    .f4{grid-column:span 4}
+    .f3{grid-column:span 3}
+    .f12{grid-column:span 12}
+    @media (max-width: 980px){
+      .f6,.f4,.f3{grid-column:span 12}
+    }
+
+    label{font-size:12px;color:var(--muted);font-weight:600}
+    input,select,textarea{
+      width:100%;
+      background:var(--panel-soft);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px;
+      outline:none;
+      font:inherit;
+    }
+    textarea{min-height:86px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.22)}
+
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+    button{
+      border:1px solid var(--line);
+      background:var(--panel-soft);
+      color:var(--text);
+      border-radius:10px;
+      padding:9px 12px;
+      cursor:pointer;
+      font-weight:650;
+    }
+    button:hover{filter:brightness(1.08)}
+    .primary{background:linear-gradient(135deg, var(--brand), var(--brand2));border-color:transparent}
+
+    .flash{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(148,163,184,.1);font-size:14px}
+    .ok{border-color:rgba(20,184,166,.4);background:rgba(20,184,166,.14)}
+    .warn{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.14)}
+    .bad{border-color:rgba(251,113,133,.4);background:rgba(251,113,133,.14)}
+
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+    th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    tr:hover td{background:rgba(148,163,184,.05)}
+
+    .mono{font-family:var(--mono);font-size:12px}
+    .muted{color:var(--muted)}
+    .pill{padding:3px 8px;border-radius:999px;background:rgba(148,163,184,.16);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card col-12">
+      <div class="title">DGUV V3 Prüfverwaltung</div>
+      <div class="subtitle">MVP: Prüflinge + Prüfungen + CSV-Druckjobs (Brother-Bridge) + Audit- und Retention-Basis.</div>
+      <div id="flash" class="flash" style="margin-top:10px">Bereit.</div>
+    </section>
+
+    <section class="card col-6">
+      <h3>Prüfling anlegen</h3>
+      <div class="grid">
+        <div class="field f6"><label>Inventarnummer *</label><input id="asset_uid"></div>
+        <div class="field f6"><label>Name *</label><input id="asset_name"></div>
+        <div class="field f6"><label>Standort *</label><input id="asset_location"></div>
+        <div class="field f6"><label>Gerätetyp *</label><input id="asset_device_type"></div>
+        <div class="field f4"><label>Hersteller</label><input id="asset_manufacturer"></div>
+        <div class="field f4"><label>Modell</label><input id="asset_model"></div>
+        <div class="field f4"><label>Seriennummer</label><input id="asset_serial"></div>
+        <div class="field f12"><label>Notizen</label><textarea id="asset_notes"></textarea></div>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="primary" id="btn_create_asset">Prüfling speichern</button>
+      </div>
+    </section>
+
+    <section class="card col-6">
+      <h3>Prüfung erfassen</h3>
+      <div class="grid">
+        <div class="field f12"><label>Prüfling *</label><select id="inspection_asset"></select></div>
+        <div class="field f4"><label>Prüfdatum *</label><input id="inspection_date" type="date"></div>
+        <div class="field f4"><label>Nächste Prüfung</label><input id="inspection_next_due" type="date"></div>
+        <div class="field f4"><label>Ergebnis *</label>
+          <select id="inspection_result">
+            <option value="offen">offen</option>
+            <option value="bestanden">bestanden</option>
+            <option value="nicht_bestanden">nicht_bestanden</option>
+          </select>
+        </div>
+        <div class="field f6"><label>Prüfer</label><input id="inspection_inspector"></div>
+        <div class="field f6"><label>Messwerte JSON (optional)</label><input id="inspection_values" placeholder='{"rpe": "0.12"}'></div>
+        <div class="field f12"><label>Mängel</label><textarea id="inspection_defects"></textarea></div>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="primary" id="btn_create_inspection">Prüfung speichern</button>
+      </div>
+    </section>
+
+    <section class="card col-12">
+      <h3>Druckprofil (CSV-Mapping)</h3>
+      <div class="subtitle">Felder frei mappbar; jede Zeile als Objekt mit <span class="mono">header</span> und <span class="mono">source</span>.</div>
+      <div class="grid" style="margin-top:8px">
+        <div class="field f3"><label>Profilname</label><input id="profile_name" value="Brother Standard"></div>
+        <div class="field f3"><label>Delimiter</label><input id="profile_delimiter" value=";"></div>
+        <div class="field f3"><label>Enclosure</label><input id="profile_enclosure" value='"'></div>
+        <div class="field f3"><label>Linebreak</label>
+          <select id="profile_linebreak"><option value="\n">LF</option><option value="\r\n">CRLF</option></select>
+        </div>
+        <div class="field f12">
+          <label>Mapping JSON</label>
+          <textarea id="profile_mapping">[
+  {"header":"Barcode","source":"barcode_value"},
+  {"header":"Inventarnummer","source":"asset_uid"},
+  {"header":"Name","source":"asset_name"},
+  {"header":"Standort","source":"location"},
+  {"header":"Prüfstatus","source":"inspection_result"},
+  {"header":"Nächste Prüfung","source":"next_due_date"}
+]</textarea>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="btn_save_profile">Profil speichern</button>
+      </div>
+    </section>
+
+    <section class="card col-12">
+      <h3>Prüflinge</h3>
+      <div class="btn-row" style="margin-bottom:8px">
+        <input id="search" placeholder="Filter (Inventar, Name, Standort, Typ)" style="max-width:340px">
+        <button id="btn_search">Suchen</button>
+        <button id="btn_refresh">Neu laden</button>
+      </div>
+      <div class="btn-row" style="margin-bottom:8px">
+        <select id="print_profile_id" style="max-width:220px"></select>
+        <select id="job_mode" style="max-width:220px">
+          <option value="open_only">Nur Software öffnen</option>
+          <option value="print_now">Direkt drucken</option>
+        </select>
+        <button class="primary" id="btn_print_selected">Ausgewählte drucken</button>
+        <button id="btn_print_filtered">Gefilterte drucken</button>
+      </div>
+
+      <div style="overflow:auto;max-height:420px">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="select_all"></th>
+              <th>Inventar</th>
+              <th>Name</th>
+              <th>Standort</th>
+              <th>Typ</th>
+              <th>Prüfdatum</th>
+              <th>Status</th>
+              <th>Nächste Prüfung</th>
+            </tr>
+          </thead>
+          <tbody id="asset_rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card col-12">
+      <h3>Druckjobs</h3>
+      <div class="subtitle">Der lokale Bridge-Agent holt <span class="mono">queued</span>-Jobs ab, schreibt die CSV und öffnet/printet über Brother.</div>
+      <div class="sep"></div>
+      <div style="overflow:auto;max-height:260px">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Modus</th>
+              <th>Status</th>
+              <th>Zeilen</th>
+              <th>Agent</th>
+              <th>Angefordert</th>
+              <th>Fertig</th>
+              <th>Fehler</th>
+            </tr>
+          </thead>
+          <tbody id="job_rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script>
+(() => {
+  let csrf = '';
+  let assets = [];
+  let profiles = [];
+
+  const flashEl = document.getElementById('flash');
+  const assetRowsEl = document.getElementById('asset_rows');
+  const jobRowsEl = document.getElementById('job_rows');
+  const inspectionAssetEl = document.getElementById('inspection_asset');
+  const printProfileSelectEl = document.getElementById('print_profile_id');
+
+  const sourceOptions = [
+    'asset_uid','asset_name','location','device_type','manufacturer','model','serial_number','inspection_result','inspection_date','next_due_date','barcode_value'
+  ];
+
+  function flash(message, type = '') {
+    flashEl.className = 'flash ' + type;
+    flashEl.textContent = message;
+  }
+
+  async function api(action, payload = null, method = 'GET') {
+    let url = '/dguv_api.php?action=' + encodeURIComponent(action);
+    const options = { method, headers: {} };
+
+    if (method === 'POST') {
+      options.headers['Content-Type'] = 'application/json';
+      options.headers['X-CSRF-Token'] = csrf;
+      options.body = JSON.stringify({ ...(payload || {}), csrf });
+    } else if (payload && payload.q) {
+      url += '&q=' + encodeURIComponent(payload.q);
+    }
+
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({ ok: false, error: 'invalid_response' }));
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || ('http_' + response.status));
+    }
+    return data;
+  }
+
+  function readSelectedAssetIds() {
+    return [...assetRowsEl.querySelectorAll('input[data-id]:checked')].map(el => Number(el.dataset.id));
+  }
+
+  function renderAssets() {
+    assetRowsEl.innerHTML = '';
+
+    if (assets.length === 0) {
+      assetRowsEl.innerHTML = '<tr><td colspan="8" class="muted">Keine Datensätze.</td></tr>';
+      return;
+    }
+
+    for (const row of assets) {
+      const tr = document.createElement('tr');
+      const status = row.result_status || 'offen';
+      tr.innerHTML = `
+        <td><input type="checkbox" data-id="${row.id}"></td>
+        <td class="mono">${escapeHtml(row.asset_uid || '')}</td>
+        <td>${escapeHtml(row.asset_name || '')}</td>
+        <td>${escapeHtml(row.location || '')}</td>
+        <td>${escapeHtml(row.device_type || '')}</td>
+        <td>${escapeHtml(row.inspection_date || '')}</td>
+        <td><span class="pill">${escapeHtml(status)}</span></td>
+        <td>${escapeHtml(row.next_due_date || '')}</td>
+      `;
+      assetRowsEl.appendChild(tr);
+    }
+
+    renderInspectionSelect();
+  }
+
+  function renderInspectionSelect() {
+    inspectionAssetEl.innerHTML = '';
+    if (assets.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Keine Prüflinge verfügbar';
+      inspectionAssetEl.appendChild(option);
+      return;
+    }
+
+    for (const asset of assets) {
+      const option = document.createElement('option');
+      option.value = String(asset.id);
+      option.textContent = `${asset.asset_uid} · ${asset.asset_name}`;
+      inspectionAssetEl.appendChild(option);
+    }
+  }
+
+  function renderProfileSelect() {
+    printProfileSelectEl.innerHTML = '';
+
+    const fallback = document.createElement('option');
+    fallback.value = '0';
+    fallback.textContent = 'Default-Mapping';
+    printProfileSelectEl.appendChild(fallback);
+
+    for (const profile of profiles) {
+      const option = document.createElement('option');
+      option.value = String(profile.id);
+      option.textContent = profile.profile_name;
+      printProfileSelectEl.appendChild(option);
+    }
+  }
+
+  function renderJobs(jobs) {
+    jobRowsEl.innerHTML = '';
+
+    if (!jobs.length) {
+      jobRowsEl.innerHTML = '<tr><td colspan="8" class="muted">Noch keine Jobs.</td></tr>';
+      return;
+    }
+
+    for (const row of jobs) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${row.id}</td>
+        <td>${escapeHtml(row.job_mode || '')}</td>
+        <td>${escapeHtml(row.status || '')}</td>
+        <td>${Number(row.selected_count || 0)}</td>
+        <td>${escapeHtml(row.agent_name || '')}</td>
+        <td class="mono">${escapeHtml(row.requested_at || '')}</td>
+        <td class="mono">${escapeHtml(row.finished_at || '')}</td>
+        <td>${escapeHtml(row.error_text || '')}</td>
+      `;
+      jobRowsEl.appendChild(tr);
+    }
+  }
+
+  async function loadAssets(query = '') {
+    const data = await api('list_assets', { q: query });
+    assets = data.assets || [];
+    renderAssets();
+  }
+
+  async function loadJobs() {
+    const data = await api('list_jobs');
+    renderJobs(data.jobs || []);
+  }
+
+  async function bootstrap() {
+    const data = await api('bootstrap');
+    csrf = data.csrf;
+    profiles = data.print_profiles || [];
+    renderProfileSelect();
+
+    await loadAssets('');
+    await loadJobs();
+  }
+
+  function parseMeasuredValues() {
+    const raw = document.getElementById('inspection_values').value.trim();
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed) return parsed;
+      return {};
+    } catch {
+      throw new Error('measured_values_invalid_json');
+    }
+  }
+
+  function parseProfileMapping() {
+    const raw = document.getElementById('profile_mapping').value.trim();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('mapping_must_be_array');
+
+    for (const row of parsed) {
+      if (!row || typeof row !== 'object') throw new Error('mapping_item_invalid');
+      if (!row.header || !row.source) throw new Error('mapping_item_missing_values');
+      if (!sourceOptions.includes(String(row.source))) throw new Error('mapping_source_invalid_' + row.source);
+    }
+
+    return parsed;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  document.getElementById('btn_create_asset').addEventListener('click', async () => {
+    try {
+      await api('create_asset', {
+        asset_uid: document.getElementById('asset_uid').value,
+        asset_name: document.getElementById('asset_name').value,
+        location: document.getElementById('asset_location').value,
+        device_type: document.getElementById('asset_device_type').value,
+        manufacturer: document.getElementById('asset_manufacturer').value,
+        model: document.getElementById('asset_model').value,
+        serial_number: document.getElementById('asset_serial').value,
+        notes: document.getElementById('asset_notes').value,
+      }, 'POST');
+      flash('Prüfling gespeichert.', 'ok');
+      await loadAssets(document.getElementById('search').value.trim());
+    } catch (error) {
+      flash('Fehler beim Speichern des Prüflings: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_create_inspection').addEventListener('click', async () => {
+    try {
+      const measuredValues = parseMeasuredValues();
+      await api('create_inspection', {
+        asset_id: Number(document.getElementById('inspection_asset').value),
+        inspection_date: document.getElementById('inspection_date').value,
+        next_due_date: document.getElementById('inspection_next_due').value,
+        result_status: document.getElementById('inspection_result').value,
+        inspector_name: document.getElementById('inspection_inspector').value,
+        measured_values: measuredValues,
+        defects_text: document.getElementById('inspection_defects').value,
+        source_type: 'manual',
+      }, 'POST');
+      flash('Prüfung gespeichert (Retention 5 Jahre gesetzt).', 'ok');
+      await loadAssets(document.getElementById('search').value.trim());
+    } catch (error) {
+      flash('Fehler beim Speichern der Prüfung: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_save_profile').addEventListener('click', async () => {
+    try {
+      const mapping = parseProfileMapping();
+      await api('create_print_profile', {
+        profile_name: document.getElementById('profile_name').value.trim(),
+        delimiter: document.getElementById('profile_delimiter').value,
+        enclosure: document.getElementById('profile_enclosure').value,
+        linebreak: document.getElementById('profile_linebreak').value,
+        mapping,
+      }, 'POST');
+
+      const data = await api('bootstrap');
+      profiles = data.print_profiles || [];
+      renderProfileSelect();
+      flash('Druckprofil gespeichert.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Speichern des Druckprofils: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_search').addEventListener('click', async () => {
+    try {
+      await loadAssets(document.getElementById('search').value.trim());
+      flash('Liste aktualisiert.', 'ok');
+    } catch (error) {
+      flash('Fehler bei der Suche: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_refresh').addEventListener('click', async () => {
+    try {
+      document.getElementById('search').value = '';
+      await loadAssets('');
+      await loadJobs();
+      flash('Daten neu geladen.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Laden: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('select_all').addEventListener('change', (event) => {
+    const checked = event.target.checked;
+    for (const cb of assetRowsEl.querySelectorAll('input[data-id]')) {
+      cb.checked = checked;
+    }
+  });
+
+  document.getElementById('btn_print_selected').addEventListener('click', async () => {
+    try {
+      const selected = readSelectedAssetIds();
+      await api('queue_print_job', {
+        selected_ids: selected,
+        filter_text: '',
+        print_profile_id: Number(printProfileSelectEl.value),
+        job_mode: document.getElementById('job_mode').value,
+      }, 'POST');
+      await loadJobs();
+      flash('Druckjob für ausgewählte Datensätze in Queue gelegt.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Erstellen des Druckjobs: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_print_filtered').addEventListener('click', async () => {
+    try {
+      const query = document.getElementById('search').value.trim();
+      await api('queue_print_job', {
+        selected_ids: [],
+        filter_text: query,
+        print_profile_id: Number(printProfileSelectEl.value),
+        job_mode: document.getElementById('job_mode').value,
+      }, 'POST');
+      await loadJobs();
+      flash('Druckjob für gefilterte Datensätze in Queue gelegt.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Erstellen des Druckjobs: ' + error.message, 'bad');
+    }
+  });
+
+  setInterval(() => {
+    loadJobs().catch(() => null);
+  }, 7000);
+
+  bootstrap()
+    .then(() => flash('DGUV-Tool geladen.', 'ok'))
+    .catch((error) => flash('Initialisierung fehlgeschlagen: ' + error.message, 'bad'));
+})();
+</script>
+</body>
+</html>

@@ -6,4 +6,6 @@ return [
   'session_name' => 'TOOLSSESS',
   'tools_dir'    => __DIR__ . '/tools',
   'db_path'      => __DIR__ . '/users.sqlite',
+  'dguv_db_path' => __DIR__ . '/dguv.sqlite',
+  'dguv_agent_token' => getenv('DGUV_AGENT_TOKEN') ?: '',
 ];

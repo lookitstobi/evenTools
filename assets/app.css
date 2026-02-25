@@ -98,7 +98,7 @@ small,.small{ color: var(--muted); }
 .topbar-inner{
   width: min(1060px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 14px 0;
+  padding: 18px 0;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -112,6 +112,16 @@ small,.small{ color: var(--muted); }
   font-weight: 760;
   letter-spacing:.2px;
 }
+.brand-logo{
+  width: auto;
+  height: 64px;
+  max-width: 220px;
+  border-radius: 10px;
+  object-fit: contain;
+  opacity: .92;
+  display: block;
+  flex: 0 0 auto;
+}
 .brand-badge{
   width: 34px;
   height: 34px;
@@ -121,6 +131,17 @@ small,.small{ color: var(--muted); }
 }
 .brand span{ opacity:.98; }
 .brand small{ display:block; font-weight: 540; color: var(--muted); letter-spacing:0; }
+
+.login-logo-wrap{
+  display:flex;
+  justify-content:center;
+}
+
+.login-logo{
+  width: min(240px, 70%);
+  height: auto;
+  object-fit: contain;
+}
 
 .nav{
   display:flex;
