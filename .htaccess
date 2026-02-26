@@ -16,5 +16,5 @@
   </FilesMatch>
 
   # Setze Umgebungsvariable für den Datenordner der Tools
-  SetEnv APP_DATA_DIR /home/su484593/HTML_Tools/toolsapp_data
+  SetEnv APP_DATA_DIR /home/www/HTML_Tools/toolsapp/data
 </IfModule>
