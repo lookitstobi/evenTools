@@ -68,17 +68,20 @@ function dguv_init_schema(PDO $db): void {
     created_at TEXT NOT NULL
   )');
 
-  $db->exec('CREATE TABLE IF NOT EXISTS print_profiles (
-    id INTEGER PRIMARY KEY,
-    profile_name TEXT NOT NULL UNIQUE,
-    delimiter TEXT NOT NULL DEFAULT ";",
-    enclosure TEXT NOT NULL DEFAULT "\"",
-    linebreak TEXT NOT NULL DEFAULT "\\n",
-    mapping_json TEXT NOT NULL,
-    created_by INTEGER NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )');
+  $db->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS print_profiles (
+  id INTEGER PRIMARY KEY,
+  profile_name TEXT NOT NULL UNIQUE,
+  delimiter TEXT NOT NULL DEFAULT ';',
+  enclosure TEXT NOT NULL DEFAULT '"',
+  linebreak TEXT NOT NULL DEFAULT '\n',
+  mapping_json TEXT NOT NULL,
+  created_by INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+SQL
+  );
 
   $db->exec('CREATE TABLE IF NOT EXISTS print_jobs (
     id INTEGER PRIMARY KEY,
