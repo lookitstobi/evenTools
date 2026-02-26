@@ -1,65 +1,169 @@
 # Deploy-Runbook (daten-sicher)
 
-Dieses Projekt deployt **Code und Laufzeitdaten getrennt**.
+Dieses Projekt deployt **Code und Laufzeitdaten getrennt**, damit Benutzer-/Tooldaten bei Deploys erhalten bleiben.
 
-## Grundprinzip
+## Zielbild
 
 - **Code** wird nach `STRATO_PATH` deployed.
-- **Laufzeitdaten** (SQLite) liegen persistent unter `APP_DATA_DIR` (außerhalb Release-Baum).
-- Deploy löscht nur innerhalb definierter Code-Pfade.
-- Vor Deploy können Runtime-DBs serverseitig gesichert werden.
+- **Laufzeitdaten** (`*.sqlite`) liegen unter `APP_DATA_DIR`.
+- Deploy löscht nur innerhalb definierter **Code-Pfade**, niemals Runtime-Daten.
+- Vor Deploy wird optional ein Backup der Laufzeitdaten erstellt.
 
-## Erforderliche Secrets (GitHub Actions)
+## Aktuelles Produktiv-Setup (Strato)
+
+Serverpfade:
+
+- App-Root: `/home/www/HTML_Tools/toolsapp`
+- Runtime-Daten: `/home/www/HTML_Tools/toolsapp/data`
+- Runtime-Backups: `/home/www/HTML_Tools/toolsapp/data/backups`
+
+In `.htaccess` ist gesetzt:
+
+```apache
+SetEnv APP_DATA_DIR /home/www/HTML_Tools/toolsapp/data
+```
+
+## GitHub-Secrets (soll)
 
 - `STRATO_HOST`
 - `STRATO_USER`
 - `STRATO_PASS`
-- `STRATO_PATH` (Code-Zielpfad)
-- `STRATO_DATA_PATH` (persistenter Datenpfad, z. B. `/home/.../toolsapp_data`)
-- `STRATO_BACKUP_PATH` (optional, Standard: `${STRATO_DATA_PATH}/backups`)
-- `DEPLOY_BACKUP_ENABLED` (`1` oder `0`)
-- `DEPLOY_STRICT_DATA_PATH` (`1` oder `0`, empfohlen: `1`)
+- `STRATO_PATH=.`
+- `STRATO_DATA_PATH=data`
+- `STRATO_BACKUP_PATH=data/backups`
+- `DEPLOY_BACKUP_ENABLED=1`
+- `DEPLOY_STRICT_DATA_PATH=1`
 
-## Erforderliche Server-Umgebung
+Hinweis: Werte in GitHub Secrets **ohne Anführungszeichen** eintragen.
 
-- PHP muss `APP_DATA_DIR` auf den persistenten Datenpfad zeigen.
-- Beispiel: `APP_DATA_DIR=/home/.../toolsapp_data`
+## Erstinbetriebnahme / Neuaufbau
 
-Dann verwendet die App diese Dateien:
-
-- `${APP_DATA_DIR}/users.sqlite`
-- `${APP_DATA_DIR}/cuesheet.sqlite`
-- `${APP_DATA_DIR}/dguv.sqlite`
-
-## Deploy-Ablauf
-
-1. Push nach `main` triggert GitHub Action.
-2. `deploy.py` verbindet sich via SFTP.
-3. Optionales Backup der SQLite-Dateien in `STRATO_BACKUP_PATH/deploy_<timestamp>/`.
-4. Code-Deploy nach `STRATO_PATH` (nur erlaubte Pfade).
-5. Delete nur in deployten Code-Pfaden.
-6. Migration auf Server ausführen:
+1. SSH auf den Server.
+2. In App-Root wechseln: `cd /home/www/HTML_Tools/toolsapp`.
+3. Datenordner erstellen: `mkdir -p data/backups`.
+4. Schreibtest: `touch data/.write_test && rm data/.write_test`.
+5. Migration mit explizitem Datenpfad:
 
 ```bash
-php app/migrate.php
+APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php app/migrate.php
 ```
 
-## Wichtige Hinweise
+1. Prüfen, ob DB-Dateien da sind:
 
-- `deploy.sh` ist auf non-destructive code-only Deploy umgestellt.
-- `.vscode/sftp.json` hat `uploadOnSave=false` und excludet `*.sqlite`.
-- Für Produktion sollte nur die GitHub Action verwendet werden.
-- In GitHub Actions bricht `deploy.py` ohne `STRATO_DATA_PATH` standardmäßig ab (`DEPLOY_STRICT_DATA_PATH=1`).
+```bash
+ls -lah /home/www/HTML_Tools/toolsapp/data/*.sqlite
+```
 
-## Was du jetzt aktiv tun musst
+## Standard-Deployablauf
 
-1. Auf dem Server einen persistenten Datenordner anlegen (falls noch nicht vorhanden), z. B. `/home/.../toolsapp_data`.
-2. In der Server-/PHP-Umgebung `APP_DATA_DIR` auf genau diesen Ordner setzen.
-3. In GitHub Secrets setzen:
-   - `STRATO_DATA_PATH` = derselbe persistente Ordner
-   - optional `STRATO_BACKUP_PATH`
-   - optional `DEPLOY_BACKUP_ENABLED=1`
-   - optional `DEPLOY_STRICT_DATA_PATH=1`
-4. Ein Deploy auslösen (Push auf `main`).
-5. Auf dem Server im Deploy-Verzeichnis einmal ausführen: `php app/migrate.php`.
-6. Funktionstest: In der App Benutzer anlegen/ändern, erneut deployen, prüfen ob Daten unverändert bleiben.
+1. Push nach `main`.
+2. GitHub Action führt `deploy.py` aus.
+3. Optionales Backup nach `data/backups/deploy_<timestamp>/`.
+4. Code-Sync nach `STRATO_PATH`.
+5. Optional bei Schemaänderungen: Migration ausführen.
+
+## Verifikation nach Deploy (Smoke Test)
+
+Im SSH-Terminal:
+
+```bash
+cd /home/www/HTML_Tools/toolsapp
+php -r '$c=require "app/config.php"; echo "db=".$c["db_path"].PHP_EOL;'
+php -r '$c=require "app/config.php"; $db=new PDO("sqlite:".$c["db_path"]); foreach($db->query("SELECT username FROM users ORDER BY id DESC LIMIT 5") as $r){echo $r["username"].PHP_EOL;}'
+```
+
+Im Browser:
+
+1. Test-User anlegen.
+2. Deploy auslösen.
+3. Test-User muss weiterhin vorhanden sein.
+
+## Wichtige Betriebsregeln
+
+- Produktion nur über GitHub Action deployen.
+- `deploy.sh` nur für Ausnahmefälle/gezielte manuelle Uploads.
+- VS Code SFTP `uploadOnSave` bleibt aus.
+- Runtime-DB-Dateien nie ins Repo committen (`*.sqlite` ist ignoriert).
+- Für CLI-Kommandos gilt `.htaccess`-`SetEnv` nicht zuverlässig; bei Bedarf `APP_DATA_DIR=...` explizit voranstellen.
+
+## Häufige Fehlerbilder und Lösung
+
+### 1) Doppelte Ordnerstruktur (`.../toolsapp/HTML_Tools/toolsapp`)
+
+Ursache: `STRATO_PATH` falsch gesetzt (z. B. `HTML_Tools/toolsapp` statt `.`).
+
+Lösung:
+
+- Secret auf `STRATO_PATH=.` setzen.
+- Erneut deployen.
+- Altstruktur nach Backup entfernen.
+
+### 2) `unrecognized token: "\\"` bei Migration
+
+Ursache: alter Stand von `dguv_lib.php`.
+
+Lösung:
+
+- Neu deployen (enthält SQL-Fix).
+- Migration erneut ausführen.
+
+### 3) `Read-only file system` beim Backup außerhalb App-Root
+
+Ursache: übergeordneter Pfad nicht beschreibbar.
+
+Lösung:
+
+- Backups unter `data/backups` im App-Root ablegen.
+
+### 4) `Could not open input file: app/migrate.php`
+
+Ursache: alter Codepfad oder falsches Arbeitsverzeichnis.
+
+Lösung:
+
+- In `/home/www/HTML_Tools/toolsapp` wechseln.
+- Prüfen: `ls -lah app/migrate.php`.
+
+## Cleanup Altstruktur (einmalig)
+
+1. Backup der verschachtelten Altstruktur:
+
+```bash
+cd /home/www/HTML_Tools/toolsapp
+mkdir -p data/backups
+tar -czf data/backups/nested_toolsapp_backup_$(date +%F_%H%M%S).tar.gz HTML_Tools/toolsapp
+```
+
+1. Entfernen:
+
+```bash
+rm -rf /home/www/HTML_Tools/toolsapp/HTML_Tools
+```
+
+1. Prüfen:
+
+```bash
+find /home/www/HTML_Tools/toolsapp -maxdepth 4 -type d -path "*/HTML_Tools/toolsapp"
+```
+
+Erwartung: nur noch `/home/www/HTML_Tools/toolsapp`.
+
+## Recovery / Rollback (Daten)
+
+Wenn ein Runtime-Problem auftritt:
+
+1. Aktuelle DBs sichern:
+
+```bash
+cd /home/www/HTML_Tools/toolsapp
+mkdir -p data/backups/manual_$(date +%F_%H%M%S)
+cp -a data/*.sqlite data/backups/manual_$(date +%F_%H%M%S)/
+```
+
+1. Gewünschtes Backup zurückkopieren:
+
+```bash
+cp -a data/backups/<backup-ordner>/*.sqlite data/
+```
+
+1. App testen (Login + Benutzerliste + Toolzugriff).
