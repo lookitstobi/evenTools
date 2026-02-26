@@ -16,6 +16,10 @@ Thumbs.db
 *.log
 logs/
 
+# Runtime data
+*.sqlite
+app/*.sqlite
+
 # Development
 node_modules/
 .git/
