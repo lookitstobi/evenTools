@@ -3,6 +3,17 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/app/config.php';
 
+foreach (['db_path', 'dguv_db_path', 'cuesheet_db_path'] as $dbConfigKey) {
+  $dbPath = (string)($config[$dbConfigKey] ?? '');
+  if ($dbPath === '') {
+    continue;
+  }
+  $dbDir = dirname($dbPath);
+  if (!is_dir($dbDir)) {
+    mkdir($dbDir, 0775, true);
+  }
+}
+
 session_name($config['session_name']);
 session_set_cookie_params([
   'httponly' => true,

@@ -56,10 +56,9 @@ EOF
     exit 1
   fi
 else
-  # Deploy alle Dateien (außer .gitignore)
-  echo -e "${YELLOW}📦 Starte vollständiges Deployment...${NC}"
-  
-  # Erstelle temporäres Skript für lftp
+  # Deploy nur Code-Dateien (non-destructive)
+  echo -e "${YELLOW}📦 Starte Code-Deployment (non-destructive)...${NC}"
+
   LFTP_SCRIPT=$(mktemp)
   LOCAL_DIR="$(dirname "$0")"
   cat > "$LFTP_SCRIPT" <<LFTP_EOF
@@ -70,7 +69,27 @@ set net:reconnect-interval-base 10
 set net:reconnect-interval-multiplier 1
 set sftp:auto-confirm yes
 set ssl:verify-certificate no
-mirror -e -R --verbose --exclude=.git --exclude=.env* --exclude=.vscode --exclude=node_modules --exclude-glob=*.log --exclude=.htrouter.php "$LOCAL_DIR" "$STRATO_PATH"
+
+# Root PHP-Dateien
+put -O "$STRATO_PATH" "$LOCAL_DIR/_bootstrap.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/admin_edit.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/admin_users.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/cuesheet_api.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/dguv_api.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/dguv_print_agent.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/index.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/login.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/logout.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/tool.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/toolserve.php"
+
+# App/Assets rekursiv, ohne Runtime-Daten
+mirror -R --verbose --exclude=.git --exclude=.env* --exclude=.vscode --exclude=node_modules --exclude-glob=*.log --exclude=.htrouter.php --exclude-glob=*.sqlite "$LOCAL_DIR/app" "$STRATO_PATH/app"
+mirror -R --verbose --exclude=.git --exclude=.env* --exclude=.vscode --exclude=node_modules --exclude-glob=*.log "$LOCAL_DIR/assets" "$STRATO_PATH/assets"
+
+# Migrationsskript explizit
+put -O "$STRATO_PATH/app" "$LOCAL_DIR/app/migrate.php"
+
 bye
 LFTP_EOF
   

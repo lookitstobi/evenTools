@@ -14,4 +14,7 @@
     Order allow,deny
     Deny from all
   </FilesMatch>
+
+  # Setze Umgebungsvariable für den Datenordner der Tools
+  SetEnv APP_DATA_DIR /home/su484593/HTML_Tools/toolsapp_data
 </IfModule>

@@ -28,3 +28,6 @@ jobs:
           STRATO_USER: ${{ secrets.STRATO_USER }}
           STRATO_PASS: ${{ secrets.STRATO_PASS }}
           STRATO_PATH: ${{ secrets.STRATO_PATH }}
+          STRATO_DATA_PATH: ${{ secrets.STRATO_DATA_PATH }}
+          STRATO_BACKUP_PATH: ${{ secrets.STRATO_BACKUP_PATH }}
+          DEPLOY_BACKUP_ENABLED: ${{ secrets.DEPLOY_BACKUP_ENABLED }}

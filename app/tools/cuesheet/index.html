@@ -1,6 +1,651 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Cuesheet</title></head>
-<body>
-  <h1>Cuesheet Tool</h1>
-  <p>Hier erstellst du ein Cuesheet: trage die Inhalte Schritt fur Schritt ein und nutze die Schaltflachen auf der Seite, um dein Ergebnis zu speichern oder weiterzugeben.</p>
-</body></html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cuesheet</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <style>
+    :root {
+      --stage-bg: #000;
+      --stage-text: #fff;
+      --stage-muted: #787878;
+      --stage-border: #212121;
+      --stage-go: #1ecf5f;
+      --stage-stop: #f05555;
+      --stage-accent: #8ec7ff;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+    }
+
+    .app-wrap {
+      width: min(1320px, calc(100% - 32px));
+      margin: 24px auto 44px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .c-card {
+      padding: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-left,
+    .toolbar-right,
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .row.between {
+      justify-content: space-between;
+    }
+
+    .label {
+      font-size: 12px;
+      opacity: .85;
+      font-weight: 600;
+    }
+
+    .input,
+    .select,
+    .textarea {
+      border: 1px solid rgba(255, 255, 255, .18);
+      background: rgba(0, 0, 0, .18);
+      color: inherit;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit;
+    }
+
+    .textarea {
+      min-height: 120px;
+      width: 100%;
+      resize: vertical;
+    }
+
+    .btn-go {
+      color: #0c2713;
+      background: #1ecf5f;
+      border-color: #1ecf5f;
+      font-weight: 800;
+    }
+
+    .muted {
+      opacity: .72;
+      font-size: 13px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .split {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .07);
+      font-size: 12px;
+    }
+
+    .field-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 760;
+      letter-spacing: .02em;
+    }
+
+    .section-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .editor-section {
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255, 255, 255, .03);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1040px;
+    }
+
+    th,
+    td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, .11);
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: rgba(0, 0, 0, .45);
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      z-index: 1;
+    }
+
+    td input,
+    td select {
+      width: 100%;
+      min-width: 100px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, .2);
+      background: rgba(0, 0, 0, .2);
+      color: inherit;
+      padding: 7px 8px;
+      font: inherit;
+    }
+
+    tr.selected td {
+      background: rgba(124, 92, 255, .2);
+    }
+
+    tr.cue-row {
+      cursor: pointer;
+    }
+
+    .list-box {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 12px;
+    }
+
+    .list-item {
+      width: 100%;
+      text-align: left;
+      border: none;
+      border-bottom: 1px solid rgba(255, 255, 255, .09);
+      background: transparent;
+      color: inherit;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .list-item.active {
+      background: rgba(124, 92, 255, .2);
+    }
+
+    .mode-editor .show-stage,
+    .mode-show .editor-stage,
+    .hidden {
+      display: none !important;
+    }
+
+    body.mode-show,
+    body.mode-show::before,
+    body.mode-show::after {
+      background: #000 !important;
+    }
+
+    body.mode-show {
+      overflow: hidden;
+    }
+
+    body.mode-show .tool-global-header,
+    body.mode-show .tool-home-btn {
+      display: none !important;
+    }
+
+    body.mode-show .app-wrap {
+      width: 100%;
+      margin: 0;
+      min-height: 100vh;
+      padding: 0;
+      gap: 0;
+    }
+
+    .show-stage {
+      min-height: 72vh;
+      background: var(--stage-bg);
+      color: var(--stage-text);
+      border-radius: 12px;
+      border: 1px solid var(--stage-border);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body.mode-show .show-stage {
+      position: fixed;
+      inset: 0;
+      min-height: 100vh;
+      border: none;
+      border-radius: 0;
+      z-index: 90;
+    }
+
+    .show-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--stage-border);
+      background: #050505;
+    }
+
+    .show-head .stage-btn {
+      border: none;
+      background: transparent;
+      padding: 4px 8px;
+      font: inherit;
+      font-weight: 700;
+      color: var(--stage-accent);
+      cursor: pointer;
+    }
+
+    .show-head .stage-btn.stop {
+      color: var(--stage-stop);
+    }
+
+    .show-head .stage-btn.go {
+      color: var(--stage-go);
+    }
+
+    .show-scroll {
+      padding: 10px 14px 26vh;
+      overflow: auto;
+      max-height: calc(72vh - 46px);
+      scroll-behavior: smooth;
+    }
+
+    body.mode-show .show-scroll {
+      max-height: calc(100vh - 56px);
+      padding: 12px 18px 35vh;
+    }
+
+    .show-block {
+      border-bottom: 1px solid #111;
+      padding: 14px 2px 12px;
+      color: var(--stage-muted);
+    }
+
+    .show-block.active {
+      color: var(--stage-text);
+      background: #050505;
+    }
+
+    .show-block.grouped {
+      border-left: 3px solid rgba(142, 199, 255, .35);
+      padding-left: 12px;
+    }
+
+    .show-block.grouped.active {
+      border-left-color: rgba(142, 199, 255, .95);
+    }
+
+    .show-title {
+      font-size: calc(24px * var(--show-scale-factor, 1.4));
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .show-cue {
+      display: grid;
+      gap: 2px;
+      padding: 5px 0;
+    }
+
+    .show-cue strong {
+      font-size: calc(22px * var(--show-scale-factor, 1.4));
+    }
+
+    .show-cue span {
+      font-size: calc(18px * var(--show-scale-factor, 1.4));
+      line-height: 1.25;
+    }
+
+    .context-line {
+      font-size: 12px;
+      color: #8f8f8f;
+      margin-top: 6px;
+    }
+
+    .status {
+      font-size: 13px;
+      min-height: 18px;
+    }
+
+    body.mode-show .status {
+      display: none;
+    }
+
+    .help-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      z-index: 9998;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    .help-card {
+      width: min(760px, 100%);
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 14px;
+      background: #0b1220;
+      color: #f4f8ff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+    }
+
+    .help-rows {
+      display: grid;
+      gap: 10px;
+    }
+
+    .help-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, .04);
+    }
+
+    .help-mock {
+      border: 1px solid rgba(255, 255, 255, .24);
+      border-radius: 8px;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      background: rgba(0, 0, 0, .25);
+    }
+
+    .help-mock-line {
+      height: 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .26);
+    }
+
+    .help-mock-line.active {
+      background: rgba(142, 199, 255, .95);
+    }
+
+    .help-desc {
+      font-size: 14px;
+      color: #f4f8ff;
+      line-height: 1.35;
+    }
+
+    #helpTitle {
+      color: #fff;
+    }
+
+    .help-card .btn {
+      color: #fff;
+      border-color: rgba(255, 255, 255, .3);
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .selection-state {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .floating-actions {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(980px, calc(100% - 28px));
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 12px;
+      background: rgba(8, 12, 20, .96);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, .45);
+      padding: 10px;
+      z-index: 120;
+    }
+
+    .floating-actions .row {
+      justify-content: space-between;
+    }
+
+    body.mode-show .floating-actions {
+      display: none !important;
+    }
+
+    @media (max-width: 1120px) {
+      .split {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="mode-editor">
+  <div class="app-wrap">
+    <div class="card c-card toolbar editor-stage">
+      <div class="toolbar-left">
+        <button id="btnModeEditor" class="btn btn-primary" type="button">Editor</button>
+        <button id="btnModeShow" class="btn" type="button">Show</button>
+        <button id="btnHelp" class="btn" type="button">Hilfe</button>
+        <span class="chip">Pflichtfelder: #ID, Cuename, Wer</span>
+      </div>
+      <div class="toolbar-right">
+        <span class="muted">Editor = Bearbeiten · Show = Vollbild-Playback</span>
+      </div>
+    </div>
+
+    <div class="editor-stage split">
+      <section class="card c-card stack">
+        <div>
+          <div class="section-title">1) Cueliste wählen</div>
+          <div class="section-sub">Neue Liste erstellen, bestehende laden, Sichtbarkeit steuern.</div>
+        </div>
+        <div class="row between">
+          <div class="label">Verfügbare Cuelisten</div>
+          <button id="btnRefresh" class="btn" type="button">Neu laden</button>
+        </div>
+        <div class="list-box" id="listContainer"></div>
+        <div class="grid-two">
+          <button id="btnNewPrivate" class="btn" type="button">Neu: Nur ich</button>
+          <button id="btnNewShared" class="btn" type="button">Neu: Alle</button>
+        </div>
+        <div class="stack">
+          <label class="label" for="listTitle">Titel</label>
+          <input id="listTitle" class="input" type="text" placeholder="Titel der Cueliste">
+        </div>
+        <div class="row">
+          <span class="label">Sichtbarkeit</span>
+          <button id="btnVisPrivate" class="btn" type="button">Nur ich</button>
+          <button id="btnVisShared" class="btn" type="button">Alle</button>
+          <button id="btnDelete" class="btn btn-danger" type="button">Löschen</button>
+        </div>
+        <div class="muted" id="listMeta">Keine Liste geladen.</div>
+
+        <div class="editor-section">
+          <div class="section-title">2) Dateiaktionen</div>
+          <div class="row">
+            <button id="btnSave" class="btn btn-primary" type="button">Speichern</button>
+            <button id="btnExport" class="btn" type="button">Export JSON</button>
+            <label class="btn" for="fileImport">Import JSON</label>
+            <input id="fileImport" class="hidden" type="file" accept="application/json,.json">
+          </div>
+        </div>
+      </section>
+
+      <section class="card c-card stack">
+        <div>
+          <div class="section-title">3) Cues bearbeiten</div>
+          <div class="section-sub">Ablauf: Cues hinzufügen → Bereich markieren → gruppieren/entfernen → speichern.</div>
+        </div>
+
+        <div class="editor-section">
+          <div class="section-title">Cue-Aktionen</div>
+          <div class="row between">
+            <div class="row">
+              <button id="btnAddCue" class="btn" type="button">+ Cue</button>
+              <button id="btnAdd10" class="btn" type="button">+10 Cues</button>
+            </div>
+            <div class="selection-state" id="selectionState">0 Cues ausgewählt</div>
+          </div>
+          <div class="muted">Zeilenselektion wie Explorer: Klick = genau eine Zeile, Shift+Klick = Bereich.</div>
+        </div>
+
+        <div class="editor-section">
+          <div class="section-title">Felder</div>
+          <div class="field-toggles" id="fieldToggles"></div>
+          <div class="row">
+            <input id="customFieldLabel" class="input" type="text" placeholder="Custom-Feld Name" style="width:220px;">
+            <button id="btnAddCustomField" class="btn" type="button">Custom-Feld hinzufügen</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="section-title">Cue-Tabelle</div>
+          <div class="section-sub">Bereichsauswahl: Anker anklicken, dann mit Shift+Klick Bereich wählen.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr id="cueTableHead"></tr>
+              </thead>
+              <tbody id="cueTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section id="showStage" class="show-stage c-card">
+      <div class="show-head">
+        <div>
+          <strong id="showTitle">Show</strong>
+          <span class="muted" id="showCounter"></span>
+        </div>
+        <div class="row">
+          <label class="chip"><input id="toggleShowHeader" type="checkbox" checked> Header</label>
+          <label class="chip" for="showFontScale">Schriftgröße <input id="showFontScale" type="range" min="90" max="220" value="140" style="width:120px;"><span id="showFontScaleValue">140%</span></label>
+          <button id="btnPrevBlock" class="stage-btn" type="button">PREV</button>
+          <button id="btnNextBlock" class="stage-btn go" type="button">GO</button>
+          <button id="btnBackEditor" class="stage-btn stop" type="button">EDITOR</button>
+        </div>
+      </div>
+      <div id="showScroll" class="show-scroll"></div>
+    </section>
+
+    <div id="helpOverlay" class="help-overlay hidden" aria-hidden="true">
+      <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="row between">
+          <strong id="helpTitle">Cuesheet Kurz-Hilfe</strong>
+          <button id="btnCloseHelp" class="btn" type="button">Schließen</button>
+        </div>
+        <div class="help-rows">
+          <div class="help-row">
+            <div class="help-mock">
+              <div class="help-mock-line"></div>
+              <div class="help-mock-line active"></div>
+              <div class="help-mock-line"></div>
+            </div>
+            <div class="help-desc"><strong>Zeilenselektion:</strong> Klick markiert eine Zeile, Shift+Klick markiert den Bereich vom letzten Anker bis zur Zielzeile.</div>
+          </div>
+          <div class="help-row">
+            <div class="help-mock">
+              <div class="help-mock-line active" style="width:42%;"></div>
+              <div class="help-mock-line" style="width:68%;"></div>
+              <div class="help-mock-line" style="width:56%;"></div>
+            </div>
+            <div class="help-desc"><strong>Aktionsleiste:</strong> Unten im Editor erscheint bei Auswahl die Leiste zum Gruppieren, Gruppe entfernen und Auswahl löschen.</div>
+          </div>
+          <div class="help-row">
+            <div class="help-mock">
+              <div class="help-mock-line" style="width:28%;"></div>
+              <div class="help-mock-line active" style="width:38%;"></div>
+            </div>
+            <div class="help-desc"><strong>Show-Navigation:</strong> Linke Bildschirmhälfte = vorheriger Block, rechte Hälfte = nächster Block. PREV/GO und Pfeiltasten funktionieren ebenfalls.</div>
+          </div>
+          <div class="help-row">
+            <div class="help-mock">
+              <div class="help-mock-line" style="width:22%;"></div>
+              <div class="help-mock-line active" style="width:74%;"></div>
+            </div>
+            <div class="help-desc"><strong>Schriftgröße:</strong> Im Show-Header den Regler auf 90–220% setzen; die Bühne skaliert live.</div>
+          </div>
+          <div class="help-row">
+            <div class="help-mock">
+              <div class="help-mock-line" style="width:36%;"></div>
+              <div class="help-mock-line" style="width:54%;"></div>
+              <div class="help-mock-line" style="width:44%;"></div>
+            </div>
+            <div class="help-desc"><strong>Save/Import/Export:</strong> Speichern schreibt serverseitig, Export/Import arbeitet mit JSON pro Cueliste.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="floatingActions" class="floating-actions hidden">
+      <div class="row">
+        <div class="row">
+          <strong id="floatingSelectionCount">0 ausgewählt</strong>
+          <input id="groupTarget" class="input" type="text" placeholder="Gruppenname" style="width:220px;">
+          <button id="btnApplyGroup" class="btn" type="button">Auswahl gruppieren</button>
+          <button id="btnClearGroup" class="btn" type="button">Gruppe entfernen</button>
+          <button id="btnDeleteSelection" class="btn btn-danger" type="button">Auswahl löschen</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="/toolserve.php?name=cuesheet&file=app.js"></script>
+</body>
+</html>
