@@ -98,7 +98,7 @@ function page_start(string $title, bool $show_nav = true): void {
     echo "<header class=\"topbar\">
       <div class=\"topbar-inner\">
         <a class=\"brand\" href=\"/index.php\">
-          <img class=\"brand-logo\" src=\"/assets/Logo.png\" alt=\"{$site} Logo\">
+                <img class=\"brand-logo\" src=\"/assets/evenTools%20Logo.png\" alt=\"{$site} Logo\">
           <div>
             <span>{$site}</span>
             <small>Hub für deine Web-Tools</small>

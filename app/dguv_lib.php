@@ -36,6 +36,11 @@ function dguv_init_schema(PDO $db): void {
     deleted_at TEXT
   )');
 
+  dguv_add_column_if_missing($db, 'assets', 'customer', 'TEXT NOT NULL DEFAULT ""');
+  dguv_add_column_if_missing($db, 'assets', 'site', 'TEXT NOT NULL DEFAULT ""');
+  dguv_add_column_if_missing($db, 'assets', 'department', 'TEXT NOT NULL DEFAULT ""');
+  dguv_add_column_if_missing($db, 'assets', 'autotest_code', 'TEXT NOT NULL DEFAULT ""');
+
   $db->exec('CREATE TABLE IF NOT EXISTS inspections (
     id INTEGER PRIMARY KEY,
     asset_id INTEGER NOT NULL,
@@ -66,6 +71,23 @@ function dguv_init_schema(PDO $db): void {
     raw_payload TEXT NOT NULL DEFAULT "",
     created_by INTEGER NOT NULL,
     created_at TEXT NOT NULL
+  )');
+
+  $db->exec('CREATE TABLE IF NOT EXISTS import_staging (
+    id INTEGER PRIMARY KEY,
+    import_run_id INTEGER,
+    source_name TEXT NOT NULL DEFAULT "",
+    source_format TEXT NOT NULL DEFAULT "",
+    detected_asset_uid TEXT NOT NULL DEFAULT "",
+    payload_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    matched_asset_id INTEGER,
+    resolution_note TEXT NOT NULL DEFAULT "",
+    created_by INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    resolved_at TEXT,
+    FOREIGN KEY(import_run_id) REFERENCES import_runs(id),
+    FOREIGN KEY(matched_asset_id) REFERENCES assets(id)
   )');
 
   $db->exec(<<<'SQL'
@@ -101,6 +123,24 @@ SQL
     FOREIGN KEY(print_profile_id) REFERENCES print_profiles(id)
   )');
 
+  $db->exec('CREATE TABLE IF NOT EXISTS device_jobs (
+    id INTEGER PRIMARY KEY,
+    job_type TEXT NOT NULL,
+    transport_mode TEXT NOT NULL DEFAULT "agent",
+    source_format TEXT NOT NULL DEFAULT "json",
+    selected_ids_json TEXT NOT NULL DEFAULT "[]",
+    filter_text TEXT NOT NULL DEFAULT "",
+    payload_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    requested_by INTEGER NOT NULL,
+    requested_at TEXT NOT NULL,
+    started_at TEXT,
+    finished_at TEXT,
+    error_text TEXT NOT NULL DEFAULT "",
+    agent_name TEXT NOT NULL DEFAULT "",
+    agent_meta_json TEXT NOT NULL DEFAULT "{}"
+  )');
+
   $db->exec('CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY,
     actor_user_id INTEGER,
@@ -113,10 +153,29 @@ SQL
   )');
 
   $db->exec('CREATE INDEX IF NOT EXISTS idx_assets_uid ON assets(asset_uid)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_assets_customer ON assets(customer)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_assets_site ON assets(site)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_assets_department ON assets(department)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_assets_autotest_code ON assets(autotest_code)');
   $db->exec('CREATE INDEX IF NOT EXISTS idx_inspections_asset ON inspections(asset_id)');
   $db->exec('CREATE INDEX IF NOT EXISTS idx_inspections_expires ON inspections(expires_at)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_import_staging_status ON import_staging(status)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_import_staging_uid ON import_staging(detected_asset_uid)');
   $db->exec('CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs(status)');
+  $db->exec('CREATE INDEX IF NOT EXISTS idx_device_jobs_status ON device_jobs(status)');
   $db->exec('CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at)');
+}
+
+function dguv_add_column_if_missing(PDO $db, string $table, string $column, string $definition): void {
+  $stmt = $db->query('PRAGMA table_info(' . $table . ')');
+  $columns = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+  foreach ($columns as $col) {
+    if (($col['name'] ?? '') === $column) {
+      return;
+    }
+  }
+
+  $db->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $column . ' ' . $definition);
 }
 
 function dguv_iso_now(): string {

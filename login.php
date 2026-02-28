@@ -37,7 +37,7 @@ page_start('Login', false);
 <div class="container" style="padding-top: 36px;">
   <div class="card" style="max-width:520px;margin:0 auto;">
     <div class="login-logo-wrap">
-      <img class="login-logo" src="/assets/Logo.png" alt="<?=$config['site_name']?> Logo">
+      <img class="login-logo" src="/assets/evenTools%20Logo.png" alt="<?=$config['site_name']?> Logo">
     </div>
     <div class="sep"></div>
 

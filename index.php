@@ -7,13 +7,30 @@ $tools = $_SESSION['tools'] ?? [];
 $is_admin = !empty($_SESSION['is_admin']);
 
 $tool_meta = [
+  'cuesheet' => [
+    'title' => 'cueTools',
+    'sub' => 'Cue-Planung und Ablaufhilfe',
+    'logo' => '/assets/cueTools%20Logo.png'
+  ],
   'dev_todo' => [
-    'title' => 'Dev To-Do Board',
-    'sub' => 'Aufgaben fuer Tools, Seiten und Infrastruktur'
+    'title' => 'todoTools',
+    'sub' => 'Aufgaben fuer Tools, Seiten und Infrastruktur',
+    'logo' => '/assets/todoTools%20Logo.png'
   ],
   'dguv_v3' => [
-    'title' => 'DGUV V3 Prüfverwaltung',
-    'sub' => 'Prüflinge, Prüfungen, CSV-Labeldruckjobs'
+    'title' => 'dguvTools',
+    'sub' => 'Prüflinge, Prüfungen, CSV-Labeldruckjobs',
+    'logo' => '/assets/dguvTools%20Logo.png'
+  ],
+  'nti_tool' => [
+    'title' => 'ntiTools',
+    'sub' => 'Netzwerk- und Infrastrukturtool',
+    'logo' => '/assets/ntiTools%20Logo.png'
+  ],
+  'patchmatrix' => [
+    'title' => 'nexusTools',
+    'sub' => 'Patchmatrix und Verbindungsübersicht',
+    'logo' => '/assets/nexusTools%20Logo.png'
   ]
 ];
 
@@ -35,8 +52,13 @@ page_start('Dashboard');
             <?php $meta = $tool_meta[$t] ?? null; ?>
             <li class="tool-item">
               <div class="tool-meta">
-                <div class="tool-title"><?=h($meta['title'] ?? (string)$t)?></div>
-                <div class="tool-sub"><?=h($meta['sub'] ?? 'Startet über den geschützten Loader')?></div>
+                <?php if (!empty($meta['logo'])): ?>
+                  <img class="tool-logo" src="<?=h((string)$meta['logo'])?>" alt="<?=h(($meta['title'] ?? (string)$t) . ' Logo')?>">
+                <?php endif; ?>
+                <div>
+                  <div class="tool-title"><?=h($meta['title'] ?? (string)$t)?></div>
+                  <div class="tool-sub"><?=h($meta['sub'] ?? 'Startet über den geschützten Loader')?></div>
+                </div>
               </div>
               <a class="btn" href="/tool.php?name=<?= urlencode((string)$t) ?>">Öffnen</a>
             </li>

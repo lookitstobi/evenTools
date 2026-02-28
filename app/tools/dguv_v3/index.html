@@ -115,16 +115,20 @@
   <div class="wrap">
     <section class="card col-12">
       <div class="title">DGUV V3 Prüfverwaltung</div>
-      <div class="subtitle">MVP: Prüflinge + Prüfungen + CSV-Druckjobs (Brother-Bridge) + Audit- und Retention-Basis.</div>
+      <div class="subtitle">MVP: Hierarchie (Kunde/Standort/Abteilung), Prüflinge, Prüfungen, Import-Zwischenlager, Druck- und Geräte-Jobs.</div>
       <div id="flash" class="flash" style="margin-top:10px">Bereit.</div>
     </section>
 
     <section class="card col-6">
       <h3>Prüfling anlegen</h3>
       <div class="grid">
-        <div class="field f6"><label>Inventarnummer *</label><input id="asset_uid"></div>
+        <div class="field f3"><label>Prüflingsnummer *</label><input id="asset_uid"></div>
+        <div class="field f3"><label>&nbsp;</label><button id="btn_next_uid">Nächste Nummer holen</button></div>
         <div class="field f6"><label>Name *</label><input id="asset_name"></div>
-        <div class="field f6"><label>Standort *</label><input id="asset_location"></div>
+        <div class="field f4"><label>Kunde *</label><input id="asset_customer"></div>
+        <div class="field f4"><label>Standort *</label><input id="asset_site"></div>
+        <div class="field f4"><label>Abteilung *</label><input id="asset_department"></div>
+        <div class="field f6"><label>Autotest-Code *</label><input id="asset_autotest_code"></div>
         <div class="field f6"><label>Gerätetyp *</label><input id="asset_device_type"></div>
         <div class="field f4"><label>Hersteller</label><input id="asset_manufacturer"></div>
         <div class="field f4"><label>Modell</label><input id="asset_model"></div>
@@ -133,6 +137,7 @@
       </div>
       <div class="btn-row" style="margin-top:10px">
         <button class="primary" id="btn_create_asset">Prüfling speichern</button>
+        <button id="btn_create_asset_print">Speichern + Etikett drucken</button>
       </div>
     </section>
 
@@ -188,7 +193,7 @@
     <section class="card col-12">
       <h3>Prüflinge</h3>
       <div class="btn-row" style="margin-bottom:8px">
-        <input id="search" placeholder="Filter (Inventar, Name, Standort, Typ)" style="max-width:340px">
+        <input id="search" placeholder="Filter (Nummer, Name, Kunde, Standort, Abteilung, Typ, Autotest)" style="max-width:420px">
         <button id="btn_search">Suchen</button>
         <button id="btn_refresh">Neu laden</button>
       </div>
@@ -200,6 +205,8 @@
         </select>
         <button class="primary" id="btn_print_selected">Ausgewählte drucken</button>
         <button id="btn_print_filtered">Gefilterte drucken</button>
+        <button id="btn_export_selected">Ausgewählte an Prüfgerät</button>
+        <button id="btn_export_filtered">Gefilterte an Prüfgerät</button>
       </div>
 
       <div style="overflow:auto;max-height:420px">
@@ -209,7 +216,8 @@
               <th><input type="checkbox" id="select_all"></th>
               <th>Inventar</th>
               <th>Name</th>
-              <th>Standort</th>
+              <th>Kunde / Standort / Abteilung</th>
+              <th>Autotest</th>
               <th>Typ</th>
               <th>Prüfdatum</th>
               <th>Status</th>
@@ -243,6 +251,55 @@
         </table>
       </div>
     </section>
+
+    <section class="card col-6">
+      <h3>Geräte-Jobs</h3>
+      <div class="subtitle">Export-Jobs für den lokalen Device-Agent (Live-USB/Datei-Bridge).</div>
+      <div style="overflow:auto;max-height:260px;margin-top:8px">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Typ</th>
+              <th>Status</th>
+              <th>Zeilen</th>
+              <th>Agent</th>
+              <th>Angefordert</th>
+              <th>Fertig</th>
+            </tr>
+          </thead>
+          <tbody id="device_job_rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card col-6">
+      <h3>Zwischenlager</h3>
+      <div class="subtitle">Nicht automatisch zuordenbare Prüfungen (Prüflingsnummer unbekannt/invalid).</div>
+      <div class="grid" style="margin-top:8px">
+        <div class="field f4"><label>Staging-ID</label><input id="staging_id" type="number" min="1"></div>
+        <div class="field f8"><label>Zu Prüfling zuordnen</label><select id="staging_asset"></select></div>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button id="btn_resolve_staging">Staging zuordnen</button>
+        <button id="btn_reload_staging">Zwischenlager laden</button>
+      </div>
+      <div style="overflow:auto;max-height:260px;margin-top:8px">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Status</th>
+              <th>Erkannte Nummer</th>
+              <th>Quelle</th>
+              <th>Hinweis</th>
+              <th>Erstellt</th>
+            </tr>
+          </thead>
+          <tbody id="staging_rows"></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
 <script>
@@ -254,11 +311,14 @@
   const flashEl = document.getElementById('flash');
   const assetRowsEl = document.getElementById('asset_rows');
   const jobRowsEl = document.getElementById('job_rows');
+  const deviceJobRowsEl = document.getElementById('device_job_rows');
+  const stagingRowsEl = document.getElementById('staging_rows');
   const inspectionAssetEl = document.getElementById('inspection_asset');
+  const stagingAssetEl = document.getElementById('staging_asset');
   const printProfileSelectEl = document.getElementById('print_profile_id');
 
   const sourceOptions = [
-    'asset_uid','asset_name','location','device_type','manufacturer','model','serial_number','inspection_result','inspection_date','next_due_date','barcode_value'
+    'asset_uid','asset_name','location','customer','site','department','autotest_code','device_type','manufacturer','model','serial_number','inspection_result','inspection_date','next_due_date','barcode_value'
   ];
 
   function flash(message, type = '') {
@@ -294,7 +354,7 @@
     assetRowsEl.innerHTML = '';
 
     if (assets.length === 0) {
-      assetRowsEl.innerHTML = '<tr><td colspan="8" class="muted">Keine Datensätze.</td></tr>';
+      assetRowsEl.innerHTML = '<tr><td colspan="9" class="muted">Keine Datensätze.</td></tr>';
       return;
     }
 
@@ -305,7 +365,8 @@
         <td><input type="checkbox" data-id="${row.id}"></td>
         <td class="mono">${escapeHtml(row.asset_uid || '')}</td>
         <td>${escapeHtml(row.asset_name || '')}</td>
-        <td>${escapeHtml(row.location || '')}</td>
+        <td>${escapeHtml([row.customer || '', row.site || '', row.department || ''].filter(Boolean).join(' / ') || row.location || '')}</td>
+        <td>${escapeHtml(row.autotest_code || '')}</td>
         <td>${escapeHtml(row.device_type || '')}</td>
         <td>${escapeHtml(row.inspection_date || '')}</td>
         <td><span class="pill">${escapeHtml(status)}</span></td>
@@ -319,11 +380,13 @@
 
   function renderInspectionSelect() {
     inspectionAssetEl.innerHTML = '';
+    stagingAssetEl.innerHTML = '';
     if (assets.length === 0) {
       const option = document.createElement('option');
       option.value = '';
       option.textContent = 'Keine Prüflinge verfügbar';
       inspectionAssetEl.appendChild(option);
+      stagingAssetEl.appendChild(option.cloneNode(true));
       return;
     }
 
@@ -332,6 +395,7 @@
       option.value = String(asset.id);
       option.textContent = `${asset.asset_uid} · ${asset.asset_name}`;
       inspectionAssetEl.appendChild(option);
+      stagingAssetEl.appendChild(option.cloneNode(true));
     }
   }
 
@@ -375,6 +439,49 @@
     }
   }
 
+  function renderDeviceJobs(jobs) {
+    deviceJobRowsEl.innerHTML = '';
+    if (!jobs.length) {
+      deviceJobRowsEl.innerHTML = '<tr><td colspan="7" class="muted">Noch keine Geräte-Jobs.</td></tr>';
+      return;
+    }
+
+    for (const row of jobs) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${row.id}</td>
+        <td>${escapeHtml(row.job_type || '')}</td>
+        <td>${escapeHtml(row.status || '')}</td>
+        <td>${Number(row.selected_count || 0)}</td>
+        <td>${escapeHtml(row.agent_name || '')}</td>
+        <td class="mono">${escapeHtml(row.requested_at || '')}</td>
+        <td class="mono">${escapeHtml(row.finished_at || '')}</td>
+      `;
+      deviceJobRowsEl.appendChild(tr);
+    }
+  }
+
+  function renderStaging(items) {
+    stagingRowsEl.innerHTML = '';
+    if (!items.length) {
+      stagingRowsEl.innerHTML = '<tr><td colspan="6" class="muted">Zwischenlager ist leer.</td></tr>';
+      return;
+    }
+
+    for (const row of items) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${row.id}</td>
+        <td>${escapeHtml(row.status || '')}</td>
+        <td class="mono">${escapeHtml(row.detected_asset_uid || '')}</td>
+        <td>${escapeHtml([row.source_name || '', row.source_format || ''].filter(Boolean).join(' / '))}</td>
+        <td>${escapeHtml(row.resolution_note || '')}</td>
+        <td class="mono">${escapeHtml(row.created_at || '')}</td>
+      `;
+      stagingRowsEl.appendChild(tr);
+    }
+  }
+
   async function loadAssets(query = '') {
     const data = await api('list_assets', { q: query });
     assets = data.assets || [];
@@ -386,14 +493,32 @@
     renderJobs(data.jobs || []);
   }
 
+  async function loadDeviceJobs() {
+    const data = await api('list_device_jobs');
+    renderDeviceJobs(data.jobs || []);
+  }
+
+  async function loadStaging() {
+    const data = await api('list_import_staging');
+    renderStaging(data.items || []);
+  }
+
+  async function fillNextUid() {
+    const data = await api('next_asset_uid');
+    document.getElementById('asset_uid').value = data.asset_uid || '';
+  }
+
   async function bootstrap() {
     const data = await api('bootstrap');
     csrf = data.csrf;
     profiles = data.print_profiles || [];
     renderProfileSelect();
 
+    await fillNextUid();
     await loadAssets('');
     await loadJobs();
+    await loadDeviceJobs();
+    await loadStaging();
   }
 
   function parseMeasuredValues() {
@@ -431,22 +556,47 @@
       .replaceAll("'", '&#39;');
   }
 
-  document.getElementById('btn_create_asset').addEventListener('click', async () => {
+  async function createAsset(printAfterCreate = false) {
     try {
       await api('create_asset', {
         asset_uid: document.getElementById('asset_uid').value,
         asset_name: document.getElementById('asset_name').value,
-        location: document.getElementById('asset_location').value,
+        customer: document.getElementById('asset_customer').value,
+        site: document.getElementById('asset_site').value,
+        department: document.getElementById('asset_department').value,
+        autotest_code: document.getElementById('asset_autotest_code').value,
         device_type: document.getElementById('asset_device_type').value,
         manufacturer: document.getElementById('asset_manufacturer').value,
         model: document.getElementById('asset_model').value,
         serial_number: document.getElementById('asset_serial').value,
         notes: document.getElementById('asset_notes').value,
+        print_after_create: printAfterCreate,
       }, 'POST');
-      flash('Prüfling gespeichert.', 'ok');
+      flash(printAfterCreate ? 'Prüfling gespeichert und Etikett-Job erstellt.' : 'Prüfling gespeichert.', 'ok');
+      await fillNextUid();
       await loadAssets(document.getElementById('search').value.trim());
+      if (printAfterCreate) {
+        await loadJobs();
+      }
     } catch (error) {
       flash('Fehler beim Speichern des Prüflings: ' + error.message, 'bad');
+    }
+  }
+
+  document.getElementById('btn_create_asset').addEventListener('click', async () => {
+    await createAsset(false);
+  });
+
+  document.getElementById('btn_create_asset_print').addEventListener('click', async () => {
+    await createAsset(true);
+  });
+
+  document.getElementById('btn_next_uid').addEventListener('click', async () => {
+    try {
+      await fillNextUid();
+      flash('Nächste Prüflingsnummer gesetzt.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Ermitteln der Prüflingsnummer: ' + error.message, 'bad');
     }
   });
 
@@ -504,6 +654,8 @@
       document.getElementById('search').value = '';
       await loadAssets('');
       await loadJobs();
+      await loadDeviceJobs();
+      await loadStaging();
       flash('Daten neu geladen.', 'ok');
     } catch (error) {
       flash('Fehler beim Laden: ' + error.message, 'bad');
@@ -549,8 +701,63 @@
     }
   });
 
+  document.getElementById('btn_export_selected').addEventListener('click', async () => {
+    try {
+      const selected = readSelectedAssetIds();
+      await api('queue_device_export', {
+        selected_ids: selected,
+        filter_text: '',
+        source_format: 'json',
+      }, 'POST');
+      await loadDeviceJobs();
+      flash('Geräte-Exportjob für ausgewählte Datensätze erstellt.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Erstellen des Geräte-Exports: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_export_filtered').addEventListener('click', async () => {
+    try {
+      const query = document.getElementById('search').value.trim();
+      await api('queue_device_export', {
+        selected_ids: [],
+        filter_text: query,
+        source_format: 'json',
+      }, 'POST');
+      await loadDeviceJobs();
+      flash('Geräte-Exportjob für gefilterte Datensätze erstellt.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Erstellen des Geräte-Exports: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_reload_staging').addEventListener('click', async () => {
+    try {
+      await loadStaging();
+      flash('Zwischenlager aktualisiert.', 'ok');
+    } catch (error) {
+      flash('Fehler beim Laden des Zwischenlagers: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_resolve_staging').addEventListener('click', async () => {
+    try {
+      await api('resolve_import_staging', {
+        staging_id: Number(document.getElementById('staging_id').value),
+        asset_id: Number(stagingAssetEl.value),
+      }, 'POST');
+      await loadStaging();
+      await loadAssets(document.getElementById('search').value.trim());
+      flash('Zwischenlager-Eintrag zugeordnet.', 'ok');
+    } catch (error) {
+      flash('Fehler bei der Zwischenlager-Zuordnung: ' + error.message, 'bad');
+    }
+  });
+
   setInterval(() => {
     loadJobs().catch(() => null);
+    loadDeviceJobs().catch(() => null);
+    loadStaging().catch(() => null);
   }, 7000);
 
   bootstrap()

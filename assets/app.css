@@ -302,17 +302,43 @@ small,.small{ color: var(--muted); }
   border: 1px solid var(--border);
   background: rgba(255,255,255,.04);
   border-radius: 14px;
-  padding: 14px;
+  padding: 14px 16px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap: 12px;
+  gap: 16px;
 }
 .tool-item:hover{ background: rgba(255,255,255,.06); }
 .tool-meta{
   display:flex;
-  flex-direction:column;
-  gap: 2px;
+  align-items:center;
+  gap: 22px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.tool-title{ font-weight: 760; }
+.tool-logo{
+  width: auto;
+  height: 58px;
+  max-width: 220px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  display: block;
+}
+.tool-title{ font-weight: 760; font-size: 19px; line-height: 1.2; }
 .tool-sub{ font-size: 13px; color: var(--muted); }
+
+@media (max-width: 680px){
+  .tool-meta{ gap: 14px; }
+  .tool-logo{
+    width: auto;
+    height: 58px;
+    max-width: 180px;
+    padding: 6px 10px;
+  }
+}
