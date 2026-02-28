@@ -77,6 +77,10 @@ function all_tools(): array {
 function page_start(string $title, bool $show_nav = true): void {
   $site = h(($GLOBALS['config']['site_name'] ?? 'Tools'));
   $t = h($title);
+  $cssVersion = (string)@filemtime(__DIR__ . '/assets/app.css');
+  if ($cssVersion === '') {
+    $cssVersion = '1';
+  }
 
   $is_authed = !empty($_SESSION['uid']);
   $is_admin  = !empty($_SESSION['is_admin']);
@@ -90,7 +94,7 @@ function page_start(string $title, bool $show_nav = true): void {
   <meta charset=\"utf-8\">
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
   <title>{$t} · {$site}</title>
-  <link rel=\"stylesheet\" href=\"/assets/app.css\">
+  <link rel=\"stylesheet\" href=\"/assets/app.css?v={$cssVersion}\">
 </head>
 <body{$body_class}>";
 
