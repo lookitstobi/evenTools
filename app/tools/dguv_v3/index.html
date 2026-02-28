@@ -109,6 +109,50 @@
     .mono{font-family:var(--mono);font-size:12px}
     .muted{color:var(--muted)}
     .pill{padding:3px 8px;border-radius:999px;background:rgba(148,163,184,.16);font-size:12px}
+
+    .asset-nav-layout{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:12px}
+    @media (max-width: 980px){
+      .asset-nav-layout{grid-template-columns:1fr}
+    }
+    .tree-panel{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:rgba(31,41,55,.35);
+      padding:10px;
+      max-height:420px;
+      overflow:auto;
+    }
+    .tree-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+    .tree-btn{
+      width:100%;
+      text-align:left;
+      border:1px solid transparent;
+      border-radius:8px;
+      background:transparent;
+      padding:6px 8px;
+      font-weight:550;
+    }
+    .tree-btn:hover{background:rgba(148,163,184,.1)}
+    .tree-btn.active{background:rgba(139,92,246,.2);border-color:rgba(139,92,246,.45)}
+    .tree-count{color:var(--muted);font-size:12px}
+    .tree-level-1{padding-left:8px}
+    .tree-level-2{padding-left:18px}
+    .tree-level-3{padding-left:30px}
+    .tree-site{margin-top:4px}
+    .quicklist{margin-top:12px}
+    .quicklist-title{font-size:12px;color:var(--muted);font-weight:650;margin-bottom:6px}
+    .quicklist-items{display:flex;flex-direction:column;gap:6px;max-height:170px;overflow:auto}
+    .quick-asset-btn{
+      text-align:left;
+      border:1px solid var(--line);
+      background:rgba(148,163,184,.06);
+      border-radius:8px;
+      padding:6px 8px;
+      font-size:13px;
+      font-weight:550;
+    }
+    .quick-asset-btn.active{border-color:rgba(139,92,246,.55);background:rgba(139,92,246,.18)}
+    tr.row-active td{background:rgba(139,92,246,.14)}
   </style>
 </head>
 <body>
@@ -192,40 +236,57 @@
 
     <section class="card col-12">
       <h3>Prüflinge</h3>
-      <div class="btn-row" style="margin-bottom:8px">
-        <input id="search" placeholder="Filter (Nummer, Name, Kunde, Standort, Abteilung, Typ, Autotest)" style="max-width:420px">
-        <button id="btn_search">Suchen</button>
-        <button id="btn_refresh">Neu laden</button>
-      </div>
-      <div class="btn-row" style="margin-bottom:8px">
-        <select id="print_profile_id" style="max-width:220px"></select>
-        <select id="job_mode" style="max-width:220px">
-          <option value="open_only">Nur Software öffnen</option>
-          <option value="print_now">Direkt drucken</option>
-        </select>
-        <button class="primary" id="btn_print_selected">Ausgewählte drucken</button>
-        <button id="btn_print_filtered">Gefilterte drucken</button>
-        <button id="btn_export_selected">Ausgewählte an Prüfgerät</button>
-        <button id="btn_export_filtered">Gefilterte an Prüfgerät</button>
-      </div>
+      <div class="asset-nav-layout">
+        <aside>
+          <div class="tree-panel">
+            <div class="tree-actions">
+              <button id="btn_tree_reset">Hierarchie zurücksetzen</button>
+            </div>
+            <div id="asset_tree"></div>
+            <div class="quicklist">
+              <div class="quicklist-title">Schnellwahl Prüfling</div>
+              <div id="asset_quicklist" class="quicklist-items"></div>
+            </div>
+          </div>
+        </aside>
 
-      <div style="overflow:auto;max-height:420px">
-        <table>
-          <thead>
-            <tr>
-              <th><input type="checkbox" id="select_all"></th>
-              <th>Inventar</th>
-              <th>Name</th>
-              <th>Kunde / Standort / Abteilung</th>
-              <th>Autotest</th>
-              <th>Typ</th>
-              <th>Prüfdatum</th>
-              <th>Status</th>
-              <th>Nächste Prüfung</th>
-            </tr>
-          </thead>
-          <tbody id="asset_rows"></tbody>
-        </table>
+        <div>
+          <div class="btn-row" style="margin-bottom:8px">
+            <input id="search" placeholder="Filter (Nummer, Name, Kunde, Standort, Abteilung, Typ, Autotest)" style="max-width:420px">
+            <button id="btn_search">Suchen</button>
+            <button id="btn_refresh">Neu laden</button>
+          </div>
+          <div class="btn-row" style="margin-bottom:8px">
+            <select id="print_profile_id" style="max-width:220px"></select>
+            <select id="job_mode" style="max-width:220px">
+              <option value="open_only">Nur Software öffnen</option>
+              <option value="print_now">Direkt drucken</option>
+            </select>
+            <button class="primary" id="btn_print_selected">Ausgewählte drucken</button>
+            <button id="btn_print_filtered">Gefilterte drucken</button>
+            <button id="btn_export_selected">Ausgewählte an Prüfgerät</button>
+            <button id="btn_export_filtered">Gefilterte an Prüfgerät</button>
+          </div>
+
+          <div style="overflow:auto;max-height:420px">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="select_all"></th>
+                  <th>Inventar</th>
+                  <th>Name</th>
+                  <th>Kunde / Standort / Abteilung</th>
+                  <th>Autotest</th>
+                  <th>Typ</th>
+                  <th>Prüfdatum</th>
+                  <th>Status</th>
+                  <th>Nächste Prüfung</th>
+                </tr>
+              </thead>
+              <tbody id="asset_rows"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -307,6 +368,12 @@
   let csrf = '';
   let assets = [];
   let profiles = [];
+  let focusedAssetId = null;
+  let hierarchyFilter = {
+    customer: '',
+    site: '',
+    department: '',
+  };
 
   const flashEl = document.getElementById('flash');
   const assetRowsEl = document.getElementById('asset_rows');
@@ -316,6 +383,8 @@
   const inspectionAssetEl = document.getElementById('inspection_asset');
   const stagingAssetEl = document.getElementById('staging_asset');
   const printProfileSelectEl = document.getElementById('print_profile_id');
+  const assetTreeEl = document.getElementById('asset_tree');
+  const assetQuicklistEl = document.getElementById('asset_quicklist');
 
   const sourceOptions = [
     'asset_uid','asset_name','location','customer','site','department','autotest_code','device_type','manufacturer','model','serial_number','inspection_result','inspection_date','next_due_date','barcode_value'
@@ -350,16 +419,203 @@
     return [...assetRowsEl.querySelectorAll('input[data-id]:checked')].map(el => Number(el.dataset.id));
   }
 
-  function renderAssets() {
-    assetRowsEl.innerHTML = '';
+  function hierarchyLabel(value, fallback) {
+    const normalized = String(value || '').trim();
+    return normalized || fallback;
+  }
 
-    if (assets.length === 0) {
-      assetRowsEl.innerHTML = '<tr><td colspan="9" class="muted">Keine Datensätze.</td></tr>';
+  function sortByLabel(list) {
+    return list.slice().sort((left, right) => left.label.localeCompare(right.label, 'de', { sensitivity: 'base' }));
+  }
+
+  function buildHierarchy() {
+    const customerMap = new Map();
+
+    for (const row of assets) {
+      const customerValue = String(row.customer || '').trim();
+      const customerLabel = hierarchyLabel(customerValue, 'Ohne Kunde');
+      if (!customerMap.has(customerValue)) {
+        customerMap.set(customerValue, { value: customerValue, label: customerLabel, items: [] });
+      }
+      customerMap.get(customerValue).items.push(row);
+    }
+
+    const customers = sortByLabel([...customerMap.values()]).map((customerNode) => {
+      const siteMap = new Map();
+
+      for (const row of customerNode.items) {
+        const siteValue = String(row.site || '').trim();
+        const siteLabel = hierarchyLabel(siteValue, 'Ohne Standort');
+        if (!siteMap.has(siteValue)) {
+          siteMap.set(siteValue, { value: siteValue, label: siteLabel, items: [] });
+        }
+        siteMap.get(siteValue).items.push(row);
+      }
+
+      const sites = sortByLabel([...siteMap.values()]).map((siteNode) => {
+        const departmentMap = new Map();
+
+        for (const row of siteNode.items) {
+          const departmentValue = String(row.department || '').trim();
+          const departmentLabel = hierarchyLabel(departmentValue, 'Ohne Abteilung');
+          if (!departmentMap.has(departmentValue)) {
+            departmentMap.set(departmentValue, { value: departmentValue, label: departmentLabel, items: [] });
+          }
+          departmentMap.get(departmentValue).items.push(row);
+        }
+
+        return {
+          value: siteNode.value,
+          label: siteNode.label,
+          items: siteNode.items,
+          departments: sortByLabel([...departmentMap.values()]),
+        };
+      });
+
+      return {
+        value: customerNode.value,
+        label: customerNode.label,
+        items: customerNode.items,
+        sites,
+      };
+    });
+
+    return customers;
+  }
+
+  function getVisibleAssets() {
+    return assets.filter((row) => {
+      if (hierarchyFilter.customer !== '' && String(row.customer || '').trim() !== hierarchyFilter.customer) return false;
+      if (hierarchyFilter.site !== '' && String(row.site || '').trim() !== hierarchyFilter.site) return false;
+      if (hierarchyFilter.department !== '' && String(row.department || '').trim() !== hierarchyFilter.department) return false;
+      return true;
+    });
+  }
+
+  function ensureHierarchyFilterIsValid() {
+    if (!assets.length) {
+      hierarchyFilter = { customer: '', site: '', department: '' };
+      focusedAssetId = null;
       return;
     }
 
-    for (const row of assets) {
+    const hasMatch = getVisibleAssets().length > 0;
+    if (!hasMatch) {
+      hierarchyFilter = { customer: '', site: '', department: '' };
+    }
+
+    if (focusedAssetId !== null && !assets.some((row) => Number(row.id) === Number(focusedAssetId))) {
+      focusedAssetId = null;
+    }
+  }
+
+  function setHierarchyFilter(nextFilter) {
+    hierarchyFilter = {
+      customer: nextFilter.customer ?? '',
+      site: nextFilter.site ?? '',
+      department: nextFilter.department ?? '',
+    };
+    renderAssetTree();
+    renderAssets();
+  }
+
+  function setFocusedAsset(assetId, shouldScroll = true) {
+    focusedAssetId = Number(assetId);
+    inspectionAssetEl.value = String(focusedAssetId);
+    renderQuickAssetList(getVisibleAssets());
+
+    for (const row of assetRowsEl.querySelectorAll('tr[data-asset-id]')) {
+      row.classList.toggle('row-active', Number(row.dataset.assetId) === focusedAssetId);
+    }
+
+    if (!shouldScroll) return;
+    const selectedRow = assetRowsEl.querySelector(`tr[data-asset-id="${focusedAssetId}"]`);
+    if (selectedRow) {
+      selectedRow.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function renderQuickAssetList(visibleAssets) {
+    assetQuicklistEl.innerHTML = '';
+    if (!visibleAssets.length) {
+      assetQuicklistEl.innerHTML = '<div class="muted">Keine Prüflinge im aktuellen Hierarchiepfad.</div>';
+      return;
+    }
+
+    for (const row of visibleAssets) {
+      const button = document.createElement('button');
+      button.className = 'quick-asset-btn' + (Number(row.id) === Number(focusedAssetId) ? ' active' : '');
+      button.textContent = `${row.asset_uid || '—'} · ${row.asset_name || 'Ohne Name'}`;
+      button.addEventListener('click', () => setFocusedAsset(row.id));
+      assetQuicklistEl.appendChild(button);
+    }
+  }
+
+  function renderAssetTree() {
+    assetTreeEl.innerHTML = '';
+
+    if (!assets.length) {
+      assetTreeEl.innerHTML = '<div class="muted">Keine Hierarchie verfügbar.</div>';
+      renderQuickAssetList([]);
+      return;
+    }
+
+    const hierarchy = buildHierarchy();
+    const rootButton = document.createElement('button');
+    rootButton.className = 'tree-btn tree-level-1' + (hierarchyFilter.customer === '' ? ' active' : '');
+    rootButton.innerHTML = `Alle Prüflinge <span class="tree-count">(${assets.length})</span>`;
+    rootButton.addEventListener('click', () => setHierarchyFilter({ customer: '', site: '', department: '' }));
+    assetTreeEl.appendChild(rootButton);
+
+    for (const customerNode of hierarchy) {
+      const customerButton = document.createElement('button');
+      const isCustomerActive = hierarchyFilter.customer === customerNode.value && hierarchyFilter.site === '';
+      customerButton.className = 'tree-btn tree-level-1' + (isCustomerActive ? ' active' : '');
+      customerButton.innerHTML = `${escapeHtml(customerNode.label)} <span class="tree-count">(${customerNode.items.length})</span>`;
+      customerButton.addEventListener('click', () => {
+        setHierarchyFilter({ customer: customerNode.value, site: '', department: '' });
+      });
+      assetTreeEl.appendChild(customerButton);
+
+      for (const siteNode of customerNode.sites) {
+        const siteButton = document.createElement('button');
+        const isSiteActive = hierarchyFilter.customer === customerNode.value && hierarchyFilter.site === siteNode.value && hierarchyFilter.department === '';
+        siteButton.className = 'tree-btn tree-level-2 tree-site' + (isSiteActive ? ' active' : '');
+        siteButton.innerHTML = `${escapeHtml(siteNode.label)} <span class="tree-count">(${siteNode.items.length})</span>`;
+        siteButton.addEventListener('click', () => {
+          setHierarchyFilter({ customer: customerNode.value, site: siteNode.value, department: '' });
+        });
+        assetTreeEl.appendChild(siteButton);
+
+        for (const departmentNode of siteNode.departments) {
+          const departmentButton = document.createElement('button');
+          const isDepartmentActive = hierarchyFilter.customer === customerNode.value && hierarchyFilter.site === siteNode.value && hierarchyFilter.department === departmentNode.value;
+          departmentButton.className = 'tree-btn tree-level-3' + (isDepartmentActive ? ' active' : '');
+          departmentButton.innerHTML = `${escapeHtml(departmentNode.label)} <span class="tree-count">(${departmentNode.items.length})</span>`;
+          departmentButton.addEventListener('click', () => {
+            setHierarchyFilter({ customer: customerNode.value, site: siteNode.value, department: departmentNode.value });
+          });
+          assetTreeEl.appendChild(departmentButton);
+        }
+      }
+    }
+
+    renderQuickAssetList(getVisibleAssets());
+  }
+
+  function renderAssets() {
+    assetRowsEl.innerHTML = '';
+    const visibleAssets = getVisibleAssets();
+
+    if (visibleAssets.length === 0) {
+      assetRowsEl.innerHTML = '<tr><td colspan="9" class="muted">Keine Datensätze.</td></tr>';
+      renderQuickAssetList([]);
+      return;
+    }
+
+    for (const row of visibleAssets) {
       const tr = document.createElement('tr');
+      tr.dataset.assetId = String(row.id);
       const status = row.result_status || 'offen';
       tr.innerHTML = `
         <td><input type="checkbox" data-id="${row.id}"></td>
@@ -372,10 +628,18 @@
         <td><span class="pill">${escapeHtml(status)}</span></td>
         <td>${escapeHtml(row.next_due_date || '')}</td>
       `;
+      tr.addEventListener('click', (event) => {
+        if (event.target instanceof HTMLInputElement) return;
+        setFocusedAsset(row.id, false);
+      });
       assetRowsEl.appendChild(tr);
     }
 
     renderInspectionSelect();
+    renderQuickAssetList(visibleAssets);
+    if (focusedAssetId !== null) {
+      setFocusedAsset(focusedAssetId, false);
+    }
   }
 
   function renderInspectionSelect() {
@@ -485,6 +749,8 @@
   async function loadAssets(query = '') {
     const data = await api('list_assets', { q: query });
     assets = data.assets || [];
+    ensureHierarchyFilterIsValid();
+    renderAssetTree();
     renderAssets();
   }
 
@@ -652,6 +918,7 @@
   document.getElementById('btn_refresh').addEventListener('click', async () => {
     try {
       document.getElementById('search').value = '';
+      hierarchyFilter = { customer: '', site: '', department: '' };
       await loadAssets('');
       await loadJobs();
       await loadDeviceJobs();
@@ -667,6 +934,11 @@
     for (const cb of assetRowsEl.querySelectorAll('input[data-id]')) {
       cb.checked = checked;
     }
+  });
+
+  document.getElementById('btn_tree_reset').addEventListener('click', () => {
+    setHierarchyFilter({ customer: '', site: '', department: '' });
+    flash('Hierarchie-Navigation zurückgesetzt.', 'ok');
   });
 
   document.getElementById('btn_print_selected').addEventListener('click', async () => {
