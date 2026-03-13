@@ -63,11 +63,24 @@ h3{font-size:18px;margin:0;font-weight:700}
 #leftColumn{width:50%;overflow:auto;background:var(--primary-panel);padding:32px 24px;box-sizing:border-box}
 .header{flex-wrap:wrap;height:auto;min-height:60px;display:flex;align-items:center;justify-content:space-between}
 .header .title{flex:1 1 auto}
-.header-controls{display:flex;align-items:center;gap:12px;margin-left:24px}
+.header-controls{display:flex;align-items:center;gap:12px;margin-left:24px;flex-wrap:wrap;justify-content:flex-end}
 .icon-btn{background:var(--primary-panel);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:var(--radius2);font-size:13px;cursor:pointer;font-weight:650;transition:transform .06s ease, background .2s ease, border-color .2s ease}
 .icon-btn.subtle{background:var(--primary-panel);color:var(--text);border:1px solid var(--border);opacity:.85}
 .icon-btn:hover{opacity:1}
 .icon-btn:disabled{opacity:.35;cursor:not-allowed}
+.header-main-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.header-secondary-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.header-menu{position:relative}
+.header-menu summary{list-style:none}
+.header-menu summary::-webkit-details-marker{display:none}
+.menu-trigger{display:inline-flex;align-items:center;gap:8px}
+.menu-trigger::after{content:'▾';font-size:11px;opacity:.75}
+.header-menu[open] .menu-trigger{opacity:1;border-color:var(--border-strong);background:var(--secondary-panel)}
+.header-dropdown{position:absolute;top:calc(100% + 8px);right:0;min-width:280px;padding:10px;border-radius:var(--radius2);border:1px solid var(--border-strong);background:rgba(11,16,32,.96);backdrop-filter:blur(16px);box-shadow:var(--shadow);z-index:120}
+.menu-list{display:flex;flex-direction:column;gap:8px}
+.menu-item-btn{width:100%;text-align:left;background:var(--primary-panel);color:var(--text);border:1px solid var(--border);padding:11px 12px;border-radius:10px;font-size:13px;font-weight:700}
+.menu-item-btn:hover{border-color:var(--border-strong);background:var(--secondary-panel)}
+.menu-item-btn:disabled{opacity:.45;cursor:not-allowed}
 .compliance-dot{width:20px;height:20px;border-radius:50%;margin-left:10px;flex-shrink:0;margin-right:16px;align-self:center}
 .compliance-dot.status-empty{background:transparent;border:1px solid var(--border)}
 .compliance-dot.status-ok{background:var(--ok)}
@@ -121,10 +134,33 @@ label.label-required::after{
   <div id="complianceDot" class="compliance-dot status-empty"></div>
   <div class="title"><h1>Schallpegelmessung – DIN 15905‑5</h1></div>
   <div class="header-controls">
-    <button id="btnImport" class="icon-btn subtle" title="Log importieren">Log importieren</button>
-    <button id="btnPdf" class="icon-btn subtle" onclick="generatePDF()" disabled title="PDF exportieren">PDF exportieren</button>
-    <button id="btnExportHtml" class="icon-btn subtle" disabled title="Stand speichern (derzeit deaktiviert)">Stand speichern</button>
+    <div class="header-main-actions">
+      <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
+      <button id="btnPdf" class="icon-btn subtle" type="button" onclick="generatePDF()" disabled title="Messbericht als PDF-Vorschau oeffnen">PDF-Vorschau</button>
+    </div>
+    <div class="header-secondary-actions">
+      <details class="header-menu">
+        <summary class="icon-btn subtle menu-trigger" title="Speicheroptionen fuer lokale Dateien und HTML-Export anzeigen">Speichern</summary>
+        <div class="header-dropdown">
+          <div class="menu-list">
+            <button id="btnSaveState" class="menu-item-btn" type="button" title="Speichert Log, Diagramme und Eingaben als bearbeitbare Projektdatei fuer spaeteres Weiterarbeiten.">Projektdatei speichern (.json)</button>
+            <button id="btnExportHtml" class="menu-item-btn" type="button" title="Erstellt eine lokal oeffenbare HTML-Datei mit dem aktuellen Stand, die spaeter auch wieder geladen werden kann.">HTML-Datei speichern</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="header-menu">
+        <summary class="icon-btn subtle menu-trigger" title="Optionen zum Laden gespeicherter Staende oder zum Wiederherstellen der letzten Sitzung anzeigen">Laden</summary>
+        <div class="header-dropdown">
+          <div class="menu-list">
+            <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Gespeicherten Stand laden</button>
+            <button id="btnRecover" class="menu-item-btn" type="button" style="display:none" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung wiederherstellen</button>
+          </div>
+        </div>
+      </details>
+    </div>
     <input type="file" id="fileInput" accept=".txt" style="display:none" />
+    <input type="file" id="stateInput" accept=".json,.nti,.html,.htm" style="display:none" />
     <div class="chips" style="margin-left:16px">
       <div class="chip"><span class="dot warn" id="dotLog"></span><span id="chipLog">Log: nicht geladen</span></div>
       <div class="chip"><span class="dot warn" id="dotSummary"></span><span id="chipSummary">Summary: —</span></div>
@@ -155,11 +191,11 @@ label.label-required::after{
       <div class="grid-2" style="margin-top:10px; gap:24px">
         <div>
           <div class="small" id="laeqChartLabel">LAeq mit Grenzwert 99 dB(A)</div>
-          <canvas id="chartLAeq" height="260"></canvas>
+          <canvas id="chartLAeq"></canvas>
         </div>
         <div>
           <div class="small">LCpeak mit Grenzwert 135 dB(C)</div>
-          <canvas id="chartLCpeak" height="260"></canvas>
+          <canvas id="chartLCpeak"></canvas>
         </div>
       </div>
     </div>
@@ -194,7 +230,6 @@ label.label-required::after{
 
 
   </div>
-
   <div id="rightColumn">
     <div class="section grid-2">
       <div>
@@ -302,6 +337,15 @@ let logLoaded = false;
 const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
 const MAX_LOG_BYTES = 8 * 1024 * 1024;
+const STATE_SCHEMA_VERSION = 1;
+const RECOVERY_STORAGE_KEY = 'nti_tool_recovery_v1';
+const RECOVERY_DEBOUNCE_MS = 700;
+const FORM_FIELD_IDS = [
+  'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
+  'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN'
+];
+let recoverySaveTimer = null;
+let recoveryFallbackNotified = false;
 
 const CHART_THEMES = {
   dark: {
@@ -355,21 +399,378 @@ const PA_PRESETS = {
   ]
 };
 
-let header = {
-  deviceModel:"", deviceSN:"", firmware:"",
-  micType:"", micSN:"", micCal:"", micSens:"",
-  k1:"", k2:"", kset:"",
-  start:"", end:"",
-  logIntervalText:"", logIntervalSec:1
-};
+function makeEmptyHeader(){
+  return {
+    deviceModel:"", deviceSN:"", firmware:"",
+    micType:"", micSN:"", micCal:"", micSens:"",
+    k1:"", k2:"", kset:"",
+    start:"", end:"",
+    logIntervalText:"", logIntervalSec:1
+  };
+}
+
+function makeEmptySummary(){
+  return { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null };
+}
+
+let header = makeEmptyHeader();
 
 let parsedColumns = { available:[], used:{} };
-let summary = { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null };
+let summary = makeEmptySummary();
 
 function el(id){ return document.getElementById(id); }
 function setText(id, t){ if(el(id)) el(id).textContent = String(t ?? ""); }
 function getVal(id){ return (el(id)?.value ?? "").toString(); }
 function setVal(id, v){ if(el(id)) el(id).value = (v ?? "").toString(); }
+
+function getFormState(){
+  const out = {};
+  for(const id of FORM_FIELD_IDS){ out[id] = getVal(id); }
+  return out;
+}
+
+function setFormState(form){
+  if(!form || typeof form !== 'object') return;
+  for(const id of FORM_FIELD_IDS){ if(Object.prototype.hasOwnProperty.call(form, id)) setVal(id, form[id]); }
+}
+
+function collectPAItems(){
+  const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
+  return rows.map(r=>{
+    const sel = r.querySelector('select');
+    const custom = r.querySelector('input[placeholder="Eigener Typ"]');
+    const num = r.querySelector('input[type="number"]');
+    const type = sel ? sel.value : '';
+    const customType = custom ? custom.value : '';
+    const qtyRaw = num ? String(num.value || '').trim() : '';
+    const qty = qtyRaw ? Number(qtyRaw) : null;
+    if(!type && !customType && (qtyRaw === '')) return null;
+    return { type, customType, qty: (qty!=null && Number.isFinite(qty)) ? qty : null };
+  }).filter(Boolean);
+}
+
+function restorePAItems(items){
+  const container = el('paContainer');
+  if(!container) return;
+  container.innerHTML = '';
+
+  if(!Array.isArray(items) || !items.length){
+    applyLocationPreset(getVal('location'));
+    return;
+  }
+
+  for(const it of items){
+    const row = paRow('', '');
+    const sel = row.querySelector('select');
+    const custom = row.querySelector('input[placeholder="Eigener Typ"]');
+    const num = row.querySelector('input[type="number"]');
+    const isCustom = it.type === 'custom' || (it.customType && it.type !== 'custom');
+    if(sel){
+      sel.value = isCustom ? 'custom' : (it.type || '');
+      try{ sel.dispatchEvent(new Event('change')); }catch(e){}
+    }
+    if(custom && isCustom){
+      custom.value = it.customType || '';
+      custom.style.display = 'block';
+    }
+    if(num && it.qty!=null && Number.isFinite(Number(it.qty))) num.value = Number(it.qty);
+    container.appendChild(row);
+  }
+  setText('paPresetInfo', 'Preset: gespeichert');
+}
+
+function buildStateObject(options = {}){
+  const includeSamples = options.includeSamples !== false;
+  const includeChartSamples = options.includeChartSamples !== false;
+  const includeLogText = options.includeLogText !== false;
+  return {
+    schemaVersion: STATE_SCHEMA_VERSION,
+    sourceApp: 'nti_tool',
+    savedAt: new Date().toISOString(),
+    header: header,
+    samples: includeSamples ? samples : [],
+    chartSamples: includeChartSamples ? chartSamples : [],
+    summary: summary,
+    logLoaded: !!logLoaded,
+    form: getFormState(),
+    paItems: collectPAItems(),
+    logText: includeLogText ? lastLogText : '',
+    logFileName: lastLogFileName || ''
+  };
+}
+
+function normalizeState(raw){
+  if(!raw || typeof raw !== 'object') return null;
+
+  const normalizedForm = {};
+  const srcForm = (raw.form && typeof raw.form === 'object') ? raw.form : {};
+  for(const id of FORM_FIELD_IDS){ normalizedForm[id] = (srcForm[id] ?? '').toString(); }
+
+  const srcHeader = (raw.header && typeof raw.header === 'object') ? raw.header : {};
+  const normalizedHeader = { ...makeEmptyHeader(), ...srcHeader };
+  normalizedHeader.logIntervalSec = Number(normalizedHeader.logIntervalSec);
+  if(!Number.isFinite(normalizedHeader.logIntervalSec) || normalizedHeader.logIntervalSec <= 0){
+    normalizedHeader.logIntervalSec = 1;
+  }
+
+  const srcSummary = (raw.summary && typeof raw.summary === 'object') ? raw.summary : {};
+  const normalizedSummary = { ...makeEmptySummary(), ...srcSummary };
+
+  const normalizedPA = Array.isArray(raw.paItems)
+    ? raw.paItems.map(it=>({
+        type: String(it?.type ?? ''),
+        customType: String(it?.customType ?? ''),
+        qty: (it?.qty != null && Number.isFinite(Number(it.qty))) ? Number(it.qty) : null
+      })).filter(it => it.type || it.customType || it.qty != null)
+    : [];
+
+  return {
+    schemaVersion: Number(raw.schemaVersion) || 0,
+    sourceApp: String(raw.sourceApp || ''),
+    savedAt: String(raw.savedAt || ''),
+    header: normalizedHeader,
+    samples: Array.isArray(raw.samples) ? raw.samples : [],
+    chartSamples: Array.isArray(raw.chartSamples) ? raw.chartSamples : [],
+    summary: normalizedSummary,
+    form: normalizedForm,
+    paItems: normalizedPA,
+    logText: String(raw.logText || ''),
+    logFileName: String(raw.logFileName || ''),
+    logLoaded: !!raw.logLoaded
+  };
+}
+
+function updateStateChips(){
+  if(logLoaded && Array.isArray(samples) && samples.length){
+    setDot('dotLog','ok');
+    const name = lastLogFileName ? ` (${lastLogFileName})` : ' (gespeichert)';
+    setText('chipLog', `Log: geladen${name}`);
+  } else {
+    setDot('dotLog','warn');
+    setText('chipLog', 'Log: nicht geladen');
+  }
+
+  const hasSummary = summary && (summary.source && (summary.laeq_total!=null || summary.laeq_g30!=null || summary.lcpeak_max!=null));
+  if(hasSummary){ setDot('dotSummary','ok'); setText('chipSummary','Summary: verwendet'); }
+  else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden (Fallback)'); }
+}
+
+function updateRecoveryButton(){
+  const btn = el('btnRecover');
+  if(!btn) return;
+  let hasState = false;
+  try{ hasState = !!localStorage.getItem(RECOVERY_STORAGE_KEY); }catch(e){ hasState = false; }
+  btn.style.display = hasState ? 'block' : 'none';
+  btn.disabled = !hasState;
+}
+
+function closeHeaderMenus(exceptMenu = null){
+  document.querySelectorAll('.header-menu[open]').forEach(menu => {
+    if(exceptMenu && menu === exceptMenu) return;
+    menu.removeAttribute('open');
+  });
+}
+
+function persistRecoveryState(){
+  const store = (stateObj)=> localStorage.setItem(RECOVERY_STORAGE_KEY, JSON.stringify(stateObj));
+
+  try{
+    store(buildStateObject());
+    updateRecoveryButton();
+    return;
+  }catch(err){
+    console.warn('Full recovery save failed, trying compact fallback.', err);
+  }
+
+  try{
+    const compact = buildStateObject({ includeSamples:false, includeChartSamples:false, includeLogText:false });
+    compact.recoveryPartial = true;
+    compact.recoveryNote = 'Nur Formulardaten gespeichert (Speicherlimit).';
+    store(compact);
+    updateRecoveryButton();
+    if(!recoveryFallbackNotified){
+      recoveryFallbackNotified = true;
+      setText('parseInfo', 'Hinweis: Lokales Recovery wurde platzsparend gespeichert (nur Formulardaten).');
+    }
+  }catch(err2){
+    console.warn('Compact recovery save failed.', err2);
+    if(!recoveryFallbackNotified){
+      recoveryFallbackNotified = true;
+      setText('parseInfo', 'Hinweis: Lokales Recovery konnte nicht gespeichert werden (Browser-Speicher begrenzt).');
+    }
+  }
+}
+
+function scheduleRecoverySave(){
+  if(recoverySaveTimer) clearTimeout(recoverySaveTimer);
+  recoverySaveTimer = setTimeout(()=>{
+    recoverySaveTimer = null;
+    persistRecoveryState();
+  }, RECOVERY_DEBOUNCE_MS);
+}
+
+function applySavedState(rawState, options = {}){
+  const state = normalizeState(rawState);
+  if(!state) throw new Error('Ungueltiger Stand: keine gueltigen Zustandsdaten gefunden.');
+
+  setFormState(state.form);
+  restorePAItems(state.paItems);
+
+  header = state.header;
+  summary = state.summary;
+  samples = state.samples;
+  chartSamples = state.chartSamples;
+  lastLogText = state.logText;
+  lastLogFileName = state.logFileName;
+  logLoaded = Array.isArray(samples) && samples.length > 0;
+
+  writeHeaderToUI();
+
+  if(logLoaded){
+    calculateAndRender();
+  } else {
+    const tbody = document.querySelector('#pegelTabelle tbody');
+    if(tbody) tbody.innerHTML = '';
+    setText('chartInfo', '');
+    if(chartLAeq){ chartLAeq.destroy(); chartLAeq = null; }
+    if(chartLCpeak){ chartLCpeak.destroy(); chartLCpeak = null; }
+    el('btnPdf').disabled = true;
+    updateComplianceStatus();
+    updateStateChips();
+  }
+
+  markRequiredFields();
+  if(options.persistRecovery !== false) scheduleRecoverySave();
+}
+
+function recoverLastSession(){
+  let raw = '';
+  try{ raw = localStorage.getItem(RECOVERY_STORAGE_KEY) || ''; }
+  catch(err){ alert('Lokaler Browser-Speicher ist nicht verfuegbar.'); return; }
+
+  if(!raw){
+    updateRecoveryButton();
+    alert('Keine lokale Session zum Wiederherstellen gefunden.');
+    return;
+  }
+
+  try{
+    const parsed = JSON.parse(raw);
+    applySavedState(parsed, { persistRecovery:false });
+    const stamp = parsed && parsed.savedAt ? new Date(parsed.savedAt).toLocaleString('de-DE') : null;
+    setText('parseInfo', stamp ? `Lokale Session wiederhergestellt (${stamp}).` : 'Lokale Session wiederhergestellt.');
+  }catch(err){
+    console.error(err);
+    alert('Lokale Session konnte nicht wiederhergestellt werden.');
+  }
+}
+
+function triggerDownload(blob, fileName, openInNewTab){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  if(openInNewTab){
+    try{ window.open(url, '_blank'); }catch(e){ console.warn('Could not open preview tab', e); }
+  }
+  setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
+}
+
+function sanitizeBaseName(){
+  const datum = getVal('datumMessung').trim() || 'kein-datum';
+  const ev = getVal('eventName').trim() || 'unbenannt';
+  return `${datum} - ${ev} - Messprotokoll`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
+}
+
+function saveStateFile(){
+  try{
+    const state = buildStateObject();
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    triggerDownload(blob, `${sanitizeBaseName()}.nti.json`, false);
+    setText('parseInfo', 'Stand als Datei gespeichert.');
+  }catch(err){
+    console.error(err);
+    alert('Stand konnte nicht gespeichert werden: ' + String(err));
+  }
+}
+
+function extractEmbeddedStateFromHtml(html){
+  const text = String(html || '');
+  const marker = 'window.__SAVED_STATE__ = ';
+  let from = 0;
+
+  while(true){
+    const start = text.indexOf(marker, from);
+    if(start < 0) return null;
+
+    let i = start + marker.length;
+    while(i < text.length && /\s/.test(text[i])) i++;
+
+    // Ignore source-code occurrences like "const marker = 'window.__SAVED_STATE__ = '".
+    if(text[i] !== '{'){
+      from = start + marker.length;
+      continue;
+    }
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for(let j=i; j<text.length; j++){
+      const ch = text[j];
+      if(inString){
+        if(escaped){ escaped = false; continue; }
+        if(ch === '\\'){ escaped = true; continue; }
+        if(ch === '"'){ inString = false; }
+        continue;
+      }
+      if(ch === '"'){ inString = true; continue; }
+      if(ch === '{') depth++;
+      if(ch === '}'){
+        depth--;
+        if(depth === 0){
+          return JSON.parse(text.slice(i, j+1));
+        }
+      }
+    }
+
+    from = start + marker.length;
+  }
+}
+
+function parseStateFromText(name, text){
+  const lower = String(name || '').toLowerCase();
+  if(lower.endsWith('.html') || lower.endsWith('.htm') || String(text).includes('window.__SAVED_STATE__')){
+    const embedded = extractEmbeddedStateFromHtml(text);
+    if(embedded) return embedded;
+    throw new Error('In der HTML-Datei wurde kein gespeicherter Zustand gefunden.');
+  }
+  return JSON.parse(text);
+}
+
+function handleStateFileInputChange(e){
+  const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+  if(!f) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const text = String(evt.target.result || '');
+      const parsed = parseStateFromText(f.name, text);
+      applySavedState(parsed, { persistRecovery:true });
+      setText('parseInfo', `Gespeicherter Stand geladen (${f.name}).`);
+    }catch(err){
+      console.error(err);
+      alert('Stand konnte nicht geladen werden: ' + String(err && err.message ? err.message : err));
+    }finally{
+      if(e.target) e.target.value = '';
+    }
+  };
+  reader.readAsText(f);
+}
 
 function setDot(dotId, state){
   const d = el(dotId);
@@ -470,13 +871,7 @@ function setUsedColumns(col){
 }
 
 function parseHeaderAndMeta(text){
-  header = {
-    deviceModel:"", deviceSN:"", firmware:"",
-    micType:"", micSN:"", micCal:"", micSens:"",
-    k1:"", k2:"", kset:"",
-    start:"", end:"",
-    logIntervalText:"", logIntervalSec:1
-  };
+  header = makeEmptyHeader();
 
   const lines = splitLines(text);
 
@@ -673,7 +1068,7 @@ function parseBroadbandTimeSeries(text){
 }
 
 function parseBroadbandSummary(text){
-  summary = { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null };
+  summary = makeEmptySummary();
   const lines = splitLines(text);
 
   let idxHdr = -1;
@@ -940,6 +1335,8 @@ function mkChart(canvas, label, values, limit, limitLabel){
     },
     options:{
       responsive:true,
+      maintainAspectRatio:true,
+      aspectRatio:1.6,
       devicePixelRatio: 2,
       animation:false,
       interaction:{mode:'index',intersect:false},
@@ -985,14 +1382,40 @@ function mkChart(canvas, label, values, limit, limitLabel){
   });
 }
 
+function refreshChartLayout(){
+  const resize = ()=>{
+    if(chartLAeq){ chartLAeq.resize(); chartLAeq.update('none'); }
+    if(chartLCpeak){ chartLCpeak.resize(); chartLCpeak.update('none'); }
+  };
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(resize);
+  });
+  setTimeout(resize, 140);
+}
+
+function resetChartCanvas(id){
+  const canvas = el(id);
+  if(!canvas || !canvas.parentNode) return canvas;
+
+  const replacement = document.createElement('canvas');
+  replacement.id = id;
+  if(canvas.className) replacement.className = canvas.className;
+  if(canvas.style.cssText) replacement.style.cssText = canvas.style.cssText;
+  canvas.parentNode.replaceChild(replacement, canvas);
+  return replacement;
+}
+
 function renderCharts(){
   if(chartLAeq) chartLAeq.destroy();
   if(chartLCpeak) chartLCpeak.destroy();
   if(!chartSamples.length) return;
+  const laeqCanvas = resetChartCanvas('chartLAeq');
+  const lcpeakCanvas = resetChartCanvas('chartLCpeak');
   const la = chartSamples.map(s=>s.LAeq);
   const lc = chartSamples.map(s=>s.LC);
-  chartLAeq = mkChart(el('chartLAeq'), 'LAeq', la, LIMIT_LAEQ_30, `Grenzwert ${LIMIT_LAEQ_30} dB(A)`);
-  chartLCpeak = mkChart(el('chartLCpeak'), 'LCpeak', lc, LIMIT_LCPEAK, `Grenzwert ${LIMIT_LCPEAK} dB(C)`);
+  chartLAeq = mkChart(laeqCanvas, 'LAeq', la, LIMIT_LAEQ_30, `Grenzwert ${LIMIT_LAEQ_30} dB(A)`);
+  chartLCpeak = mkChart(lcpeakCanvas, 'LCpeak', lc, LIMIT_LCPEAK, `Grenzwert ${LIMIT_LCPEAK} dB(C)`);
+  refreshChartLayout();
 }
 
 function calculateAndRender(){
@@ -1091,17 +1514,36 @@ function applyLocationPreset(loc){
   }
 }
 
-el('btnAddPA').addEventListener('click', ()=> el('paContainer').appendChild(paRow('', '')) );
-el('btnClearPA').addEventListener('click', ()=> applyLocationPreset(getVal('location')) );
-el('location').addEventListener('change', ()=> applyLocationPreset(getVal('location')) );
+el('btnAddPA').addEventListener('click', ()=> {
+  el('paContainer').appendChild(paRow('', ''));
+  scheduleRecoverySave();
+});
+el('btnClearPA').addEventListener('click', ()=> {
+  applyLocationPreset(getVal('location'));
+  scheduleRecoverySave();
+});
+el('location').addEventListener('change', ()=> {
+  applyLocationPreset(getVal('location'));
+  scheduleRecoverySave();
+});
+
+el('paContainer').addEventListener('input', scheduleRecoverySave);
+el('paContainer').addEventListener('change', scheduleRecoverySave);
 
 const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName'];
 for(const id of requiredIds){
   const field = el(id);
   if(field){
-    field.addEventListener('input', markRequiredFields);
-    field.addEventListener('change', markRequiredFields);
+    field.addEventListener('input', ()=>{ markRequiredFields(); scheduleRecoverySave(); });
+    field.addEventListener('change', ()=>{ markRequiredFields(); scheduleRecoverySave(); });
   }
+}
+
+for(const id of FORM_FIELD_IDS){
+  const field = el(id);
+  if(!field) continue;
+  field.addEventListener('input', scheduleRecoverySave);
+  field.addEventListener('change', scheduleRecoverySave);
 }
 
 function getPASetupInline(){
@@ -1561,45 +2003,7 @@ async function generatePDF(){
 
 function exportHTML(){
   try{
-    const state = {
-      header: header,
-      samples: samples,
-      chartSamples: chartSamples,
-      summary: summary,
-      logLoaded: logLoaded,
-      form: {
-        eventName: getVal('eventName'),
-        datumMessung: getVal('datumMessung'),
-        location: getVal('location'),
-        umwelt: getVal('umwelt'),
-        messungVon: getVal('messungVon'),
-        messposition: getVal('messposition'),
-        lautestePosition: getVal('lautestePosition'),
-        foh: getVal('foh'),
-        organisator: getVal('organisator'),
-        beschreibung: getVal('beschreibung'),
-        berichtDatum: getVal('berichtDatum'),
-        berichtName: getVal('berichtName'),
-        kalibratorModell: getVal('kalibratorModell'),
-        kalibratorSN: getVal('kalibratorSN')
-      },
-      paItems: (function(){
-        const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
-        return rows.map(r=>{
-          const sel = r.querySelector('select');
-          const custom = r.querySelector('input[placeholder="Eigener Typ"]');
-          const num = r.querySelector('input[type="number"]');
-          const type = sel ? sel.value : '';
-          const customType = custom ? custom.value : '';
-          const qtyRaw = num ? String(num.value || '').trim() : '';
-          const qty = qtyRaw ? Number(qtyRaw) : null;
-          if(!type && !customType && (qtyRaw === '')) return null;
-          return { type, customType, qty: (qty!=null && Number.isFinite(qty)) ? qty : null };
-        }).filter(Boolean);
-      })(),
-      logText: lastLogText,
-      logFileName: lastLogFileName
-    };
+    const state = buildStateObject();
 
     const __state_json = JSON.stringify(state)
       .replace(/</g, '\\u003c')
@@ -1611,96 +2015,63 @@ function exportHTML(){
   (function(){
     const state = (window.__SAVED_STATE__ || null);
     if(!state) return;
-    function safeSet(id, val){ const e = document.getElementById(id); if(e) e.value = (val ?? '').toString(); }
-    function restorePA(items){
-      const container = document.getElementById('paContainer');
-      if(!container) return;
-      container.innerHTML = '';
-      if(!items || !items.length){
-        if(typeof applyLocationPreset === 'function') applyLocationPreset(document.getElementById('location')?.value || '');
-        return;
-      }
-      for(const it of items){
-        const row = (typeof paRow === 'function') ? paRow('', '') : null;
-        if(!row) continue;
-        const sel = row.querySelector('select');
-        const custom = row.querySelector('input[placeholder="Eigener Typ"]');
-        const num = row.querySelector('input[type="number"]');
-        const isCustom = it.type === 'custom' || (it.customType && it.type !== 'custom');
-        if(sel){
-          sel.value = isCustom ? 'custom' : (it.type || '');
-          try{ sel.dispatchEvent(new Event('change')); }catch(e){}
-        }
-        if(custom && isCustom){
-          custom.value = it.customType || '';
-          custom.style.display = 'block';
-        }
-        if(num && it.qty!=null) num.value = it.qty;
-        container.appendChild(row);
-      }
-      if(typeof setText === 'function') setText('paPresetInfo','Preset: gespeichert');
-    }
     function restore(){
-      if(state.form){
-        safeSet('eventName', state.form.eventName);
-        safeSet('datumMessung', state.form.datumMessung);
-        safeSet('location', state.form.location);
-        safeSet('umwelt', state.form.umwelt);
-        safeSet('messungVon', state.form.messungVon);
-        safeSet('messposition', state.form.messposition);
-        safeSet('lautestePosition', state.form.lautestePosition);
-        safeSet('foh', state.form.foh);
-        safeSet('organisator', state.form.organisator);
-        safeSet('beschreibung', state.form.beschreibung);
-        safeSet('berichtDatum', state.form.berichtDatum);
-        safeSet('berichtName', state.form.berichtName);
-        safeSet('kalibratorModell', state.form.kalibratorModell);
-        safeSet('kalibratorSN', state.form.kalibratorSN);
+      if(typeof applySavedState === 'function'){
+        try{ applySavedState(state, { persistRecovery:false }); return; }catch(e){ console.error(e); }
       }
-      if(state.paItems) restorePA(state.paItems);
-      if(typeof header !== 'undefined' && state.header) header = state.header;
-      if(typeof samples !== 'undefined') samples = state.samples || [];
-      if(typeof chartSamples !== 'undefined') chartSamples = state.chartSamples || [];
-      if(typeof summary !== 'undefined') summary = state.summary || {};
-      if(typeof lastLogText !== 'undefined') lastLogText = state.logText || '';
-      if(typeof lastLogFileName !== 'undefined') lastLogFileName = state.logFileName || '';
-      if(typeof logLoaded !== 'undefined') logLoaded = !!state.logLoaded || (samples && samples.length);
-      if(typeof writeHeaderToUI === 'function') writeHeaderToUI();
-      if(typeof calculateAndRender === 'function' && samples && samples.length){
-        try{ calculateAndRender(); }catch(e){ console.error(e); }
-      } else if(typeof updateComplianceStatus === 'function'){
-        updateComplianceStatus();
-      }
-      if(typeof setDot === 'function' && typeof setText === 'function'){
-        if(logLoaded){
-          setDot('dotLog','ok');
-          const name = lastLogFileName ? (' (' + lastLogFileName + ')') : ' (gespeichert)';
-          setText('chipLog', 'Log: geladen' + name);
-        } else {
-          setDot('dotLog','warn');
-          setText('chipLog', 'Log: nicht geladen');
-        }
-        const hasSummary = summary && (summary.source && (summary.laeq_total!=null || summary.laeq_g30!=null || summary.lcpeak_max!=null));
-        if(hasSummary){ setDot('dotSummary','ok'); setText('chipSummary','Summary: verwendet'); }
-        else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden (Fallback)'); }
-      }
-      if(typeof markRequiredFields === 'function') markRequiredFields();
+      if(typeof setText === 'function') setText('parseInfo', 'Hinweis: Gespeicherter Stand erkannt, automatische Wiederherstellung aber nicht verfuegbar.');
     }
     if(document.readyState === 'complete') restore();
     else window.addEventListener('load', restore);
   })();
 <\/script>`;
 
-    const html = document.documentElement.outerHTML.replace('</body>', stateTag + '\n' + restoreScript + '\n</body>');
+    const privacyNote = `\n<!-- DATENSCHUTZ: Diese Datei enthaelt alle eingegebenen Daten im Klartext und sollte vertraulich behandelt werden. -->`;
+
+    const htmlRaw = document.documentElement.outerHTML;
+    const bodyClose = '</body>';
+    const insertAt = htmlRaw.toLowerCase().lastIndexOf(bodyClose);
+    if(insertAt < 0) throw new Error('Konnte </body> im Dokument nicht finden.');
+    const html = htmlRaw.slice(0, insertAt)
+      + stateTag + '\n' + restoreScript + privacyNote + '\n'
+      + htmlRaw.slice(insertAt);
 
     const blob = new Blob([html], {type:'text/html'});
-    const fname = `${(getVal('datumMessung')||'kein-datum')} - ${(getVal('eventName')||'unbenannt')} - Messprotokoll.html`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
-    try{ window.open(url, '_blank'); }catch(e){ console.warn('Could not open preview tab', e); }
-    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
+    const fname = `${sanitizeBaseName()}.html`;
+    triggerDownload(blob, fname, true);
+    setText('parseInfo', 'Stand als HTML gespeichert.');
   }catch(err){ alert('Fehler beim Exportieren: '+String(err)); console.error(err); }
 }
+
+el('btnExportHtml').addEventListener('click', ()=>{
+  closeHeaderMenus();
+  exportHTML();
+});
+el('btnSaveState').addEventListener('click', ()=>{
+  closeHeaderMenus();
+  saveStateFile();
+});
+el('btnLoadState').addEventListener('click', ()=>{
+  closeHeaderMenus();
+  const inp = el('stateInput');
+  if(inp) inp.click();
+});
+el('stateInput').addEventListener('change', handleStateFileInputChange);
+el('btnRecover').addEventListener('click', ()=>{
+  closeHeaderMenus();
+  recoverLastSession();
+});
+
+document.addEventListener('click', (event)=>{
+  if(event.target && event.target.closest('.header-menu')) return;
+  closeHeaderMenus();
+});
+
+document.querySelectorAll('.header-menu').forEach(menu => {
+  menu.addEventListener('toggle', ()=>{
+    if(menu.open) closeHeaderMenus(menu);
+  });
+});
 
 // wire import button to hidden file input
 el('btnImport').addEventListener('click', ()=>{
@@ -1761,6 +2132,7 @@ el('fileInput').addEventListener('change', (e)=>{
       setDot('dotLog','ok');
       setText('chipLog', `Log: geladen (${f.name})`);
       calculateAndRender();
+      scheduleRecoverySave();
 
     }catch(err){
       console.error(err);
@@ -1781,6 +2153,9 @@ el('fileInput').addEventListener('change', (e)=>{
   setVal('berichtDatum', today);
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
   markRequiredFields();
+  updateRecoveryButton();
+  window.addEventListener('beforeunload', persistRecoveryState);
+  window.addEventListener('pagehide', persistRecoveryState);
 })();
 </script>
 
