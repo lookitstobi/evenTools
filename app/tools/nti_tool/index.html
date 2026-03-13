@@ -140,6 +140,7 @@ label.label-required::after{
           <tr>
             <th>Wert</th>
             <th>Gemessen</th>
+            <th>Überschreitungsdauer</th>
             <th>Grenzwert</th>
             <th>Status</th>
           </tr>
@@ -300,6 +301,7 @@ let logLoaded = false;
 
 const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
+const MAX_LOG_BYTES = 8 * 1024 * 1024;
 
 const CHART_THEMES = {
   dark: {
@@ -310,6 +312,7 @@ const CHART_THEMES = {
     line: '#90caf9',
     limit: '#ffb74d',
     exceed: '#ff6b6b',
+    maxPoint: '#ff3b30',
     tooltipBg: '#23282f',
     tooltipText: '#e6e9ed'
   },
@@ -321,6 +324,7 @@ const CHART_THEMES = {
     line: '#2563eb',
     limit: '#f59e0b',
     exceed: '#ef4444',
+    maxPoint: '#dc2626',
     tooltipBg: '#ffffff',
     tooltipText: '#111827'
   }
@@ -493,6 +497,12 @@ function parseHeaderAndMeta(text){
     return "";
   }
 
+  function parseKValueTail(tail){
+    const m = String(tail || '').match(/[+-]?\d+(?:[.,]\d+)?/);
+    if(m) return m[0].replace(',', '.');
+    return String(tail || '').trim().split(/\s+/)[0] || "";
+  }
+
   // Device
   const devLine = findValueContains("Device Info") || findValueContains("Device information") || "";
   if(devLine){
@@ -527,7 +537,7 @@ function parseHeaderAndMeta(text){
   }
 
   header.micSens = findValueContains("Mic Sensitivity") || findValueContains("Microphone Sensitivity") || "";
-  header.kset = findValueContains("kset date") || "";
+  header.kset = findValueContains("kset date") || findValueContains("kset") || "";
   header.logIntervalText = findValueContains("Log-Interval") || findValueContains("Log Interval") || "";
   header.logIntervalSec = parseIntervalSeconds(header.logIntervalText);
 
@@ -537,11 +547,11 @@ function parseHeaderAndMeta(text){
     const sl = s.toLowerCase();
     if(sl.includes("k1:") && !header.k1){
       const i = sl.indexOf("k1:");
-      header.k1 = s.slice(i+3).trim().split(/\s+/)[0];
+      header.k1 = parseKValueTail(s.slice(i+3).trim());
     }
     if(sl.includes("k2:") && !header.k2){
       const i = sl.indexOf("k2:");
-      header.k2 = s.slice(i+3).trim().split(/\s+/)[0];
+      header.k2 = parseKValueTail(s.slice(i+3).trim());
     }
   }
 
@@ -721,21 +731,76 @@ function calcEnergyAvgDb(values){
 }
 
 function downsampleForDisplay(raw, maxPoints=900){
-  const n = raw.length;
-  if(n<=maxPoints){
-    return { data: raw.map(s=>({date:s.date, time:s.time, LAeq:(s.LAeq_g30 ?? s.LAeq_dt), LC:s.LCpk})), bucketSize:1 };
+  const normalized = raw.map((s, idx)=>({
+    sourceIndex: idx,
+    date: s.date,
+    time: s.time,
+    LAeq: (s.LAeq_g30 ?? s.LAeq_dt),
+    LC: s.LCpk
+  }));
+
+  function maxIndexByKey(arr, key){
+    let idx = -1;
+    let max = -Infinity;
+    for(let i=0;i<arr.length;i++){
+      const v = arr[i]?.[key];
+      if(v==null || !Number.isFinite(v)) continue;
+      if(v > max){
+        max = v;
+        idx = i;
+      }
+    }
+    return idx;
   }
+
+  const n = normalized.length;
+  if(n<=maxPoints){
+    return {
+      data: normalized.map(s=>({date:s.date, time:s.time, LAeq:s.LAeq, LC:s.LC})),
+      bucketSize:1,
+      injectedPeaks:0
+    };
+  }
+
   const bucketSize = Math.ceil(n/maxPoints);
   const out=[];
   for(let i=0;i<n;i+=bucketSize){
-    const chunk = raw.slice(i, i+bucketSize);
-    const laVals = chunk.map(s => (s.LAeq_g30 ?? s.LAeq_dt)).filter(v=>v!=null && Number.isFinite(v));
-    const lcVals = chunk.map(s => s.LCpk).filter(v=>v!=null && Number.isFinite(v));
+    const chunk = normalized.slice(i, i+bucketSize);
+    const laVals = chunk.map(s => s.LAeq).filter(v=>v!=null && Number.isFinite(v));
+    const lcVals = chunk.map(s => s.LC).filter(v=>v!=null && Number.isFinite(v));
     const LAeq = calcEnergyAvgDb(laVals);
     const LC   = lcVals.length ? Math.max(...lcVals) : null;
-    out.push({ date: chunk[0].date, time: chunk[0].time, LAeq, LC });
+    out.push({ sourceIndex: chunk[0].sourceIndex, date: chunk[0].date, time: chunk[0].time, LAeq, LC });
   }
-  return { data: out, bucketSize };
+
+  const mustKeep = new Set();
+  const maxLAIdx = maxIndexByKey(normalized, 'LAeq');
+  const maxLCIdx = maxIndexByKey(normalized, 'LC');
+  if(maxLAIdx >= 0) mustKeep.add(maxLAIdx);
+  if(maxLCIdx >= 0) mustKeep.add(maxLCIdx);
+
+  const outIdx = new Set(out.map(p=>p.sourceIndex));
+  let injectedPeaks = 0;
+  for(const idx of mustKeep){
+    if(outIdx.has(idx)) continue;
+    const s = normalized[idx];
+    out.push({
+      sourceIndex: s.sourceIndex,
+      date: s.date,
+      time: s.time,
+      LAeq: s.LAeq,
+      LC: s.LC,
+      _forcedPeak: true
+    });
+    injectedPeaks++;
+  }
+
+  out.sort((a,b)=>a.sourceIndex - b.sourceIndex);
+  return {
+    data: out.map(({date,time,LAeq,LC})=>({date,time,LAeq,LC})),
+    bucketSize,
+    injectedPeaks
+  };
 }
 
 function countExceedDuration(values, limit){
@@ -744,28 +809,19 @@ function countExceedDuration(values, limit){
   return count * (header.logIntervalSec || 1);
 }
 
-function addRow(name, value, limit, isDuration=false){
+function addRow(name, value, limit, exceedDuration=null){
   const tbody = document.querySelector('#pegelTabelle tbody');
   let ok = null;
-  let valueText = '—';
-  if(isDuration){
-    valueText = (typeof value === 'number') ? secondsToHMS(value) : '—';
-    ok = (typeof value === 'number') ? (value <= 0) : null;
-  } else {
-    if(typeof value === 'number') valueText = value.toFixed(2) + ' dB';
-    if(typeof limit === 'number' && typeof value === 'number') ok = value <= limit;
-  }
-  let limitText = '—';
-  if(isDuration){
-    limitText = '0:00';
-  } else if(typeof limit === 'number'){
-    limitText = limit + ' dB';
-  }
+  const valueText = (typeof value === 'number') ? value.toFixed(2) + ' dB' : '—';
+  const durationText = (typeof exceedDuration === 'number') ? secondsToHMS(exceedDuration) : '—';
+  const limitText = (typeof limit === 'number') ? (limit + ' dB') : '—';
+  if(typeof limit === 'number' && typeof value === 'number') ok = value <= limit;
   const status = ok===null ? '—' : (ok ? 'OK' : 'NICHT OK');
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td>${name}</td>
     <td>${valueText}</td>
+    <td>${durationText}</td>
     <td>${limitText}</td>
     <td class='${ok===null ? '' : (ok ? 'status-ok' : 'status-bad')}'>${status}</td>
   `;
@@ -811,6 +867,10 @@ function updateChartTheme(chart, theme){
   if(chart.data.datasets[0]) chart.data.datasets[0].borderColor = theme.line;
   if(chart.data.datasets[1]) chart.data.datasets[1].borderColor = theme.limit;
   if(chart.data.datasets[2]) chart.data.datasets[2].backgroundColor = theme.exceed;
+  if(chart.data.datasets[3]){
+    chart.data.datasets[3].pointBackgroundColor = theme.maxPoint;
+    chart.data.datasets[3].pointBorderColor = theme.label;
+  }
 }
 
 function applyChartTheme(name){
@@ -840,6 +900,30 @@ function updateComplianceStatus(){
   }
 }
 
+function buildMaxPointDataset(values, baseLabel, theme){
+  let maxIdx = -1;
+  let maxVal = -Infinity;
+  for(let i=0;i<values.length;i++){
+    const v = values[i];
+    if(v==null || !Number.isFinite(v)) continue;
+    if(v > maxVal){
+      maxVal = v;
+      maxIdx = i;
+    }
+  }
+  const data = values.map((_,i)=> (i === maxIdx ? maxVal : null));
+  return {
+    label: `${baseLabel} (Maximum)`,
+    data,
+    showLine: false,
+    pointRadius: 5,
+    pointHoverRadius: 6,
+    pointBackgroundColor: theme.maxPoint,
+    pointBorderColor: theme.label,
+    pointBorderWidth: 1.2
+  };
+}
+
 function mkChart(canvas, label, values, limit, limitLabel){
   const theme = CHART_THEMES[currentChartTheme] || CHART_THEMES.dark;
   return new Chart(canvas,{
@@ -850,7 +934,8 @@ function mkChart(canvas, label, values, limit, limitLabel){
       datasets:[
         { label, data: values, borderWidth: 2, pointRadius: 0, tension: 0.2, borderColor: theme.line },
         { label: limitLabel, data: chartSamples.map(()=>limit), borderWidth: 2, pointRadius: 0, borderDash: [6,4], borderColor: theme.limit },
-        { label: 'Überschreitung', data: values.map(v => (v!=null && v>limit) ? v : null), showLine:false, pointRadius: 4, backgroundColor: theme.exceed }
+        { label: 'Überschreitung', data: values.map(v => (v!=null && v>limit) ? v : null), showLine:false, pointRadius: 4, backgroundColor: theme.exceed },
+        buildMaxPointDataset(values, label, theme)
       ]
     },
     options:{
@@ -923,15 +1008,14 @@ function calculateAndRender(){
   const durLA = countExceedDuration(samples.map(s=> (s.LAeq_g30 ?? s.LAeq_dt)).filter(v=>v!=null), LIMIT_LAEQ_30);
   const durLC = countExceedDuration(samples.map(s=> s.LCpk).filter(v=>v!=null), LIMIT_LCPEAK);
 
-  addRow('LAeq,30min (g30)', laeqG30, LIMIT_LAEQ_30);
-  addRow('Überschreitungsdauer LAeq', durLA, 0, true);
-  addRow('LCpeak (max)', lcPeakMax, LIMIT_LCPEAK);
-  addRow('Überschreitungsdauer LCpeak', durLC, 0, true);
-  addRow('LAeq (Gesamt)', laeqTotal, null);
+  addRow('LAeq,30min (g30)', laeqG30, LIMIT_LAEQ_30, durLA);
+  addRow('LCpeak (max)', lcPeakMax, LIMIT_LCPEAK, durLC);
+  addRow('LAeq (Gesamt)', laeqTotal, LIMIT_LAEQ_30, null);
 
   const ds = downsampleForDisplay(samples, 900);
   chartSamples = ds.data;
-  setText('chartInfo', `Diagramme: ${samples.length.toLocaleString()} Originalpunkte → ${chartSamples.length.toLocaleString()} Punkte (je Punkt ~${ds.bucketSize*(header.logIntervalSec||1)}s).`);
+  const peakInfo = ds.injectedPeaks ? ` inkl. ${ds.injectedPeaks} echtem Spitzenwert-Punkt` : '';
+  setText('chartInfo', `Diagramme: ${samples.length.toLocaleString()} Originalpunkte → ${chartSamples.length.toLocaleString()} Punkte${peakInfo} (je Punkt ~${ds.bucketSize*(header.logIntervalSec||1)}s).`);
   setText('laeqChartLabel', (summary && summary.laeq_g30!=null) ? 'LAeq,30min (g30) Verlauf mit Grenzwert 99 dB(A)' : 'LAeq Verlauf mit Grenzwert 99 dB(A)');
 
   renderCharts();
@@ -1076,6 +1160,13 @@ async function generatePDF(){
   const doc = new jsPDF({unit:'mm', format:'a4'});
   const M = 12;
   const pageW = 210 - 2*M;
+  const pageH = doc.internal.pageSize.getHeight();
+  const footerSafeZone = 10;
+  const footerTextY = pageH - footerSafeZone;
+  const footerRuleY = footerTextY - 4;
+  const contentMaxY = footerRuleY - 6;
+  const signatureBlockHeight = 46;
+  const signatureTopY = contentMaxY - signatureBlockHeight;
 
   async function drawHeader(){
     const logoUrl = 'https://www.gve-essen.de/typo3conf/ext/sg_sitepackage/Resources/Public/gve/Assets/Images/gve-logo.png';
@@ -1135,12 +1226,39 @@ async function generatePDF(){
     doc.text('gemäß DIN 15905-5', M+2, 21);
   }
 
-  function drawFooter(pageNum){
+  function drawFooter(pageNum, totalPages){
+    doc.setDrawColor(225, 225, 225);
+    doc.line(M, footerRuleY, M+pageW, footerRuleY);
     doc.setFontSize(9);
     doc.setTextColor(150, 150, 150);
-    doc.text(`Seite ${pageNum}`, M, 297);
+    doc.text(`Seite ${pageNum}/${totalPages}`, M, footerTextY);
     const date = new Date().toLocaleDateString('de-DE');
-    doc.text(`Erstellt: ${date}`, M+pageW-40, 297);
+    const dateText = `Erstellt: ${date}`;
+    doc.text(dateText, M + pageW - doc.getTextWidth(dateText), footerTextY);
+  }
+
+  async function startNewPage(){
+    doc.addPage();
+    await drawHeader();
+    return 28;
+  }
+
+  async function ensureSpace(y, neededHeight){
+    if(y + neededHeight <= contentMaxY) return y;
+    return startNewPage();
+  }
+
+  async function ensureSpaceWithin(y, neededHeight, maxY){
+    if(y + neededHeight <= maxY) return y;
+    return startNewPage();
+  }
+
+  function drawAllFooters(){
+    const totalPages = doc.getNumberOfPages();
+    for(let pageNum = 1; pageNum <= totalPages; pageNum++){
+      doc.setPage(pageNum);
+      drawFooter(pageNum, totalPages);
+    }
   }
 
   function section(y, t){
@@ -1178,11 +1296,92 @@ async function generatePDF(){
     return y + Math.max(lines1.length, lines2.length)*4 + 6;
   }
 
-  function resultTable(y, rows){
+  function fieldTriple(y, label1, val1, label2, val2, label3, val3){
+    const gap = 4;
+    const colW = (pageW - (2*gap)) / 3;
+    const x1 = M;
+    const x2 = M + colW + gap;
+    const x3 = M + (2*(colW + gap));
+
+    doc.setFontSize(9);
+
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(label1, x1, y);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50, 50, 50);
+    const lines1 = wrap(doc, val1||'—', colW-4);
+    doc.text(lines1, x1, y+4);
+
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(label2, x2, y);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50, 50, 50);
+    const lines2 = wrap(doc, val2||'—', colW-4);
+    doc.text(lines2, x2, y+4);
+
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text(label3, x3, y);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50, 50, 50);
+    const lines3 = wrap(doc, val3||'—', colW-4);
+    doc.text(lines3, x3, y+4);
+
+    return y + Math.max(lines1.length, lines2.length, lines3.length)*4 + 6;
+  }
+
+  function textBox(y, text){
+    const lines = wrap(doc, text || '—', pageW - 4);
+    const boxH = Math.max(14, lines.length * 4 + 8);
+    doc.setDrawColor(210, 210, 210);
+    doc.rect(M, y, pageW, boxH);
+    doc.setFontSize(9);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50, 50, 50);
+    doc.text(lines, M + 2, y + 6);
+    return y + boxH;
+  }
+
+  function drawSignatureBlock(topY){
+    const sigTitleY = topY + 6;
+    doc.setFontSize(11);
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(50,50,50);
+    doc.text('Unterschrift', M, sigTitleY);
+
+    const sigFieldsY = sigTitleY + 6;
+    doc.setFontSize(9);
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100,100,100);
+    doc.text('Datum', M, sigFieldsY);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50,50,50);
+    doc.text(String(getVal('berichtDatum')||''), M+18, sigFieldsY);
+
+    doc.setFont(undefined,'bold');
+    doc.setTextColor(100,100,100);
+    doc.text('Name', M+pageW/2, sigFieldsY);
+    doc.setFont(undefined,'normal');
+    doc.setTextColor(50,50,50);
+    doc.text(String(getVal('berichtName')||''), M+pageW/2+18, sigFieldsY);
+
+    const sigBoxY = sigFieldsY + 6;
+    const sigBoxH = 28;
+    doc.setDrawColor(200,200,200);
+    doc.rect(M, sigBoxY, pageW, sigBoxH);
+    doc.setFontSize(9);
+    doc.setTextColor(120,120,120);
+    doc.text('Unterschrift (Platzhalter)', M+2, sigBoxY+6);
+  }
+
+  function resultTable(y, rows, maxY=contentMaxY){
     const cols = [
-      {t:'Parameter', w:70},
-      {t:'Messwert', w:36},
-      {t:'Grenzwert', w:36},
+      {t:'Parameter', w:58},
+      {t:'Messwert', w:24},
+      {t:'Dauer', w:36},
+      {t:'Grenzwert', w:24},
       {t:'Status', w:(pageW-142)}
     ];
 
@@ -1200,22 +1399,25 @@ async function generatePDF(){
     doc.setFont(undefined,'normal');
     let yy = y + h;
     doc.setTextColor(50, 50, 50);
+    let rowsDrawn = 0;
     for(const r of rows){
       const lineH = 6;
+      if(yy + lineH > maxY) break;
       doc.setDrawColor(230, 230, 230);
       doc.rect(M, yy, pageW, lineH);
       let xx = M;
-      for(let i=0;i<4;i++){
+      for(let i=0;i<5;i++){
         const text = String(r[i] ?? '');
-        if(i === 3 && text.includes('OK')) doc.setTextColor(76, 175, 80);
-        else if(i === 3 && text.includes('NICHT OK')) doc.setTextColor(255, 82, 82);
+        if(i === 4 && text.includes('NICHT OK')) doc.setTextColor(255, 82, 82);
+        else if(i === 4 && text.includes('OK')) doc.setTextColor(76, 175, 80);
         else doc.setTextColor(50, 50, 50);
         doc.text(text, xx+2, yy+5);
         xx += cols[i].w;
       }
       yy += lineH;
+      rowsDrawn++;
     }
-    return yy;
+    return { y: yy, rowsDrawn };
   }
 
   const ev = getVal('eventName').trim() || '(unbenannt)';
@@ -1224,81 +1426,92 @@ async function generatePDF(){
   // Seite 1: Übersicht
   await drawHeader();
   let y = 28;
+  const firstPageMaxY = signatureTopY - 2;
 
   y = section(y, 'Details');
   y += 2;
+  y = await ensureSpaceWithin(y, 12, firstPageMaxY);
   y = fieldPair(y, 'Veranstaltung', ev, 'Datum', dt);
+  y = await ensureSpaceWithin(y, 12, firstPageMaxY);
   y = fieldPair(y, 'Location', getVal('location'), 'Umgebung', getVal('umwelt'));
 
   // Organisator & Beschreibung am Ende des Details-Blocks
   const colGapLocal = 10;
   const colWLocal = (pageW - colGapLocal)/2;
+  const orgLines = wrap(doc, getVal('organisator'), colWLocal - 4);
+  const beschrLines = wrap(doc, getVal('beschreibung'), colWLocal - 4);
+  const boxHLocal = Math.max(26, Math.max(orgLines.length, beschrLines.length)*4 + 8);
+  y = await ensureSpaceWithin(y, 3 + boxHLocal + 8, firstPageMaxY);
   doc.setFontSize(10);
   doc.setFont(undefined,'bold');
   doc.text('Organisator:', M, y);
   doc.text('Beschreibung:', M + colWLocal + colGapLocal, y);
   const boxYLocal = y + 3;
-  const boxHLocal = 26;
   doc.setDrawColor(210,210,210);
   doc.rect(M, boxYLocal, colWLocal, boxHLocal);
   doc.rect(M + colWLocal + colGapLocal, boxYLocal, colWLocal, boxHLocal);
   doc.setFont(undefined,'normal');
-  doc.text(wrap(doc, getVal('organisator'), colWLocal - 4), M+2, boxYLocal+6);
-  doc.text(wrap(doc, getVal('beschreibung'), colWLocal - 4), M + colWLocal + colGapLocal + 2, boxYLocal+6);
+  doc.text(orgLines, M+2, boxYLocal+6);
+  doc.text(beschrLines, M + colWLocal + colGapLocal + 2, boxYLocal+6);
   y = boxYLocal + boxHLocal + 8;
 
+  y = await ensureSpaceWithin(y, 22, firstPageMaxY);
   y = section(y, 'Messbeteiligte');
   y += 2;
   y = fieldPair(y, 'Messung durchgeführt von', getVal('messungVon'), 'FOH-Techniker', getVal('foh'));
   y = fieldPair(y, 'Messposition', getVal('messposition'), 'Lauteste Position', getVal('lautestePosition'));
 
+  y = await ensureSpaceWithin(y, 38, firstPageMaxY);
   y = section(y, 'Messgerät & Kalibrierung');
   y += 2;
-  y = fieldPair(y, 'Messgerät', getVal('messgeraet'), 'Messgerät S/N', getVal('messgeraetSN'));
-  y = fieldPair(y, 'Kalibrator', getVal('kalibratorModell'), 'Kalibrator S/N', getVal('kalibratorSN'));
-  y = fieldPair(y, 'Firmware', getVal('firmware'), 'Log-Intervall', header.logIntervalText);
+  y = fieldTriple(y, 'Messgerät', getVal('messgeraet'), 'Kalibrator', getVal('kalibratorModell'), 'Korrekturwert k1', header.k1);
+  y = fieldTriple(y, 'Messgerät S/N', getVal('messgeraetSN'), 'Kalibrator S/N', getVal('kalibratorSN'), 'Korrekturwert k2', header.k2);
+  y = fieldTriple(y, 'Firmware', getVal('firmware'), 'Log-Intervall', header.logIntervalText, 'k-Werte gesetzt', header.kset);
 
-  if(y > 260){
-    doc.addPage();
-    await drawHeader();
-    y = 28;
-  }
-
-  y = section(y, 'Messergebnisse');
+  const paSetupText = getPASetupInline() || '—';
+  const paLines = wrap(doc, paSetupText, pageW - 4);
+  const paBoxH = Math.max(14, paLines.length * 4 + 8);
+  y = await ensureSpaceWithin(y, 9 + 2 + paBoxH + 8, firstPageMaxY);
+  y = section(y, 'Anlagen-Setup');
   y += 2;
+  y = textBox(y, paSetupText) + 8;
 
   const rows = Array.from(document.querySelectorAll('#pegelTabelle tbody tr'))
     .map(tr => Array.from(tr.children).map(td => td.innerText));
+  let remainingRows = rows.slice();
+  const firstPageResultMinHeight = 9 + 2 + 7 + 6;
+  let resultsStartedOnFirstPage = false;
+  if(y + firstPageResultMinHeight <= signatureTopY){
+    y = section(y, 'Messergebnisse');
+    y += 2;
+    const firstPageRows = resultTable(y, remainingRows, signatureTopY - 2);
+    remainingRows = remainingRows.slice(firstPageRows.rowsDrawn);
+    y = firstPageRows.y + 8;
+    resultsStartedOnFirstPage = firstPageRows.rowsDrawn > 0;
+  }
 
-  y = resultTable(y, rows) + 8;
+  drawSignatureBlock(signatureTopY);
 
-  // Unterschrift-Block am Fuß der ersten Seite
-  const sigTitleY = y + 6;
-  doc.setFontSize(11);
-  doc.setFont(undefined,'bold');
-  doc.setTextColor(50,50,50);
-  doc.text('Unterschrift', M, sigTitleY);
-
-  const sigFieldsY = sigTitleY + 6;
-  doc.setFontSize(9);
-  doc.setFont(undefined,'bold'); doc.setTextColor(100,100,100);
-  doc.text('Datum', M, sigFieldsY);
-  doc.setFont(undefined,'normal'); doc.setTextColor(50,50,50);
-  doc.text(String(getVal('berichtDatum')||''), M+18, sigFieldsY);
-
-  doc.setFont(undefined,'bold'); doc.setTextColor(100,100,100);
-  doc.text('Name', M+pageW/2, sigFieldsY);
-  doc.setFont(undefined,'normal'); doc.setTextColor(50,50,50);
-  doc.text(String(getVal('berichtName')||''), M+pageW/2+18, sigFieldsY);
-
-  const sigBoxY = sigFieldsY + 6;
-  const sigBoxH = 28;
-  doc.setDrawColor(200,200,200);
-  doc.rect(M, sigBoxY, pageW, sigBoxH);
-  doc.setFontSize(9); doc.setTextColor(120,120,120);
-  doc.text('Unterschrift (Platzhalter)', M+2, sigBoxY+6);
-
-  drawFooter(1);
+  if(remainingRows.length){
+    y = await startNewPage();
+    let isContinuation = resultsStartedOnFirstPage;
+    while(remainingRows.length){
+      y = section(y, isContinuation ? 'Messergebnisse (Fortsetzung)' : 'Messergebnisse');
+      y += 2;
+      const pageRows = resultTable(y, remainingRows, contentMaxY);
+      if(pageRows.rowsDrawn === 0){
+        y = await startNewPage();
+        isContinuation = true;
+        continue;
+      }
+      remainingRows = remainingRows.slice(pageRows.rowsDrawn);
+      y = pageRows.y + 8;
+      if(remainingRows.length){
+        y = await startNewPage();
+        isContinuation = true;
+      }
+    }
+  }
 
   // Seite 2: Diagramme (helle Export-Optik)
   applyChartTheme('light');
@@ -1314,7 +1527,7 @@ async function generatePDF(){
     doc.setFont(undefined,'bold');
     doc.setTextColor(40, 40, 40);
     doc.text('LAeq mit Grenzwert 99 dB(A)', M, y);
-    const chartH = addChartImage(doc, chartLAeq, M, y+5, pageW, 110, 2);
+    const chartH = addChartImage(doc, chartLAeq, M, y+5, pageW, 95, 2);
     y += chartH + 12;
   }
 
@@ -1323,12 +1536,11 @@ async function generatePDF(){
     doc.setFont(undefined,'bold');
     doc.setTextColor(40, 40, 40);
     doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
-    addChartImage(doc, chartLCpeak, M, y+5, pageW, 110, 2);
+    addChartImage(doc, chartLCpeak, M, y+5, pageW, 95, 2);
   }
 
   applyChartTheme('dark');
-
-  drawFooter(2);
+  drawAllFooters();
 
   const datum = getVal('datumMessung').trim() || 'kein-datum';
   const veranstaltung = ev || 'unbenannt';
@@ -1498,6 +1710,14 @@ el('btnImport').addEventListener('click', ()=>{
 el('fileInput').addEventListener('change', (e)=>{
   const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
   if(!f) return;
+
+  if(f.size > MAX_LOG_BYTES){
+    setDot('dotLog','bad');
+    setText('chipLog', `Log: Datei zu groß (${f.name})`);
+    setText('parseInfo', `Datei ist zu groß: ${(f.size/1024/1024).toFixed(1)} MB. Maximum: ${(MAX_LOG_BYTES/1024/1024).toFixed(0)} MB.`);
+    if(e.target) e.target.value = '';
+    return;
+  }
 
   const reader = new FileReader();
   reader.onload = (evt)=>{
