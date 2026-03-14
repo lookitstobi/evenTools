@@ -8,7 +8,8 @@
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
 <style>
 :root{
   --bg:#0b1020;
@@ -1595,8 +1596,223 @@ function addChartImage(doc, chart, x, y, maxW, maxH, scale){
   return drawH;
 }
 
-async function generatePDF(){
-  const { jsPDF } = window.jspdf;
+function getPdfRuntimeMode(){
+  const mode = String(window.TOOLSAPP_RUNTIME?.pdf_mode || '').trim().toLowerCase();
+  return mode === 'template' ? 'template' : 'legacy';
+}
+
+function syncPdfButtonMode(){
+  const btn = el('btnPdf');
+  if(!btn) return;
+  const isTemplate = getPdfRuntimeMode() === 'template';
+  btn.textContent = isTemplate ? 'PDF-Vorschau (Template)' : 'PDF-Vorschau (Legacy)';
+  btn.title = isTemplate
+    ? 'Messbericht mit dem neuen PDF-System und der Editor-Vorlage öffnen'
+    : 'Messbericht mit dem alten Legacy-PDF-Generator öffnen';
+}
+
+async function generateTemplatePDF(){
+  const buildChartsPagePdf = () => {
+    const jsPDFRef = window.jspdf?.jsPDF;
+    if (!jsPDFRef) {
+      return null;
+    }
+
+    if (!chartLAeq && !chartLCpeak) {
+      return null;
+    }
+
+    const doc = new jsPDFRef({ unit: 'mm', format: 'a4' });
+    const M = 12;
+    const pageW = 210 - 2 * M;
+
+    const drawHeader = () => {
+      doc.setDrawColor(200, 200, 200);
+      doc.line(M, 24, M + pageW, 24);
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('Messverlauf', M + 2, 12);
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      const ev = getVal('eventName').trim() || '(unbenannt)';
+      doc.text(`Veranstaltung: ${ev}`, M + 2, 20);
+    };
+
+    const drawFooter = () => {
+      const pageH = doc.internal.pageSize.getHeight();
+      const footerTextY = pageH - 10;
+      const footerRuleY = footerTextY - 4;
+      doc.setDrawColor(225, 225, 225);
+      doc.line(M, footerRuleY, M + pageW, footerRuleY);
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Diagramme', M, footerTextY);
+      const dateText = `Erstellt: ${new Date().toLocaleDateString('de-DE')}`;
+      doc.text(dateText, M + pageW - doc.getTextWidth(dateText), footerTextY);
+    };
+
+    drawHeader();
+    let y = 31;
+
+    if (chartLAeq) {
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('LAeq mit Grenzwert 99 dB(A)', M, y);
+      const h = addChartImage(doc, chartLAeq, M, y + 5, pageW, 96, 2);
+      y += h + 14;
+    }
+
+    if (chartLCpeak) {
+      if (y + 112 > 280) {
+        drawFooter();
+        doc.addPage();
+        drawHeader();
+        y = 31;
+      }
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
+      addChartImage(doc, chartLCpeak, M, y + 5, pageW, 96, 2);
+    }
+
+    const totalPages = doc.getNumberOfPages();
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      doc.setPage(pageNum);
+      drawFooter();
+    }
+
+    return doc.output('arraybuffer');
+  };
+
+  const mergePdfBuffers = async (firstBuffer, secondBuffer) => {
+    const PDFDocument = window.PDFLib?.PDFDocument;
+    if (!PDFDocument) {
+      return firstBuffer;
+    }
+
+    const out = await PDFDocument.create();
+
+    const first = await PDFDocument.load(firstBuffer);
+    const firstPages = await out.copyPages(first, first.getPageIndices());
+    firstPages.forEach((p) => out.addPage(p));
+
+    if (secondBuffer) {
+      const second = await PDFDocument.load(secondBuffer);
+      const secondPages = await out.copyPages(second, second.getPageIndices());
+      secondPages.forEach((p) => out.addPage(p));
+    }
+
+    return out.save();
+  };
+
+  const formatLevel = (value, unit) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return `${n.toFixed(1)} ${unit}`;
+  };
+
+  const payloadData = {
+    project_name: getVal('eventName').trim(),
+    measurement_date: getVal('datumMessung').trim() || getVal('berichtDatum').trim(),
+    operator_name: getVal('messungVon').trim() || getVal('berichtName').trim(),
+    veranstaltung: getVal('eventName').trim(),
+    datum: getVal('datumMessung').trim() || getVal('berichtDatum').trim(),
+    messung_durchgefuehrt_von: getVal('messungVon').trim() || getVal('berichtName').trim(),
+    result_laeq: formatLevel(summary?.laeq_total, 'dB(A)'),
+    result_laeq_g30: formatLevel(summary?.laeq_g30, 'dB'),
+    result_peak: formatLevel(summary?.lcpeak_max, 'dB(C)'),
+    laeq: formatLevel(summary?.laeq_total, 'dB(A)'),
+    laeq_30min: formatLevel(summary?.laeq_g30, 'dB'),
+    peak: formatLevel(summary?.lcpeak_max, 'dB(C)'),
+    customer: getVal('foh').trim(),
+    foh_techniker: getVal('foh').trim(),
+
+    location: getVal('location').trim(),
+    umgebung: getVal('umwelt').trim(),
+    environment: getVal('umwelt').trim(),
+    messposition: getVal('messposition').trim(),
+    measurement_position: getVal('messposition').trim(),
+    loudest_position: getVal('lautestePosition').trim(),
+    lauteste_position: getVal('lautestePosition').trim(),
+    organiser: getVal('organisator').trim(),
+    organisator: getVal('organisator').trim(),
+    description: getVal('beschreibung').trim(),
+    beschreibung: getVal('beschreibung').trim(),
+    report_date: getVal('berichtDatum').trim(),
+    bericht_datum: getVal('berichtDatum').trim(),
+    report_name: getVal('berichtName').trim(),
+    name: getVal('berichtName').trim(),
+    calibrator_model: getVal('kalibratorModell').trim(),
+    kalibrator: getVal('kalibratorModell').trim(),
+    calibrator_sn: getVal('kalibratorSN').trim(),
+    kal_sn: getVal('kalibratorSN').trim(),
+    pa_setup: getPASetupInline(),
+    anlagen_setup: getPASetupInline(),
+
+    start_measurement: getVal('startMessung').trim(),
+    end_measurement: getVal('endeMessung').trim(),
+    device_model: getVal('messgeraet').trim(),
+    messgeraet: getVal('messgeraet').trim(),
+    device_sn: getVal('messgeraetSN').trim(),
+    sn: getVal('messgeraetSN').trim(),
+    firmware: getVal('firmware').trim(),
+    log_interval: getVal('logInterval').trim(),
+    log_intervall: getVal('logInterval').trim(),
+    microphone: getVal('mikrofon').trim(),
+    microphone_calibration: getVal('micCal').trim(),
+    microphone_sensitivity: getVal('mikroSens').trim(),
+    kset_date: getVal('kset').trim(),
+    k_werte_gesetzt: getVal('kset').trim(),
+    correction_k1: getVal('k1').trim(),
+    correction_k2: getVal('k2').trim(),
+  };
+
+  const url = new URL('/pdf_template_api.php', window.location.origin);
+  url.searchParams.set('action', 'render_tool');
+
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tool_key: 'nti_tool',
+      template_title: 'Messbericht · DIN 15905-5',
+      data: payloadData,
+      disposition: 'inline',
+    }),
+  });
+
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (!res.ok || !ct.includes('application/pdf')) {
+    let message = `PDF-Erstellung fehlgeschlagen (HTTP ${res.status})`;
+    if (ct.includes('application/json')) {
+      const errPayload = await res.json();
+      if (errPayload && errPayload.error) {
+        message = String(errPayload.error);
+      }
+    }
+    alert(message);
+    return;
+  }
+
+  const firstPdfBuffer = await res.arrayBuffer();
+
+  applyChartTheme('light');
+  const secondPdfBuffer = buildChartsPagePdf();
+  applyChartTheme('dark');
+
+  const mergedBytes = await mergePdfBuffers(firstPdfBuffer, secondPdfBuffer);
+  const blob = new Blob([mergedBytes], { type: 'application/pdf' });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+}
+
+async function generateLegacyPDF(){
+  const { jsPDF } = window.jspdf || {};
   if(!jsPDF) { alert('jsPDF konnte nicht geladen werden.'); return; }
 
   const doc = new jsPDF({unit:'mm', format:'a4'});
@@ -1612,9 +1828,8 @@ async function generatePDF(){
 
   async function drawHeader(){
     const logoUrl = '/assets/evenTools%20Logo.png';
-    // shrink to header height (mm)
-    const maxH = 12; // header height in mm
-    const maxW = 40; // allow some width if needed
+    const maxH = 12;
+    const maxW = 40;
     try {
       await new Promise((resolve)=>{
         const img = new Image();
@@ -1638,9 +1853,8 @@ async function generatePDF(){
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img,0,0);
             const dataUrl = canvas.toDataURL('image/png');
-            // place logo on the right, within header area
             const x = M + pageW - wmm;
-            const y = 6; // keep logo within header height
+            const y = 6;
             doc.addImage(dataUrl, 'PNG', x, y, wmm, hmm);
           }catch(e){
             console.warn('Logo load/draw failed', e);
@@ -1649,22 +1863,18 @@ async function generatePDF(){
         };
         img.onerror = ()=>{ resolve(); };
         img.src = logoUrl;
-        // if cached, onload may not fire in some envs; ensure resolve eventually
         setTimeout(resolve, 1500);
       });
     } catch(e){ console.warn('drawHeader logo error', e); }
 
     doc.setDrawColor(200, 200, 200);
-    // horizontal rule below header (moved slightly down)
     doc.line(M, 24, M+pageW, 24);
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(16);
     doc.setFont(undefined,'bold');
-    // title shifted left
     doc.text('Schallpegelmessung', M+2, 12);
     doc.setFontSize(11);
     doc.setFont(undefined,'normal');
-    // increased spacing between title and subtitle
     doc.text('gemäß DIN 15905-5', M+2, 21);
   }
 
@@ -1685,11 +1895,6 @@ async function generatePDF(){
     return 28;
   }
 
-  async function ensureSpace(y, neededHeight){
-    if(y + neededHeight <= contentMaxY) return y;
-    return startNewPage();
-  }
-
   async function ensureSpaceWithin(y, neededHeight, maxY){
     if(y + neededHeight <= maxY) return y;
     return startNewPage();
@@ -1706,7 +1911,6 @@ async function generatePDF(){
   function section(y, t){
     doc.setFontSize(11);
     doc.setFont(undefined,'bold');
-    // Title color set to #0c4391
     doc.setTextColor(12, 67, 145);
     doc.text(t, M, y);
     doc.setDrawColor(12, 67, 145);
@@ -1726,7 +1930,7 @@ async function generatePDF(){
     doc.setTextColor(50, 50, 50);
     const lines1 = wrap(doc, val1||'—', col1W-5);
     doc.text(lines1, M, y+4);
-    
+
     doc.setFont(undefined,'bold');
     doc.setTextColor(100, 100, 100);
     doc.text(label2, M+pageW/2+2, y);
@@ -1734,7 +1938,7 @@ async function generatePDF(){
     doc.setTextColor(50, 50, 50);
     const lines2 = wrap(doc, val2||'—', col1W-5);
     doc.text(lines2, M+pageW/2+2, y+4);
-    
+
     return y + Math.max(lines1.length, lines2.length)*4 + 6;
   }
 
@@ -1865,7 +2069,6 @@ async function generatePDF(){
   const ev = getVal('eventName').trim() || '(unbenannt)';
   const dt = getVal('datumMessung').trim() || '';
 
-  // Seite 1: Übersicht
   await drawHeader();
   let y = 28;
   const firstPageMaxY = signatureTopY - 2;
@@ -1877,7 +2080,6 @@ async function generatePDF(){
   y = await ensureSpaceWithin(y, 12, firstPageMaxY);
   y = fieldPair(y, 'Location', getVal('location'), 'Umgebung', getVal('umwelt'));
 
-  // Organisator & Beschreibung am Ende des Details-Blocks
   const colGapLocal = 10;
   const colWLocal = (pageW - colGapLocal)/2;
   const orgLines = wrap(doc, getVal('organisator'), colWLocal - 4);
@@ -1911,8 +2113,7 @@ async function generatePDF(){
   y = fieldTriple(y, 'Firmware', getVal('firmware'), 'Log-Intervall', header.logIntervalText, 'k-Werte gesetzt', header.kset);
 
   const paSetupText = getPASetupInline() || '—';
-  const paLines = wrap(doc, paSetupText, pageW - 4);
-  const paBoxH = Math.max(14, paLines.length * 4 + 8);
+  const paBoxH = Math.max(14, wrap(doc, paSetupText, pageW - 4).length * 4 + 8);
   y = await ensureSpaceWithin(y, 9 + 2 + paBoxH + 8, firstPageMaxY);
   y = section(y, 'Anlagen-Setup');
   y += 2;
@@ -1955,7 +2156,6 @@ async function generatePDF(){
     }
   }
 
-  // Seite 2: Diagramme (helle Export-Optik)
   applyChartTheme('light');
   doc.addPage();
   await drawHeader();
@@ -1988,17 +2188,21 @@ async function generatePDF(){
   const veranstaltung = ev || 'unbenannt';
   const fname = `${datum} - ${veranstaltung} - Messprotokoll nach DIN 15905-5`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
 
-  // instead of forcing an immediate download we open the PDF in a new window/tab
-  // where the user can preview and then decide to save it manually.
   try {
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
-    // viewer allows saving; if desired we could revoke the URL later.
   } catch (e) {
-    // fallback to default save if blob/open fails (older browsers)
     doc.save(`${fname}.pdf`);
   }
+}
+
+async function generatePDF(){
+  if(getPdfRuntimeMode() === 'template'){
+    await generateTemplatePDF();
+    return;
+  }
+  await generateLegacyPDF();
 }
 
 function exportHTML(){
@@ -2145,6 +2349,7 @@ el('fileInput').addEventListener('change', (e)=>{
       updateComplianceStatus();
     }
   };
+      syncPdfButtonMode();
   reader.readAsText(f);
 });
 
@@ -2152,6 +2357,7 @@ el('fileInput').addEventListener('change', (e)=>{
   const today = new Date().toISOString().split('T')[0];
   setVal('berichtDatum', today);
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
+  syncPdfButtonMode();
   markRequiredFields();
   updateRecoveryButton();
   window.addEventListener('beforeunload', persistRecoveryState);

@@ -13,6 +13,21 @@ if (!$name || !in_array($name, $allowed, true)) {
   exit;
 }
 
+if ($name === 'pdf_template_builder') {
+  http_response_code(503);
+  page_start('PDF-Editor in Bearbeitung');
+  echo '<div class="card">';
+  echo '<div class="h1">PDF-Editor derzeit inaktiv</div>';
+  echo '<div class="small">Der Editor bleibt als Entwicklungsstand erhalten, ist aber vorübergehend deaktiviert.</div>';
+  echo '<div class="sep"></div>';
+  echo '<div class="flash warn">Bitte nutze im Dashboard den PDF-Modus-Schalter, um für Berichte zwischen Legacy und neuem Templatesystem zu wechseln.</div>';
+  echo '<div style="height:10px;"></div>';
+  echo '<a class="btn" href="/index.php">Zurück zum Dashboard</a>';
+  echo '</div>';
+  page_end();
+  exit;
+}
+
 $path = realpath($config['tools_dir'] . '/' . $name . '/index.html');
 $base = realpath($config['tools_dir']);
 
@@ -26,6 +41,10 @@ if (!$path || !$base || strncmp($path, $base, strlen($base)) !== 0) {
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
 
 $html = file_get_contents($path);
+$runtimeScript = '<script>window.TOOLSAPP_RUNTIME=' . json_encode([
+  'pdf_mode' => get_pdf_runtime_mode(),
+  'can_switch_pdf_mode' => is_pdf_mode_switch_user(),
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
 $style = '<style>' .
   '.tool-home-link{' .
   'display:inline-flex;align-items:center;gap:6px;' .
@@ -48,9 +67,9 @@ $homeLink = '<a class="tool-home-link" href="/index.php" title="Zum Dashboard">'
 
 $headPos = stripos($html, '</head>');
 if ($headPos !== false) {
-  $html = substr_replace($html, $style . "\n", $headPos, 0);
+  $html = substr_replace($html, $style . "\n" . $runtimeScript . "\n", $headPos, 0);
 } else {
-  $html = $style . "\n" . $html;
+  $html = $style . "\n" . $runtimeScript . "\n" . $html;
 }
 
 $injectedHeader = false;

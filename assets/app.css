@@ -262,6 +262,71 @@ small,.small{ color: var(--muted); }
 .flash.warn{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.10); }
 .flash.bad{ border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.10); }
 
+.chip-warn{
+  border-color: rgba(251,191,36,.35);
+  background: rgba(251,191,36,.12);
+}
+
+.tool-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.tool-note{
+  margin-top:6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pdf-mode-form{
+  display:grid;
+  gap:14px;
+}
+
+.pdf-mode-fieldset{
+  margin:0;
+  padding:0;
+  border:0;
+  display:grid;
+  gap:10px;
+}
+
+.pdf-mode-option{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  cursor:pointer;
+}
+
+.pdf-mode-option input{
+  width:auto;
+  margin-top:2px;
+  accent-color: rgba(124,92,255,.95);
+}
+
+.pdf-mode-option span{
+  display:grid;
+  gap:4px;
+}
+
+.pdf-mode-option small{
+  color: var(--muted);
+}
+
+.pdf-mode-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
 .table{
   width:100%;
   border-collapse: collapse;

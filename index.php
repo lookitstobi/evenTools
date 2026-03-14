@@ -5,6 +5,21 @@ require_login();
 
 $tools = $_SESSION['tools'] ?? [];
 $is_admin = !empty($_SESSION['is_admin']);
+$can_switch_pdf_mode = is_pdf_mode_switch_user();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['action'] ?? '') === 'set_pdf_runtime_mode') {
+  if (!$can_switch_pdf_mode) {
+    http_response_code(403);
+    echo '403';
+    exit;
+  }
+
+  require_csrf_token((string)($_POST['csrf'] ?? ''));
+  set_pdf_runtime_mode((string)($_POST['pdf_runtime_mode'] ?? 'legacy'));
+  redirect('/index.php?pdf_mode_saved=1');
+}
+
+$current_pdf_mode = get_pdf_runtime_mode();
 
 $tool_meta = [
   'cuesheet' => [
@@ -31,6 +46,13 @@ $tool_meta = [
     'title' => 'nexusTools',
     'sub' => 'Patchmatrix und Verbindungsübersicht',
     'logo' => '/assets/nexusTools%20Logo.png'
+  ],
+  'pdf_template_builder' => [
+    'title' => 'pdfTemplateTools',
+    'sub' => 'GUI fuer PDF-Vorlagen und Platzhalter',
+    'logo' => '/assets/evenTools%20Logo.png',
+    'disabled' => true,
+    'disabled_note' => 'Der Editor ist aktuell inaktiv und bleibt fuer laufende Arbeiten erhalten.'
   ]
 ];
 
@@ -50,6 +72,7 @@ page_start('Dashboard');
         <ul class="tool-list">
           <?php foreach ($tools as $t): ?>
             <?php $meta = $tool_meta[$t] ?? null; ?>
+            <?php $toolDisabled = !empty($meta['disabled']); ?>
             <li class="tool-item">
               <div class="tool-meta">
                 <?php if (!empty($meta['logo'])): ?>
@@ -58,9 +81,19 @@ page_start('Dashboard');
                 <div>
                   <div class="tool-title"><?=h($meta['title'] ?? (string)$t)?></div>
                   <div class="tool-sub"><?=h($meta['sub'] ?? 'Startet über den geschützten Loader')?></div>
+                  <?php if ($toolDisabled): ?>
+                    <div class="tool-note"><?=h((string)($meta['disabled_note'] ?? 'Dieses Tool ist derzeit inaktiv.'))?></div>
+                  <?php endif; ?>
                 </div>
               </div>
-              <a class="btn" href="/tool.php?name=<?= urlencode((string)$t) ?>">Öffnen</a>
+              <?php if ($toolDisabled): ?>
+                <div class="tool-actions">
+                  <span class="chip chip-warn">Inaktiv</span>
+                  <button class="btn" type="button" disabled aria-disabled="true">In Bearbeitung</button>
+                </div>
+              <?php else: ?>
+                <a class="btn" href="/tool.php?name=<?= urlencode((string)$t) ?>">Öffnen</a>
+              <?php endif; ?>
             </li>
           <?php endforeach; ?>
         </ul>
@@ -74,6 +107,11 @@ page_start('Dashboard');
       <div class="small">Session aktiv · Tools per Whitelist</div>
       <div class="sep"></div>
 
+      <?php if ($can_switch_pdf_mode && isset($_GET['pdf_mode_saved'])): ?>
+        <div class="flash ok">PDF-Modus global gespeichert.</div>
+        <div style="height:10px;"></div>
+      <?php endif; ?>
+
       <?php if ($is_admin): ?>
         <div class="flash ok">Adminrechte aktiv.</div>
         <div style="height:10px;"></div>
@@ -82,6 +120,39 @@ page_start('Dashboard');
         <div class="flash">Standardnutzer.</div>
       <?php endif; ?>
     </div>
+
+    <?php if ($can_switch_pdf_mode): ?>
+      <div class="card">
+        <div class="h2" style="margin-top:0;">PDF-Modus</div>
+        <div class="small">Nur für dich sichtbar. Die Auswahl gilt global für alle Benutzer und alle Tools.</div>
+        <div class="sep"></div>
+        <form method="post" class="pdf-mode-form">
+          <input type="hidden" name="action" value="set_pdf_runtime_mode">
+          <input type="hidden" name="csrf" value="<?=h(csrf_token())?>">
+          <fieldset class="pdf-mode-fieldset">
+            <legend class="label">PDF-Erstellung für Berichte</legend>
+            <label class="pdf-mode-option">
+              <input type="radio" name="pdf_runtime_mode" value="legacy" <?=$current_pdf_mode === 'legacy' ? 'checked' : ''?>>
+              <span>
+                <strong>Legacy</strong>
+                <small>Verwendet den alten, verlässlichen PDF-Generator.</small>
+              </span>
+            </label>
+            <label class="pdf-mode-option">
+              <input type="radio" name="pdf_runtime_mode" value="template" <?=$current_pdf_mode === 'template' ? 'checked' : ''?>>
+              <span>
+                <strong>Neues PDF-System</strong>
+                <small>Verwendet die Vorlage aus dem PDF-Editor bzw. dem neuen Templatesystem.</small>
+              </span>
+            </label>
+          </fieldset>
+          <div class="pdf-mode-actions">
+            <button class="btn btn-primary" type="submit">Modus speichern</button>
+            <div class="small">Global aktiv: <strong><?=h($current_pdf_mode === 'legacy' ? 'Legacy' : 'Neues PDF-System')?></strong></div>
+          </div>
+        </form>
+      </div>
+    <?php endif; ?>
 
     <?php if ($is_admin): ?>
       <div class="card" id="adminTodoCard">

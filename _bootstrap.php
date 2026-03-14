@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/app/config.php';
 
-foreach (['db_path', 'dguv_db_path', 'cuesheet_db_path'] as $dbConfigKey) {
+foreach (['db_path', 'dguv_db_path', 'cuesheet_db_path', 'pdf_template_db_path'] as $dbConfigKey) {
   $dbPath = (string)($config[$dbConfigKey] ?? '');
   if ($dbPath === '') {
     continue;
@@ -43,6 +43,67 @@ function require_admin(): void {
     echo "403";
     exit;
   }
+}
+
+function is_pdf_mode_switch_user(): bool {
+  $username = (string)($_SESSION['username'] ?? '');
+  return in_array($username, ['möhrchen', 'admin'], true);
+}
+
+function app_settings_db(): PDO {
+  static $db = null;
+  if ($db instanceof PDO) {
+    return $db;
+  }
+
+  $config = require __DIR__ . '/app/config.php';
+  $db = new PDO('sqlite:' . (string)$config['db_path']);
+  $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $db->exec('CREATE TABLE IF NOT EXISTS app_settings (
+    setting_key TEXT PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    updated_by TEXT NOT NULL
+  )');
+
+  return $db;
+}
+
+function get_app_setting(string $key, string $default = ''): string {
+  $db = app_settings_db();
+  $stmt = $db->prepare('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1');
+  $stmt->execute([$key]);
+  $value = $stmt->fetchColumn();
+  return is_string($value) ? $value : $default;
+}
+
+function set_app_setting(string $key, string $value): void {
+  $db = app_settings_db();
+  $stmt = $db->prepare('INSERT INTO app_settings (setting_key, setting_value, updated_at, updated_by)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(setting_key) DO UPDATE SET
+      setting_value = excluded.setting_value,
+      updated_at = excluded.updated_at,
+      updated_by = excluded.updated_by');
+  $stmt->execute([
+    $key,
+    $value,
+    gmdate('c'),
+    (string)($_SESSION['username'] ?? 'system'),
+  ]);
+}
+
+function get_pdf_runtime_mode(): string {
+  $mode = get_app_setting('pdf_runtime_mode', 'legacy');
+  return in_array($mode, ['legacy', 'template'], true) ? $mode : 'legacy';
+}
+
+function set_pdf_runtime_mode(string $mode): void {
+  if (!is_pdf_mode_switch_user()) {
+    return;
+  }
+
+  set_app_setting('pdf_runtime_mode', $mode === 'template' ? 'template' : 'legacy');
 }
 
 function csrf_token(): string {
