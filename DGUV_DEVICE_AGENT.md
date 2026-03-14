@@ -6,7 +6,7 @@ Der Device-Agent ist die lokale Bridge zwischen `dguv_api.php` und dem Pr√ºfger√
 
 ```bash
 php dguv_device_agent.php \
-  --api="https://DEIN-HOST/dguv_api.php" \
+  --api="https://eventools.site/dguv_api.php" \
   --token="BITTE_STARKES_TOKEN_SETZEN" \
   --export-json="/pfad/device_export.json" \
   --agent-name="device-bridge-1" \

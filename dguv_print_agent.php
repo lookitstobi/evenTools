@@ -10,7 +10,7 @@ if (PHP_SAPI !== 'cli') {
 function usage(): void {
   echo "DGUV CSV Print Agent\n";
   echo "Usage:\n";
-  echo "  php dguv_print_agent.php --api=http://host/dguv_api.php --token=SECRET --csv=/path/labels.csv [--agent-name=brother-pc-1] [--open-cmd='path/to/program {csv}'] [--print-cmd='path/to/program --print {csv}'] [--interval=3] [--once]\n";
+  echo "  php dguv_print_agent.php --api=https://eventools.site/dguv_api.php --token=SECRET --csv=/path/labels.csv [--agent-name=brother-pc-1] [--open-cmd='path/to/program {csv}'] [--print-cmd='path/to/program --print {csv}'] [--interval=3] [--once]\n";
 }
 
 $options = getopt('', [

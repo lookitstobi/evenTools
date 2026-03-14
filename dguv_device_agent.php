@@ -5,7 +5,7 @@ function usage(): void {
   echo "DGUV Device Agent\n";
   echo "\n";
   echo "Usage:\n";
-  echo "  php dguv_device_agent.php --api=http://host/dguv_api.php --token=SECRET --export-json=/path/device_export.json [--agent-name=device-bridge-1] [--export-cmd='path/to/bridge {json}'] [--interval=3] [--once]\n";
+  echo "  php dguv_device_agent.php --api=https://eventools.site/dguv_api.php --token=SECRET --export-json=/path/device_export.json [--agent-name=device-bridge-1] [--export-cmd='path/to/bridge {json}'] [--interval=3] [--once]\n";
   echo "\n";
   echo "Optional import push:\n";
   echo "  --import-json=/path/device_import.json\n";

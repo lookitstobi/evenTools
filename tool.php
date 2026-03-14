@@ -23,7 +23,7 @@ if (!$path || !$base || strncmp($path, $base, strlen($base)) !== 0) {
 }
 
 // Erlaubt externe CDNs für Tool-Libraries + Inline-Skripte der Tools
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https://www.gve-essen.de; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
 
 $html = file_get_contents($path);
 $style = '<style>' .

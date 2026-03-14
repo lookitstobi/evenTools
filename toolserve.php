@@ -58,7 +58,7 @@ $types = [
   'ttf'  => 'font/ttf',
 ];
 if (in_array($ext, ['html', 'htm'], true)) {
-  header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https://www.gve-essen.de; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
+  header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
 }
 header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
 header('X-Content-Type-Options: nosniff');

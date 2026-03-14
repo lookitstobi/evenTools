@@ -16,7 +16,7 @@ Danach PHP/Container neu starten, damit `app/config.php` den Wert übernimmt.
 
 ```bash
 php dguv_print_agent.php \
-  --api="https://DEIN-HOST/dguv_api.php" \
+  --api="https://eventools.site/dguv_api.php" \
   --token="BITTE_STARKES_TOKEN_SETZEN" \
   --csv="/pfad/zur/brother_input.csv" \
   --agent-name="brother-pc-1" \
@@ -25,6 +25,7 @@ php dguv_print_agent.php \
 ```
 
 Hinweise:
+
 - Wenn die Brother-Software keine CLI-Flags unterstützt, `--open-cmd` konfigurieren und den Druck manuell in der Anwendung starten.
 - `--once` verarbeitet nur einen Poll-Zyklus (gut zum Testen).
 - Ohne `--print-cmd` nutzt `print_now` automatisch `--open-cmd`.
