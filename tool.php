@@ -44,7 +44,9 @@ $html = file_get_contents($path);
 $runtimeScript = '<script>window.TOOLSAPP_RUNTIME=' . json_encode([
   'pdf_mode' => get_pdf_runtime_mode(),
   'can_switch_pdf_mode' => is_pdf_mode_switch_user(),
+  'username' => (string)($_SESSION['username'] ?? ''),
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
+
 $style = '<style>' .
   '.tool-home-link{' .
   'display:inline-flex;align-items:center;gap:6px;' .

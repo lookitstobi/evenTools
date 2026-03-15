@@ -79,11 +79,16 @@ $tool_meta = [
     'logo' => '/assets/nexusTools%20Logo.png'
   ],
   'pdf_template_builder' => [
-    'title' => 'pdfTemplateTools',
+    'title' => 'pdfTools',
     'sub' => 'GUI fuer PDF-Vorlagen und Platzhalter',
-    'logo' => '/assets/evenTools%20Logo.png',
+    'logo' => '/assets/pdfTools.png',
     'disabled' => true,
     'disabled_note' => 'Der Editor ist aktuell inaktiv und bleibt fuer laufende Arbeiten erhalten.'
+  ],
+  'timeTools' => [
+    'title' => 'timeTools',
+    'sub' => 'Inspizientenuhr mit Countdown und Intervallen',
+    'logo' => '/assets/timeTools.png'
   ]
 ];
 

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>timeTools - Inspizientenuhr</title>
+  <link rel="stylesheet" href="/toolserve.php?name=timeTools&file=style.css">
+</head>
+<body class="state-idle">
+  <div class="corner-controls" aria-label="Seitensteuerung">
+    <a class="icon-link" href="/index.php" aria-label="Zum Dashboard" title="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4 11.5 12 5l8 6.5M7 10.5V19h4.5v-4.5h1V19H17v-8.5"/>
+      </svg>
+    </a>
+    <button id="fullscreenBtn" class="icon-button" type="button" aria-label="Vollbild umschalten" title="Vollbild">
+      <svg id="fullscreenIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+      </svg>
+    </button>
+  </div>
+
+  <main class="stage" role="main">
+    <section class="clock-wrap" aria-live="polite">
+      <div id="clock" class="clock" aria-label="Aktuelle Uhrzeit">00:00:00</div>
+      <div class="timer-zone" id="timerZone" aria-live="polite">
+        <div id="countdown" class="countdown">00:00</div>
+        <div class="progress-bar" id="progressBar" role="progressbar" aria-label="Countdown Fortschritt">
+          <div class="progress-segment progress-green" id="progressGreen"><div class="progress-fill" id="fillGreen"></div></div>
+          <div class="progress-segment progress-yellow" id="progressYellow"><div class="progress-fill" id="fillYellow"></div></div>
+          <div class="progress-segment progress-red" id="progressRed"><div class="progress-fill" id="fillRed"></div></div>
+        </div>
+        <div id="pauseUntil" class="pause-until">Pause bis --:--</div>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Countdown Steuerung">
+      <div id="durationControls" class="control-row">
+        <button class="time-btn" type="button" data-minutes="15">15 Min</button>
+        <button class="time-btn" type="button" data-minutes="20">20 Min</button>
+        <button class="time-btn" type="button" data-minutes="25">25 Min</button>
+      </div>
+      <div id="resetControls" class="control-row reset-row" aria-hidden="true">
+        <button id="resetBtn" class="reset-btn" type="button">Reset</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/toolserve.php?name=timeTools&file=app.js" defer></script>
+</body>
+</html>
