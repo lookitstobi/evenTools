@@ -68,6 +68,7 @@ ROOT_FILES = {
     "_bootstrap.php",
     "admin_edit.php",
     "admin_users.php",
+    "clock.php",
     "cuesheet_api.php",
     "dguv_api.php",
     "dguv_print_agent.php",
