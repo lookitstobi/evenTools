@@ -272,8 +272,24 @@ body {
   transition: transform 120ms var(--ease-enter), background-color 120ms linear, opacity var(--timing-fast) linear;
 }
 
+.adjust-btn {
+  border: 0;
+  border-radius: 16px;
+  min-width: clamp(56px, 9vw, 94px);
+  min-height: clamp(56px, 8.8vh, 98px);
+  padding: 12px 14px;
+  background: var(--gray-button-muted);
+  color: var(--gray-strong);
+  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
+  font-size: clamp(28px, 4.6vw, 56px);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms var(--ease-enter), background-color 120ms linear, opacity var(--timing-fast) linear;
+}
+
 .time-btn:active,
-.reset-btn:active {
+.reset-btn:active,
+.adjust-btn:active {
   transform: scale(0.98);
 }
 
@@ -287,6 +303,10 @@ body {
   opacity: 0;
   transform: translateY(12px);
   max-height: 0;
+}
+
+.state-idle .clock-wrap {
+  transform: translateY(calc(-1 * clamp(56px, 8.8vh, 98px)));
 }
 
 .state-idle #durationControls {
@@ -335,6 +355,18 @@ body {
   pointer-events: auto;
 }
 
+#minusMinuteBtn,
+#plusMinuteBtn {
+  display: none;
+}
+
+.state-running #minusMinuteBtn,
+.state-running #plusMinuteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .state-running .countdown,
 .state-finished .countdown {
   font-size: clamp(60px, min(18vw, 24vh), 320px);
@@ -380,6 +412,12 @@ body {
     min-width: clamp(92px, 30vw, 190px);
     border-radius: 13px;
     font-size: clamp(18px, 4.8vw, 34px);
+  }
+
+  .adjust-btn {
+    min-width: clamp(52px, 14vw, 84px);
+    border-radius: 13px;
+    font-size: clamp(24px, 6vw, 38px);
   }
 }
 

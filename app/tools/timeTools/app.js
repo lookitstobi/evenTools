@@ -7,6 +7,8 @@
   const pauseUntilEl = document.getElementById("pauseUntil");
   const durationButtons = Array.from(document.querySelectorAll(".time-btn"));
   const resetBtn = document.getElementById("resetBtn");
+  const minusMinuteBtn = document.getElementById("minusMinuteBtn");
+  const plusMinuteBtn = document.getElementById("plusMinuteBtn");
   const resetControls = document.getElementById("resetControls");
   const fullscreenBtn = document.getElementById("fullscreenBtn");
   const progressGreen = document.getElementById("progressGreen");
@@ -317,6 +319,36 @@
     renderProgressBar();
   }
 
+  function adjustCountdownByMinutes(deltaMinutes) {
+    if (state !== "running" || !countdownEndAt) {
+      return;
+    }
+
+    const deltaSeconds = Math.trunc(deltaMinutes * 60);
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    const currentRemaining = Math.ceil((countdownEndAt.getTime() - now) / 1000);
+    const nextRemaining = currentRemaining + deltaSeconds;
+
+    if (nextRemaining <= 0) {
+      finishCountdown();
+      return;
+    }
+
+    countdownSeconds = nextRemaining;
+    countdownTotalSeconds = Math.max(1, countdownTotalSeconds + deltaSeconds);
+    countdownEndAt = new Date(now + nextRemaining * 1000);
+
+    clearCountdownStartDelay();
+    renderCountdown();
+    renderPauseUntil();
+    renderProgressBar();
+    scheduleNextCountdownTick();
+  }
+
   async function toggleFullscreen() {
     try {
       if (!document.fullscreenElement) {
@@ -358,6 +390,14 @@
         return;
       }
       resetCountdown();
+    });
+
+    minusMinuteBtn.addEventListener("click", () => {
+      adjustCountdownByMinutes(-1);
+    });
+
+    plusMinuteBtn.addEventListener("click", () => {
+      adjustCountdownByMinutes(1);
     });
 
     fullscreenBtn.addEventListener("click", toggleFullscreen);
