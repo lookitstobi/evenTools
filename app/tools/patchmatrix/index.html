@@ -1,6 +1,101 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Patchmatrix</title></head>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nexus Tool</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <style>
+    .nexus-wrap{
+      width:min(980px, calc(100% - 24px));
+      margin:16px auto 40px;
+      display:grid;
+      gap:14px;
+    }
+
+    .nexus-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .nexus-grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .nexus-grid > .card:nth-child(1){ grid-column:span 8; }
+    .nexus-grid > .card:nth-child(2){ grid-column:span 4; }
+
+    .nexus-list{
+      margin:0;
+      padding-left:18px;
+      display:grid;
+      gap:6px;
+      color:var(--muted);
+    }
+
+    .nexus-chip-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    @media (max-width: 768px){
+      .nexus-wrap{
+        width:calc(100% - 16px);
+      }
+
+      .nexus-grid > .card:nth-child(1),
+      .nexus-grid > .card:nth-child(2){
+        grid-column:span 12;
+      }
+
+      .nexus-actions .btn,
+      .nexus-chip-row .chip{
+        min-height:44px;
+      }
+    }
+
+    @media (max-width: 420px){
+      .nexus-actions .btn{
+        width:100%;
+      }
+    }
+  </style>
+</head>
 <body>
-  <h1>Patchmatrix Tool</h1>
-  <p>Diese Seite hilft dir beim Aufbau der Patchmatrix. Folge den Eingaben auf der Seite, um Quellen und Ziele zuzuordnen und die Matrix danach zu sichern.</p>
-</body></html>
+  <div class="nexus-wrap">
+    <section class="card">
+      <div class="h1" style="margin-top:0;">Nexus Tool</div>
+      <div class="small">Patchmatrix und Verbindungsübersicht für schnelle Planung und Dokumentation.</div>
+      <div class="sep"></div>
+      <div class="nexus-actions">
+        <button class="btn btn-primary" type="button">Neue Matrix</button>
+        <button class="btn" type="button">Bestehende öffnen</button>
+        <button class="btn" type="button">Vorlage laden</button>
+      </div>
+    </section>
+
+    <section class="nexus-grid">
+      <article class="card">
+        <div class="h2" style="margin-top:0;">Schnellstart</div>
+        <ol class="nexus-list">
+          <li>Quellen und Ziele erfassen.</li>
+          <li>Verbindungen in der Matrix zuordnen.</li>
+          <li>Ergebnis speichern und exportieren.</li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <div class="h2" style="margin-top:0;">Status</div>
+        <div class="nexus-chip-row">
+          <span class="chip">Mobile bereit</span>
+          <span class="chip">Basisfunktionen aktiv</span>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

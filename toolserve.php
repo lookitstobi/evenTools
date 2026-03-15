@@ -75,6 +75,16 @@ if (in_array($ext, ['html', 'htm'], true)) {
     '}' .
     '.tool-home-btn:hover{opacity:0.9}' .
     '.tool-home-inline{margin-right:8px}' .
+    'select{color:#eaf0ff;background:#11182b}' .
+    'select option,select optgroup{color:#f3f7ff;background:#11182b}' .
+    '@media (prefers-color-scheme: light){' .
+    'select{color:#111827;background:#ffffff}' .
+    'select option,select optgroup{color:#111827;background:#ffffff}' .
+    '}' .
+    '@media (max-width: 600px){' .
+    '.tool-home-btn{top:auto;bottom:12px;right:12px;padding:10px 12px;border-radius:10px}' .
+    '.tool-home-inline{margin-right:6px}' .
+    '}' .
     '</style>';
 
   $inlineButton = '<a class="icon-btn subtle tool-home-inline" href="/index.php" title="Zum Dashboard">Home</a>';

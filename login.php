@@ -34,14 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 page_start('Login', false);
 ?>
-<div class="container" style="padding-top: 36px;">
-  <div class="card" style="max-width:520px;margin:0 auto;">
+<div class="login-shell">
+  <div class="card">
     <div class="login-logo-wrap">
       <img class="login-logo" src="/assets/evenTools%20Logo.png" alt="<?=$config['site_name']?> Logo">
     </div>
     <div class="sep"></div>
 
-    <div style="display:flex;gap:12px;align-items:center;">
+    <div class="login-intro">
       <div>
         <div class="h1" style="margin:0;">Login</div>
         <div class="small">Bitte anmelden, um Tools zu öffnen.</div>
@@ -52,10 +52,10 @@ page_start('Login', false);
 
     <?php if ($error): ?>
       <div class="flash bad"><?=h($error)?></div>
-      <div style="height:10px;"></div>
+      <div class="spacer-10"></div>
     <?php endif; ?>
 
-    <form method="post" style="display:grid;gap:12px;">
+    <form method="post" class="form-grid">
       <div class="field">
         <div class="label">Benutzername</div>
         <input class="input" name="username" autocomplete="username" required>

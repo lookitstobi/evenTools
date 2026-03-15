@@ -59,6 +59,16 @@ $style = '<style>' .
   'border-bottom:1px solid rgba(255,255,255,.12);' .
   'background:rgba(0,0,0,.25);backdrop-filter:blur(10px);' .
   '}' .
+  'select{color:#eaf0ff;background:#11182b}' .
+  'select option,select optgroup{color:#f3f7ff;background:#11182b}' .
+  '@media (prefers-color-scheme: light){' .
+  'select{color:#111827;background:#ffffff}' .
+  'select option,select optgroup{color:#111827;background:#ffffff}' .
+  '}' .
+  '@media (max-width: 600px){' .
+  '.tool-global-header{padding:8px 10px;gap:8px;position:sticky;top:0;z-index:80}' .
+  '.tool-home-link{font-size:12px;padding:6px 9px}' .
+  '}' .
   '</style>';
 $homeIcon = '<svg class="tool-home-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' .
   '<path fill="currentColor" d="M12 3 2.5 10.5l1.4 1.4L5 11v8h5v-5h4v5h5v-8l1.1.9 1.4-1.4L12 3z"/>' .

@@ -57,14 +57,14 @@ page_start('Admin · User bearbeiten');
 <div class="card">
   <div class="h1">User bearbeiten</div>
   <div class="small">
-    <span style="font-family:var(--mono)"><?=h((string)$user['username'])?></span> · ID <?=h((string)$user['id'])?>
+    <span class="mono-inline"><?=h((string)$user['username'])?></span> · ID <?=h((string)$user['id'])?>
   </div>
 
   <div class="sep"></div>
 
   <?php if ($msg): ?>
     <div class="flash ok"><?=h($msg)?></div>
-    <div style="height:10px;"></div>
+    <div class="spacer-10"></div>
   <?php endif; ?>
 
   <form method="post" class="grid">
@@ -77,13 +77,13 @@ page_start('Admin · User bearbeiten');
 
     <div class="col-12">
       <div class="h2">Tools zuweisen</div>
-      <div class="small">Tool-Ordner liegen unter <span style="font-family:var(--mono)">/app/tools/</span>.</div>
-      <div style="height:10px;"></div>
+      <div class="small">Tool-Ordner liegen unter <span class="mono-inline">/app/tools/</span>.</div>
+      <div class="spacer-10"></div>
 
       <?php if (!$allTools): ?>
-        <div class="flash warn">Keine Tools gefunden. Lege Ordner in <span style="font-family:var(--mono)">/app/tools/</span> an.</div>
+        <div class="flash warn">Keine Tools gefunden. Lege Ordner in <span class="mono-inline">/app/tools/</span> an.</div>
       <?php else: ?>
-        <div class="grid" style="grid-template-columns:repeat(12,minmax(0,1fr));">
+        <div class="grid admin-edit-tool-grid">
           <?php foreach ($allTools as $t): ?>
             <label class="col-4 chip" style="border-radius:14px;justify-content:flex-start;">
               <input type="checkbox" name="tools[]" value="<?=h($t)?>" <?=in_array($t, $currentTools, true) ? 'checked' : ''?>>
@@ -103,7 +103,7 @@ page_start('Admin · User bearbeiten');
       </div>
     </div>
 
-    <div class="col-12" style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="col-12 admin-edit-actions">
       <button class="btn btn-primary" type="submit">Speichern</button>
       <a class="btn" href="/admin_users.php">← zurück</a>
       <a class="btn" href="/index.php">Dashboard</a>

@@ -93,8 +93,15 @@ input.input-required,select.input-required,textarea.input-required{background:rg
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:32px}
 @media(max-width:900px){.grid-2{grid-template-columns:1fr}}
 @media(max-width:900px){
-  #main{flex-direction:column}
-  #leftColumn,#rightColumn{width:100%;height:50%;overflow:auto}
+  html,body{height:auto;overflow:auto}
+  #main{position:static;display:block;gap:0}
+  #leftColumn,#rightColumn{width:100%;height:auto;max-height:none;overflow:visible;padding:16px 12px}
+  .header{position:sticky;top:0;padding:8px 12px;gap:8px}
+  .header-controls{margin-left:0;justify-content:flex-start;width:100%}
+  .header-main-actions,.header-secondary-actions{width:100%}
+  .chips{margin-left:0 !important}
+  .section{padding:14px;margin-bottom:14px}
+  .header-dropdown{left:0;right:auto;min-width:240px}
 }
 label{font-size:12px;color:var(--text-secondary);margin-top:6px;display:block;text-transform:uppercase;letter-spacing:0.5px}
 input,select,textarea{width:100%;background:rgba(0,0,0,.10);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:var(--radius2);font-size:16px;outline:none}
@@ -107,6 +114,8 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .table{width:100%;border-collapse:collapse;font-size:13px}
 .table th,.table td{border-bottom:1px solid var(--border);padding:7px;text-align:left;vertical-align:top}
 .table th{color:var(--text-secondary);font-weight:800;font-size:12px}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-wrap .table{min-width:620px}
 .status-ok{color:var(--ok);font-weight:900}
 .status-bad{color:var(--danger);font-weight:900}
 canvas{border:1px solid var(--border);border-radius:var(--radius2);margin-top:8px;background:var(--primary-panel);aspect-ratio:16/10;width:100%;height:auto}
@@ -127,6 +136,12 @@ label.label-required::after{
   color:var(--accent);
   font-weight:900;
   margin-left:4px;
+}
+
+@media(max-width:600px){
+  .header h1{font-size:18px}
+  .icon-btn,.menu-item-btn,button{min-height:44px}
+  .compact-row select,.compact-row input{min-width:100%}
 }
 </style>
 </head>
@@ -172,18 +187,20 @@ label.label-required::after{
   <div id="leftColumn">
     <div class="section">
       <h3>Pegel</h3>
-      <table class="table" id="pegelTabelle">
-        <thead>
-          <tr>
-            <th>Wert</th>
-            <th>Gemessen</th>
-            <th>Überschreitungsdauer</th>
-            <th>Grenzwert</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-wrap">
+        <table class="table" id="pegelTabelle">
+          <thead>
+            <tr>
+              <th>Wert</th>
+              <th>Gemessen</th>
+              <th>Überschreitungsdauer</th>
+              <th>Grenzwert</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <div class="small" id="chartInfo" style="margin-top:6px"></div>
     </div>
 

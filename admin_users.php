@@ -118,25 +118,27 @@ page_start('Admin · Benutzer');
       <div class="small">Tools werden als JSON-Liste gespeichert (später ersetzen wir das durch Rollen/Permissions).</div>
       <div class="sep"></div>
 
-      <table class="table">
-        <tr><th>User</th><th>Admin</th><th>Tools</th><th>Aktion</th></tr>
-        <?php foreach ($users as $u): ?>
-          <tr>
-            <td><?=h((string)$u['username'])?></td>
-            <td><?=((int)$u['is_admin'] === 1) ? 'ja' : 'nein'?></td>
-            <td><code><?=h((string)$u['tools'])?></code></td>
-            <td style="display:flex;gap:8px;flex-wrap:wrap;">
-              <a class="btn" href="/admin_edit.php?id=<?=urlencode((string)$u['id'])?>">Bearbeiten</a>
-              <form method="post" onsubmit="return confirm('Benutzer wirklich löschen?');" style="display:inline;">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="csrf_token" value="<?=h(csrf_token())?>">
-                <input type="hidden" name="delete_id" value="<?=h((string)$u['id'])?>">
-                <button class="btn btn-danger" type="submit">Löschen</button>
-              </form>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-      </table>
+      <div class="table-scroll users-table-scroll">
+        <table class="table users-table">
+          <tr><th>User</th><th>Admin</th><th>Tools</th><th>Aktion</th></tr>
+          <?php foreach ($users as $u): ?>
+            <tr>
+              <td data-label="User"><?=h((string)$u['username'])?></td>
+              <td data-label="Admin"><?=((int)$u['is_admin'] === 1) ? 'ja' : 'nein'?></td>
+              <td data-label="Tools"><code><?=h((string)$u['tools'])?></code></td>
+              <td data-label="Aktion" class="users-actions">
+                <a class="btn" href="/admin_edit.php?id=<?=urlencode((string)$u['id'])?>">Bearbeiten</a>
+                <form method="post" onsubmit="return confirm('Benutzer wirklich löschen?');" style="display:inline;">
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="csrf_token" value="<?=h(csrf_token())?>">
+                  <input type="hidden" name="delete_id" value="<?=h((string)$u['id'])?>">
+                  <button class="btn btn-danger" type="submit">Löschen</button>
+                </form>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </table>
+      </div>
     </div>
   </div>
 </div>
