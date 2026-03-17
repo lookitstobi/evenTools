@@ -12,6 +12,7 @@ return [
   'dguv_db_path' => $dataDir . '/dguv.sqlite',
   'cuesheet_db_path' => $dataDir . '/cuesheet.sqlite',
   'pdf_template_db_path' => $dataDir . '/pdf_templates.sqlite',
+  'patchmatrix_db_path' => $dataDir . '/patchmatrix.sqlite',
   'data_dir' => $dataDir,
   'dguv_agent_token' => getenv('DGUV_AGENT_TOKEN') ?: '',
 ];

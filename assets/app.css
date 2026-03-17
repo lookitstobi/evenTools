@@ -44,11 +44,16 @@
 }
 
 *{ box-sizing:border-box; }
-html,body{ height:100%; }
+html{
+  height: 100%;
+  overflow-y: auto;
+}
 body{
   margin:0;
+  min-height: 100vh;
   font-family: var(--sans);
   color: var(--text);
+  background-attachment: fixed;
   background:
     radial-gradient(1200px 700px at 10% 10%, rgba(124,92,255,.18), transparent 55%),
     radial-gradient(900px 600px at 90% 10%, rgba(61,214,255,.14), transparent 60%),
@@ -60,6 +65,7 @@ body{
 body.user-theme-pink{
   --accent: #ff4fa3;
   --accent2: #ff8ac8;
+  background-attachment: fixed;
   background:
     radial-gradient(1200px 700px at 10% 10%, rgba(255,79,163,.22), transparent 55%),
     radial-gradient(900px 600px at 90% 10%, rgba(255,138,200,.16), transparent 60%),

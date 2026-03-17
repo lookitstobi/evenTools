@@ -5,97 +5,150 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nexus Tool</title>
   <link rel="stylesheet" href="/assets/app.css">
-  <style>
-    .nexus-wrap{
-      width:min(980px, calc(100% - 24px));
-      margin:16px auto 40px;
-      display:grid;
-      gap:14px;
-    }
-
-    .nexus-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-    }
-
-    .nexus-grid{
-      display:grid;
-      grid-template-columns:repeat(12,minmax(0,1fr));
-      gap:12px;
-    }
-
-    .nexus-grid > .card:nth-child(1){ grid-column:span 8; }
-    .nexus-grid > .card:nth-child(2){ grid-column:span 4; }
-
-    .nexus-list{
-      margin:0;
-      padding-left:18px;
-      display:grid;
-      gap:6px;
-      color:var(--muted);
-    }
-
-    .nexus-chip-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    @media (max-width: 768px){
-      .nexus-wrap{
-        width:calc(100% - 16px);
-      }
-
-      .nexus-grid > .card:nth-child(1),
-      .nexus-grid > .card:nth-child(2){
-        grid-column:span 12;
-      }
-
-      .nexus-actions .btn,
-      .nexus-chip-row .chip{
-        min-height:44px;
-      }
-    }
-
-    @media (max-width: 420px){
-      .nexus-actions .btn{
-        width:100%;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/toolserve.php?name=patchmatrix&file=style.css">
 </head>
 <body>
-  <div class="nexus-wrap">
-    <section class="card">
-      <div class="h1" style="margin-top:0;">Nexus Tool</div>
-      <div class="small">Patchmatrix und Verbindungsübersicht für schnelle Planung und Dokumentation.</div>
-      <div class="sep"></div>
-      <div class="nexus-actions">
-        <button class="btn btn-primary" type="button">Neue Matrix</button>
-        <button class="btn" type="button">Bestehende öffnen</button>
-        <button class="btn" type="button">Vorlage laden</button>
+  <div class="pm-app">
+    <section class="card pm-toolbar" data-help-title="Kopfbereich" data-help="Hier verwaltest du Dokumente und steuerst globale Aktionen wie Speichern, Löschen und Neuladen.">
+      <div class="pm-toolbar-row">
+        <div>
+          <div class="h1 pm-title">Nexus Tool</div>
+          <div class="small">Editor für Basisgeräte, Karten, Ports und Patch-Matrix.</div>
+        </div>
+        <div class="pm-actions">
+          <button id="btnCreate" class="btn btn-primary" type="button" data-help-title="Neues Dokument" data-help="Erstellt eine neue, leere Konfiguration.">Neues Dokument</button>
+          <button id="btnSave" class="btn" type="button" disabled data-help-title="Speichern" data-help="Speichert alle Änderungen dauerhaft auf dem Server.">Speichern</button>
+          <button id="btnDelete" class="btn btn-danger" type="button" disabled data-help-title="Löschen" data-help="Löscht das aktuell geöffnete Dokument dauerhaft.">Löschen</button>
+          <button id="btnRefresh" class="btn" type="button" data-help-title="Neu laden" data-help="Lädt die Dokumentliste neu vom Server.">Neu laden</button>
+          <button id="btnHelpMode" class="btn" type="button" aria-pressed="false" data-help-title="Help Mode" data-help="Schaltet Tooltips ein. Im Help Mode erklärt ein Tooltip beim Hovern jedes markierte UI-Element.">Help Mode: Aus</button>
+        </div>
       </div>
+      <div class="pm-toolbar-row">
+        <label class="pm-field" data-help-title="Dokumenttitel" data-help="Name der aktuellen Konfiguration. Änderungen werden beim Speichern übernommen.">
+          <span class="label">Dokumenttitel</span>
+          <input id="docTitle" class="input" placeholder="Nexus Konfiguration" disabled>
+        </label>
+        <div class="pm-meta-row">
+          <span id="docMeta" class="chip">Kein Dokument geöffnet</span>
+          <span id="dirtyBadge" class="chip chip-warn hidden">Ungespeicherte Änderungen</span>
+        </div>
+      </div>
+      <div id="status" class="pm-status">Initialisiere...</div>
+      <details class="pm-header-guide" data-help-title="Anleitung" data-help="Kurzanleitung und Dokumentenliste im Header, um den Arbeitsbereich freizuhalten.">
+        <summary>Anleitung & Dokumente</summary>
+        <div class="pm-header-guide-grid">
+          <div>
+            <div class="pm-header-guide-title">Anleitung zur Nutzung</div>
+            <ol class="pm-guide-list">
+              <li>Neues Dokument anlegen oder ein bestehendes Dokument aus der Liste öffnen.</li>
+              <li>In der Baumansicht zuerst Basisgeräte, dann Karten konfigurieren.</li>
+              <li>Ports werden aus Karten-Defaults automatisch erzeugt und zugeordnet.</li>
+              <li>Im Matrix-Tab Verbindungen setzen, prüfen und speichern.</li>
+              <li>Zum Schluss immer Speichern, damit Änderungen serverseitig gesichert sind.</li>
+            </ol>
+          </div>
+          <div>
+            <div class="pm-header-guide-title">Dokumente</div>
+            <div id="docList" class="pm-list pm-doc-list" data-help-title="Dokumentenliste" data-help="Klicke auf einen Eintrag, um das Dokument zu laden."></div>
+          </div>
+        </div>
+      </details>
     </section>
 
-    <section class="nexus-grid">
-      <article class="card">
-        <div class="h2" style="margin-top:0;">Schnellstart</div>
-        <ol class="nexus-list">
-          <li>Quellen und Ziele erfassen.</li>
-          <li>Verbindungen in der Matrix zuordnen.</li>
-          <li>Ergebnis speichern und exportieren.</li>
-        </ol>
-      </article>
+    <nav class="card pm-tabs" data-help-title="Ansichten" data-help="Wechsle zwischen Verwaltungsansicht und Patch-Matrix.">
+      <button id="btnTabManage" class="btn btn-primary" type="button" data-tab="manage">Verwaltung</button>
+      <button id="btnTabMatrix" class="btn" type="button" data-tab="matrix">Matrix</button>
+    </nav>
 
-      <article class="card">
-        <div class="h2" style="margin-top:0;">Status</div>
-        <div class="nexus-chip-row">
-          <span class="chip">Mobile bereit</span>
-          <span class="chip">Basisfunktionen aktiv</span>
+    <section id="tabManage" class="pm-tab-panel">
+      <div class="pm-manage-grid">
+        <article class="card pm-panel" data-help-title="Strukturbaum" data-help="Zentrale Übersicht als Baumdiagramm: Basisgeräte, Karten und zugehörige Ports.">
+          <div class="pm-panel-head">
+            <div class="h2 pm-h2">Strukturbaum</div>
+            <div class="pm-actions">
+              <button id="btnAddBaseDevice" class="btn" type="button" disabled data-help-title="Gerät hinzufügen" data-help="Legt ein neues Basisgerät an.">+ Gerät</button>
+              <button id="btnAddCard" class="btn" type="button" disabled data-help-title="Karte hinzufügen" data-help="Legt eine neue Karte unter dem ausgewählten oder ersten Basisgerät an.">+ Karte</button>
+            </div>
+          </div>
+          <div class="pm-filter-row">
+            <input id="portSearch" class="input" placeholder="Suche in Baumansicht" disabled data-help-title="Baumsuche" data-help="Filtert Ports im Baum nach Name, ID und Karte.">
+            <select id="portDirectionFilter" class="select" disabled data-help-title="Richtungsfilter" data-help="Filtert Portknoten nach Input, Output oder allen.">
+              <option value="all">Alle</option>
+              <option value="input">Nur Input</option>
+              <option value="output">Nur Output</option>
+            </select>
+          </div>
+          <div id="treeView" class="pm-tree" data-help-title="Baumdiagramm" data-help="Hierarchie von Basisgeräten zu Karten und Ports. Klick öffnet Details, Pfeil klappt Knoten auf und zu."></div>
+        </article>
+
+        <article class="card pm-panel" data-help-title="Details" data-help="Bearbeite hier das aktuell ausgewählte Objekt im Detail.">
+          <div class="pm-panel-head">
+            <div class="h2 pm-h2">Details</div>
+          </div>
+          <div id="detailEmpty" class="pm-empty">Wähle links ein Element zum Bearbeiten.</div>
+          <form id="detailForm" class="hidden">
+            <div id="detailFields" class="pm-detail-fields"></div>
+            <div class="pm-detail-actions">
+              <button id="btnDeletePatch" class="btn btn-danger hidden" type="button" data-help-title="Patch löschen" data-help="Löscht den ausgewählten Patch aus dem Dokument.">Patch löschen</button>
+              <button class="btn btn-primary" type="submit" data-help-title="Übernehmen" data-help="Übernimmt die im Formular geänderten Werte in den lokalen Zustand.">Übernehmen</button>
+            </div>
+          </form>
+        </article>
+      </div>
+
+      <article class="card pm-section" data-help-title="Dokument-Metadaten" data-help="Beschreibt Kontextinformationen wie Ort, Projekt und Notizen.">
+        <div class="pm-section-title">Dokument-Metadaten</div>
+        <div class="pm-form-grid">
+          <label class="pm-field" data-help-title="Ort" data-help="Physischer Ort oder Bereich der Konfiguration.">
+            <span class="label">Ort</span>
+            <input id="metaLocation" class="input" placeholder="z. B. Seitenregie" disabled>
+          </label>
+          <label class="pm-field" data-help-title="Show/Projekt" data-help="Name der Produktion oder des Projekts.">
+            <span class="label">Show/Projekt</span>
+            <input id="metaProject" class="input" placeholder="z. B. Hausproduktion 2026" disabled>
+          </label>
+        </div>
+        <label class="pm-field" data-help-title="Notizen" data-help="Freitext für Hinweise und technische Besonderheiten.">
+          <span class="label">Notizen</span>
+          <textarea id="metaNotes" class="input pm-textarea" rows="3" placeholder="Technische Hinweise" disabled></textarea>
+        </label>
+      </article>
+    </section>
+
+    <section id="tabMatrix" class="pm-tab-panel hidden">
+      <article class="card pm-panel" data-help-title="Patch-Matrix" data-help="Hier setzt du Verbindungen zwischen Output- und Input-Ports.">
+        <div class="pm-section">
+          <div class="pm-section-head">
+            <div class="pm-section-title">Matrix (Patchverbindungen)</div>
+            <button id="btnNewPatch" class="btn" type="button" disabled data-help-title="Patch hinzufügen" data-help="Legt einen neuen Patch-Eintrag (initial deaktiviert) an.">+ Patch</button>
+          </div>
+          <div class="pm-matrix-controls">
+            <label class="pm-field" data-help-title="Quellkarte" data-help="Begrenzt die Matrix auf Output-Ports der gewählten Karte.">
+              <span class="label">Quellkarte</span>
+              <select id="matrixSourceCard" class="select" disabled></select>
+            </label>
+            <label class="pm-field" data-help-title="Zielkarte" data-help="Begrenzt die Matrix auf Input-Ports der gewählten Karte.">
+              <span class="label">Zielkarte</span>
+              <select id="matrixTargetCard" class="select" disabled></select>
+            </label>
+            <label class="pm-field" data-help-title="Patch-Filter" data-help="Legt fest, ob nur aktive oder auch deaktivierte Patches gezeigt werden.">
+              <span class="label">Patch-Filter</span>
+              <select id="matrixStateFilter" class="select" disabled>
+                <option value="active">Nur aktive</option>
+                <option value="all">Aktive + inaktive</option>
+              </select>
+            </label>
+          </div>
+          <div id="matrixLegend" class="pm-matrix-legend" data-help-title="Matrix-Legende" data-help="Zeigt den aktuell sichtbaren Matrix-Ausschnitt und kurze Bedienhinweise."></div>
+          <div id="matrixWrap" class="pm-matrix-wrap" data-help-title="Matrix" data-help="Klick auf eine Zelle setzt oder ersetzt eine Verbindung."></div>
+          <div id="patchList" class="pm-list pm-patch-list" data-help-title="Patch-Liste" data-help="Zeigt die Patches passend zum aktuellen Filter."></div>
         </div>
       </article>
     </section>
   </div>
+
+  <div id="helpTooltip" class="pm-help-tooltip hidden" role="tooltip" aria-live="polite"></div>
+
+  <script src="/toolserve.php?name=patchmatrix&file=app.js" defer></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $config = require __DIR__ . '/app/config.php';
 
-foreach (['db_path', 'dguv_db_path', 'cuesheet_db_path', 'pdf_template_db_path'] as $dbConfigKey) {
+foreach (['db_path', 'dguv_db_path', 'cuesheet_db_path', 'pdf_template_db_path', 'patchmatrix_db_path'] as $dbConfigKey) {
   $dbPath = (string)($config[$dbConfigKey] ?? '');
   if ($dbPath === '') {
     continue;
