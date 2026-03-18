@@ -59,6 +59,8 @@
     helpTooltip: byId('helpTooltip'),
   };
 
+  let matrixTextMeasureCtx = null;
+
   boot().catch((error) => {
     console.error(error);
     setStatus('Initialisierung fehlgeschlagen: ' + String(error.message || error), true);
@@ -1274,6 +1276,13 @@
     const inputLabel = inputPorts.length + ' Inputs';
     el.matrixLegend.textContent = outputLabel + ' (horizontal) x ' + inputLabel + ' (vertikal) · Klick setzt Verbindung, erneuter Klick löst sie wieder.';
 
+    const cellFontSize = 12;
+    const cellSafeZone = 24;
+    const cellSize = cellFontSize + (cellSafeZone * 2);
+    el.matrixWrap.style.setProperty('--pm-cell-font-size', String(cellFontSize) + 'px');
+    el.matrixWrap.style.setProperty('--pm-cell-safe-zone', String(cellSafeZone) + 'px');
+    el.matrixWrap.style.setProperty('--pm-cell-size', String(cellSize) + 'px');
+
     if (outputPorts.length === 0 || inputPorts.length === 0) {
       el.matrixWrap.style.setProperty('--pm-header-height', '180px');
       el.matrixWrap.style.setProperty('--pm-row-header-width', '220px');
@@ -1281,14 +1290,14 @@
       return;
     }
 
-    const maxOutputNameLength = outputPorts.reduce((max, port) => {
-      return Math.max(max, String(port.name || port.id || '').length);
+    const maxOutputLabelWidth = outputPorts.reduce((max, port) => {
+      return Math.max(max, measureTextWidth(String(port.name || port.id || ''), cellFontSize, 700));
     }, 0);
-    const maxInputNameLength = inputPorts.reduce((max, port) => {
-      return Math.max(max, String(port.name || port.id || '').length);
+    const maxInputLabelWidth = inputPorts.reduce((max, port) => {
+      return Math.max(max, measureTextWidth(String(port.name || port.id || ''), cellFontSize, 700));
     }, 0);
-    const headerHeight = Math.max(140, Math.min(460, 30 + (maxOutputNameLength * 7)));
-    const rowHeaderWidth = Math.max(150, Math.min(420, 36 + (maxInputNameLength * 7)));
+    const headerHeight = Math.max(cellSize + 42, Math.min(560, Math.ceil(maxOutputLabelWidth + (cellSafeZone * 2) + 24)));
+    const rowHeaderWidth = Math.max(170, Math.min(480, Math.ceil(maxInputLabelWidth + (cellSafeZone * 2) + 46)));
     el.matrixWrap.style.setProperty('--pm-header-height', String(headerHeight) + 'px');
     el.matrixWrap.style.setProperty('--pm-row-header-width', String(rowHeaderWidth) + 'px');
 
@@ -1313,7 +1322,7 @@
         let title = 'Verbindung setzen';
 
         if (activePairPatch) {
-          label = '●';
+          label = '✓';
           cellClass = 'active';
           title = 'Aktiver Patch: Klick löst die Verbindung';
         } else if (targetActivePatch) {
@@ -1334,7 +1343,8 @@
           '    data-help-title="Matrixzelle"',
           '    data-help="Klick setzt oder ersetzt die Verbindung vom Output (Spalte) zum Input (Zeile). Ein erneuter Klick löst die aktive Verbindung."',
           '    title="' + escapeHtml(title) + '">',
-          escapeHtml(label),
+          '    <span class="pm-matrix-cell-indicator" aria-hidden="true"></span>',
+          '    <span class="pm-matrix-cell-mark" aria-hidden="true">' + escapeHtml(label) + '</span>',
           '  </button>',
           '</td>',
         ].join('');
@@ -1910,6 +1920,27 @@
       out[item.id] = item;
     });
     return out;
+  }
+
+  function measureTextWidth(text, fontSizePx, fontWeight) {
+    const value = String(text || '');
+    if (!value) {
+      return 0;
+    }
+
+    if (!matrixTextMeasureCtx) {
+      const canvas = document.createElement('canvas');
+      matrixTextMeasureCtx = canvas.getContext('2d');
+    }
+
+    const size = Number(fontSizePx || 12);
+    if (!matrixTextMeasureCtx) {
+      return value.length * (size * 0.62);
+    }
+
+    const weight = Number(fontWeight || 700);
+    matrixTextMeasureCtx.font = String(weight) + ' ' + String(size) + 'px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+    return matrixTextMeasureCtx.measureText(value).width;
   }
 
   function sortByOrderThenName(a, b) {

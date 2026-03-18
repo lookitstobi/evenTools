@@ -11,7 +11,7 @@
   <div class="pm-app">
     <section class="card pm-toolbar" data-help-title="Kopfbereich" data-help="Hier verwaltest du Dokumente und steuerst globale Aktionen wie Speichern, Löschen und Neuladen.">
       <div class="pm-toolbar-row">
-        <div>
+        <div class="pm-toolbar-main-text">
           <div class="h1 pm-title">Nexus Tool</div>
           <div class="small">Editor für Basisgeräte, Karten, Ports und Patch-Matrix.</div>
         </div>
@@ -23,8 +23,8 @@
           <button id="btnHelpMode" class="btn" type="button" aria-pressed="false" data-help-title="Help Mode" data-help="Schaltet Tooltips ein. Im Help Mode erklärt ein Tooltip beim Hovern jedes markierte UI-Element.">Help Mode: Aus</button>
         </div>
       </div>
-      <div class="pm-toolbar-row">
-        <label class="pm-field" data-help-title="Dokumenttitel" data-help="Name der aktuellen Konfiguration. Änderungen werden beim Speichern übernommen.">
+      <div class="pm-toolbar-row pm-toolbar-row-compact">
+        <label class="pm-field pm-doc-title-field" data-help-title="Dokumenttitel" data-help="Name der aktuellen Konfiguration. Änderungen werden beim Speichern übernommen.">
           <span class="label">Dokumenttitel</span>
           <input id="docTitle" class="input" placeholder="Nexus Konfiguration" disabled>
         </label>
@@ -32,33 +32,34 @@
           <span id="docMeta" class="chip">Kein Dokument geöffnet</span>
           <span id="dirtyBadge" class="chip chip-warn hidden">Ungespeicherte Änderungen</span>
         </div>
-      </div>
-      <div id="status" class="pm-status">Initialisiere...</div>
-      <details class="pm-header-guide" data-help-title="Anleitung" data-help="Kurzanleitung und Dokumentenliste im Header, um den Arbeitsbereich freizuhalten.">
-        <summary>Anleitung & Dokumente</summary>
-        <div class="pm-header-guide-grid">
-          <div>
-            <div class="pm-header-guide-title">Anleitung zur Nutzung</div>
-            <ol class="pm-guide-list">
-              <li>Neues Dokument anlegen oder ein bestehendes Dokument aus der Liste öffnen.</li>
-              <li>In der Baumansicht zuerst Basisgeräte, dann Karten konfigurieren.</li>
-              <li>Ports werden aus Karten-Defaults automatisch erzeugt und zugeordnet.</li>
-              <li>Im Matrix-Tab Verbindungen setzen, prüfen und speichern.</li>
-              <li>Zum Schluss immer Speichern, damit Änderungen serverseitig gesichert sind.</li>
-            </ol>
-          </div>
-          <div>
-            <div class="pm-header-guide-title">Dokumente</div>
-            <div id="docList" class="pm-list pm-doc-list" data-help-title="Dokumentenliste" data-help="Klicke auf einen Eintrag, um das Dokument zu laden."></div>
-          </div>
+        <div class="pm-tabs pm-tabs-inline" data-help-title="Ansichten" data-help="Wechsle zwischen Verwaltungsansicht und Patch-Matrix.">
+          <button id="btnTabManage" class="btn btn-primary" type="button" data-tab="manage">Verwaltung</button>
+          <button id="btnTabMatrix" class="btn" type="button" data-tab="matrix">Matrix</button>
         </div>
-      </details>
+      </div>
+      <div class="pm-toolbar-row pm-toolbar-row-compact">
+        <div id="status" class="pm-status">Initialisiere...</div>
+        <details class="pm-header-guide" data-help-title="Anleitung" data-help="Kurzanleitung und Dokumentenliste im Header, um den Arbeitsbereich freizuhalten.">
+          <summary>Anleitung & Dokumente</summary>
+          <div class="pm-header-guide-grid">
+            <div>
+              <div class="pm-header-guide-title">Anleitung zur Nutzung</div>
+              <ol class="pm-guide-list">
+                <li>Neues Dokument anlegen oder ein bestehendes Dokument aus der Liste öffnen.</li>
+                <li>In der Baumansicht zuerst Basisgeräte, dann Karten konfigurieren.</li>
+                <li>Ports werden aus Karten-Defaults automatisch erzeugt und zugeordnet.</li>
+                <li>Im Matrix-Tab Verbindungen setzen, prüfen und speichern.</li>
+                <li>Zum Schluss immer Speichern, damit Änderungen serverseitig gesichert sind.</li>
+              </ol>
+            </div>
+            <div>
+              <div class="pm-header-guide-title">Dokumente</div>
+              <div id="docList" class="pm-list pm-doc-list" data-help-title="Dokumentenliste" data-help="Klicke auf einen Eintrag, um das Dokument zu laden."></div>
+            </div>
+          </div>
+        </details>
+      </div>
     </section>
-
-    <nav class="card pm-tabs" data-help-title="Ansichten" data-help="Wechsle zwischen Verwaltungsansicht und Patch-Matrix.">
-      <button id="btnTabManage" class="btn btn-primary" type="button" data-tab="manage">Verwaltung</button>
-      <button id="btnTabMatrix" class="btn" type="button" data-tab="matrix">Matrix</button>
-    </nav>
 
     <section id="tabManage" class="pm-tab-panel">
       <div class="pm-manage-grid">
