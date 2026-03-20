@@ -11,12 +11,7 @@
   const plusMinuteBtn = document.getElementById("plusMinuteBtn");
   const resetControls = document.getElementById("resetControls");
   const fullscreenBtn = document.getElementById("fullscreenBtn");
-  const progressGreen = document.getElementById("progressGreen");
-  const progressYellow = document.getElementById("progressYellow");
-  const progressRed = document.getElementById("progressRed");
-  const fillGreen = document.getElementById("fillGreen");
-  const fillYellow = document.getElementById("fillYellow");
-  const fillRed = document.getElementById("fillRed");
+  const progressFill = document.getElementById("progressFill");
 
   let state = "idle";
   let countdownSeconds = 0;
@@ -93,47 +88,21 @@
     const remaining = Math.max(0, countdownSeconds);
 
     if (state === "idle" || !total) {
-      fillGreen.style.width = "0%";
-      fillYellow.style.width = "0%";
-      fillRed.style.width = "0%";
+      progressFill.style.width = "100%";
+      countdownEl.style.color = "";
       return;
     }
 
-    const greenDuration = Math.max(0, total - 300);
-    const yellowDuration = Math.max(0, Math.min(total, 300) - 30);
-    const redDuration = Math.min(total, 30);
+    const pct = (remaining / total) * 100;
+    progressFill.style.width = Math.min(100, Math.max(0, pct)) + "%";
 
-    progressGreen.style.display = greenDuration > 0 ? "" : "none";
-    progressYellow.style.display = yellowDuration > 0 ? "" : "none";
-    progressRed.style.display = redDuration > 0 ? "" : "none";
-
-    progressGreen.style.width = (greenDuration / total * 100) + "%";
-    progressYellow.style.width = (yellowDuration / total * 100) + "%";
-    progressRed.style.width = (redDuration / total * 100) + "%";
-
-    let greenFill = 0;
-    let yellowFill = 0;
-    let redFill = 0;
-
-    if (greenDuration > 0) {
-      greenFill = remaining > 300 ? (total - remaining) / greenDuration : 1;
+    if (remaining > 300) {
+      countdownEl.style.color = "#14a76c";
+    } else if (remaining > 30) {
+      countdownEl.style.color = "#E9B63B";
+    } else {
+      countdownEl.style.color = "#DC2525";
     }
-    if (yellowDuration > 0) {
-      if (remaining > 300) {
-        yellowFill = 0;
-      } else if (remaining > 30) {
-        yellowFill = (300 - remaining) / yellowDuration;
-      } else {
-        yellowFill = 1;
-      }
-    }
-    if (redDuration > 0) {
-      redFill = remaining > 30 ? 0 : (30 - remaining) / redDuration;
-    }
-
-    fillGreen.style.width = (Math.min(1, Math.max(0, greenFill)) * 100) + "%";
-    fillYellow.style.width = (Math.min(1, Math.max(0, yellowFill)) * 100) + "%";
-    fillRed.style.width = (Math.min(1, Math.max(0, redFill)) * 100) + "%";
   }
 
   function renderClock() {

@@ -1,12 +1,12 @@
 :root {
-  --bg: #0b1220;
-  --ink: #e6edf7;
-  --muted: #99a7bd;
-  --line: #243447;
-  --accent: #1d9bf0;
-  --accent-strong: #117ac2;
-  --danger: #f87171;
-  --card: #111a2b;
+  --bg: #272727;
+  --ink: #f4f4f4;
+  --muted: #b8b8b8;
+  --line: #747474;
+  --accent: #5478ff;
+  --accent-strong: #cc4f24;
+  --danger: #ff652f;
+  --card: #333333;
   --grid-size-px: 15px;
 }
 
@@ -15,9 +15,7 @@
 body {
   margin: 0;
   font-family: "Source Sans 3", "Segoe UI", Tahoma, sans-serif;
-  background: radial-gradient(circle at 10% -20%, #12395c 0%, transparent 45%),
-    radial-gradient(circle at 90% -30%, #1a2f55 0%, transparent 40%),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
 }
 
@@ -30,7 +28,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: rgba(17, 26, 43, 0.86);
+  background: rgba(51, 51, 51, 0.92);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(8px);
 }
@@ -117,7 +115,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #8fb5d8;
+  color: #ffd1c2;
   margin-bottom: 2px;
 }
 
@@ -428,12 +426,10 @@ body {
   top: 24px;
   font-family: Arial, Helvetica, sans-serif;
   background: #fff;
-  border: 1px solid #3a4a63;
+  border: 1px solid #747474;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
-  background-image:
-    linear-gradient(to right, rgba(9, 105, 218, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(9, 105, 218, 0.08) 1px, transparent 1px);
-  background-size: var(--grid-size-px) var(--grid-size-px);
+  background-image: none;
+  background-size: auto;
 }
 
 .element {
@@ -473,8 +469,8 @@ body {
 }
 
 .element.selected {
-  border: 2px solid #1144cc;
-  box-shadow: 0 0 0 2px rgba(17, 68, 204, 0.2);
+  border: 2px solid #5478ff;
+  box-shadow: 0 0 0 2px rgba(84, 120, 255, 0.2);
 }
 
 .element[data-grouped="1"]::after {
@@ -485,15 +481,15 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #8fb5d8;
+  background: #14a76c;
   opacity: 0.9;
 }
 
 .selection-box {
   position: absolute;
-  border: 1px dashed #79a8ff;
-  background: rgba(24, 111, 255, 0.08);
-  box-shadow: 0 0 0 1px rgba(24, 111, 255, 0.16) inset;
+  border: 1px dashed #5478ff;
+  background: rgba(84, 120, 255, 0.08);
+  box-shadow: 0 0 0 1px rgba(84, 120, 255, 0.16) inset;
   cursor: move;
   z-index: 4;
 }
@@ -828,9 +824,9 @@ textarea {
 
 .dialog-warn {
   font-size: 13px;
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.08);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  color: #fff3a6;
+  background: rgba(255, 228, 0, 0.08);
+  border: 1px solid rgba(255, 228, 0, 0.2);
   border-radius: 8px;
   padding: 8px 10px;
   line-height: 1.4;

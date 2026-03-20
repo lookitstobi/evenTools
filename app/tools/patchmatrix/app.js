@@ -1277,7 +1277,7 @@
     el.matrixLegend.textContent = outputLabel + ' (horizontal) x ' + inputLabel + ' (vertikal) · Klick setzt Verbindung, erneuter Klick löst sie wieder.';
 
     const cellFontSize = 12;
-    const cellSafeZone = 24;
+    const cellSafeZone = 18;
     const cellSize = cellFontSize + (cellSafeZone * 2);
     el.matrixWrap.style.setProperty('--pm-cell-font-size', String(cellFontSize) + 'px');
     el.matrixWrap.style.setProperty('--pm-cell-safe-zone', String(cellSafeZone) + 'px');

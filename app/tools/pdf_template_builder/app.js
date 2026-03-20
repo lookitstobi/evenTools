@@ -373,14 +373,14 @@ function renderStage() {
     div.style.lineHeight = `${Math.max(fontPx * 1.08, Math.min(el.h * MM_TO_PX, fontPx * 1.22))}px`;
     div.style.fontWeight = el.font_weight || 'normal';
     div.style.textAlign = el.align || 'left';
-    div.style.color = el.text_color || '#1b1f23';
-    div.style.borderColor = el.stroke_color || '#2266aa';
+    div.style.color = el.text_color || '#272727';
+    div.style.borderColor = el.stroke_color || '#747474';
     div.style.borderWidth = `${el.stroke_width || 1}px`;
-    div.style.background = (el.type === 'rect_fill') ? (el.fill_color || '#cdeed6') : 'rgba(255, 255, 255, 0.65)';
+    div.style.background = (el.type === 'rect_fill') ? (el.fill_color || '#14a76c') : 'rgba(255, 255, 255, 0.65)';
 
     if (el.type === 'line') {
       div.textContent = '';
-      div.style.background = el.stroke_color || '#1f2937';
+      div.style.background = el.stroke_color || '#747474';
       div.style.border = '0';
       div.style.height = `${Math.max(1, (el.h || 1) * MM_TO_PX)}px`;
     } else if (el.type === 'image') {
@@ -399,7 +399,8 @@ function renderStage() {
         div.style.backgroundSize = '';
         div.style.backgroundRepeat = '';
         div.style.backgroundPosition = '';
-        div.style.backgroundImage = 'repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 8px,#e2e8f0 8px,#e2e8f0 16px)';
+        div.style.backgroundImage = 'none';
+        div.style.backgroundColor = 'rgba(255, 228, 0, 0.12)';
         div.textContent = 'Bild';
       }
     } else {
@@ -462,9 +463,9 @@ function updatePropertyInputs() {
     propFontWeightEl.value = 'normal';
     propAlignEl.value = 'left';
     propSnapEl.checked = false;
-    propTextColorEl.value = '#1b1f23';
-    propStrokeColorEl.value = '#1f2937';
-    propFillColorEl.value = '#cdeed6';
+    propTextColorEl.value = '#272727';
+    propStrokeColorEl.value = '#747474';
+    propFillColorEl.value = '#14a76c';
     propStrokeWidthEl.value = '1';
     propImageSrcEl.value = '';
     return;
@@ -491,9 +492,9 @@ function updatePropertyInputs() {
   propFontWeightEl.value = el.font_weight || 'normal';
   propAlignEl.value = el.align || 'left';
   propSnapEl.checked = !!el.snap;
-  propTextColorEl.value = el.text_color || '#1b1f23';
-  propStrokeColorEl.value = el.stroke_color || '#1f2937';
-  propFillColorEl.value = el.fill_color || '#cdeed6';
+  propTextColorEl.value = el.text_color || '#272727';
+  propStrokeColorEl.value = el.stroke_color || '#747474';
+  propFillColorEl.value = el.fill_color || '#14a76c';
   propStrokeWidthEl.value = String(el.stroke_width || 1);
   propImageSrcEl.value = el.image_src || '';
 }
@@ -515,9 +516,9 @@ function applyPropsToSelection() {
     el.font_weight = propFontWeightEl.value;
     el.align = propAlignEl.value;
     el.snap = !!propSnapEl.checked;
-    el.text_color = propTextColorEl.value || '#1b1f23';
-    el.stroke_color = propStrokeColorEl.value || '#1f2937';
-    el.fill_color = propFillColorEl.value || '#cdeed6';
+    el.text_color = propTextColorEl.value || '#272727';
+    el.stroke_color = propStrokeColorEl.value || '#747474';
+    el.fill_color = propFillColorEl.value || '#14a76c';
     el.stroke_width = Number(propStrokeWidthEl.value || 1);
     el.image_src = propImageSrcEl.value || '';
     if (el.type === 'image') {
@@ -1642,9 +1643,9 @@ function addElement(elementTypeOverride = null) {
     font_size: 11,
     font_weight: 'normal',
     align: 'left',
-    text_color: '#1b1f23',
-    stroke_color: '#1f2937',
-    fill_color: '#cdeed6',
+    text_color: '#272727',
+    stroke_color: '#747474',
+    fill_color: '#14a76c',
     stroke_width: 1,
     image_src: '',
     group_id: '',
@@ -1658,7 +1659,7 @@ function addElement(elementTypeOverride = null) {
   } else if (elementType === 'rect') {
     next = { ...base, text: '', w: 22 * step, h: 6 * step, fill_color: 'transparent' };
   } else if (elementType === 'rect_fill') {
-    next = { ...base, text: '', w: 22 * step, h: 6 * step, fill_color: '#d9fbe2' };
+    next = { ...base, text: '', w: 22 * step, h: 6 * step, fill_color: '#98e3c3' };
   } else if (elementType === 'image') {
     next = { ...base, text: '', w: 14 * step, h: 9 * step, image_src: '' };
   }

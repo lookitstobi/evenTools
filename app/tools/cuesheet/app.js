@@ -374,7 +374,7 @@
 
   function setStatus(text, isError = false) {
     el.status.textContent = text;
-    el.status.style.color = isError ? '#fb7185' : '';
+    el.status.style.color = isError ? '#ff652f' : '';
   }
 
   function handleError(error) {

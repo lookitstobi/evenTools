@@ -52,21 +52,17 @@ $style = '<style>' .
   'display:inline-flex;align-items:center;gap:6px;' .
   'text-decoration:none;color:inherit;font-weight:700;font-size:13px;' .
   'padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);' .
-  'background:rgba(0,0,0,.18);' .
+  'background:#333333;' .
   '}' .
   '.tool-home-link:hover{opacity:0.9}' .
   '.tool-home-icon{width:14px;height:14px;display:inline-block}' .
   '.tool-global-header{' .
   'display:flex;align-items:center;gap:12px;padding:10px 16px;' .
   'border-bottom:1px solid rgba(255,255,255,.12);' .
-  'background:rgba(0,0,0,.25);backdrop-filter:blur(10px);' .
+  'background:#272727;backdrop-filter:blur(10px);' .
   '}' .
-  'select{color:#eaf0ff;background:#11182b}' .
-  'select option,select optgroup{color:#f3f7ff;background:#11182b}' .
-  '@media (prefers-color-scheme: light){' .
-  'select{color:#111827;background:#ffffff}' .
-  'select option,select optgroup{color:#111827;background:#ffffff}' .
-  '}' .
+  'select{color:#f4f4f4;background:#333333}' .
+  'select option,select optgroup{color:#f4f4f4;background:#333333}' .
   '@media (max-width: 600px){' .
   '.tool-global-header{padding:8px 10px;gap:8px;position:sticky;top:0;z-index:80}' .
   '.tool-home-link{font-size:12px;padding:6px 9px}' .

@@ -1,24 +1,24 @@
 :root{
-  --bg: #0b1020;
-  --panel: rgba(255,255,255,.06);
-  --panel2: rgba(255,255,255,.08);
-  --border: rgba(255,255,255,.12);
-  --text: rgba(255,255,255,.92);
-  --muted: rgba(255,255,255,.66);
-  --faint: rgba(255,255,255,.45);
-  --field-bg: rgba(0,0,0,.22);
-  --field-bg-focus: rgba(0,0,0,.30);
-  --option-bg: #11182b;
-  --option-text: #f3f7ff;
+  --bg: #272727;
+  --panel: #333333;
+  --panel2: #3d3d3d;
+  --border: rgba(255,255,255,.16);
+  --text: rgba(255,255,255,.94);
+  --muted: rgba(255,255,255,.72);
+  --faint: rgba(255,255,255,.5);
+  --field-bg: #2f2f2f;
+  --field-bg-focus: #363636;
+  --option-bg: #333333;
+  --option-text: #f4f4f4;
 
-  --accent: #7c5cff;
-  --accent2: #3dd6ff;
+  --accent: #5478ff;
+  --accent2: #ffe400;
 
-  --ok: #2dd4bf;
-  --warn: #fbbf24;
-  --bad: #fb7185;
+  --ok: #14a76c;
+  --warn: #ffe400;
+  --bad: #ff652f;
 
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --shadow: 0 10px 24px rgba(0,0,0,.22);
   --radius: 16px;
   --radius2: 12px;
 
@@ -28,18 +28,18 @@
 
 @media (prefers-color-scheme: light){
   :root{
-    --bg:#f6f7fb;
-    --panel: rgba(0,0,0,.04);
-    --panel2: rgba(0,0,0,.06);
-    --border: rgba(0,0,0,.12);
-    --text: rgba(0,0,0,.88);
-    --muted: rgba(0,0,0,.62);
-    --faint: rgba(0,0,0,.45);
-    --field-bg: rgba(255,255,255,.92);
-    --field-bg-focus: rgba(255,255,255,1);
-    --option-bg: #ffffff;
-    --option-text: #111827;
-    --shadow: 0 10px 30px rgba(0,0,0,.12);
+    --bg: #272727;
+    --panel: #333333;
+    --panel2: #3d3d3d;
+    --border: rgba(255,255,255,.16);
+    --text: rgba(255,255,255,.94);
+    --muted: rgba(255,255,255,.72);
+    --faint: rgba(255,255,255,.5);
+    --field-bg: #2f2f2f;
+    --field-bg-focus: #363636;
+    --option-bg: #333333;
+    --option-text: #f4f4f4;
+    --shadow: 0 10px 24px rgba(0,0,0,.22);
   }
 }
 
@@ -53,38 +53,28 @@ body{
   min-height: 100vh;
   font-family: var(--sans);
   color: var(--text);
-  background-attachment: fixed;
-  background:
-    radial-gradient(1200px 700px at 10% 10%, rgba(124,92,255,.18), transparent 55%),
-    radial-gradient(900px 600px at 90% 10%, rgba(61,214,255,.14), transparent 60%),
-    radial-gradient(1100px 800px at 30% 100%, rgba(45,212,191,.10), transparent 60%),
-    var(--bg);
+  background: var(--bg);
   line-height:1.45;
 }
 
 body.user-theme-pink{
-  --accent: #ff4fa3;
-  --accent2: #ff8ac8;
-  background-attachment: fixed;
-  background:
-    radial-gradient(1200px 700px at 10% 10%, rgba(255,79,163,.22), transparent 55%),
-    radial-gradient(900px 600px at 90% 10%, rgba(255,138,200,.16), transparent 60%),
-    radial-gradient(1100px 800px at 30% 100%, rgba(251,113,133,.12), transparent 60%),
-    var(--bg);
+  --accent: #5478ff;
+  --accent2: #ffe400;
+  background: var(--bg);
 }
 
 body.user-theme-pink .brand-badge{
-  background: linear-gradient(135deg, rgba(255,79,163,.95), rgba(255,138,200,.82));
+  background: var(--accent);
 }
 
 body.user-theme-pink .btn-primary{
-  background: linear-gradient(135deg, rgba(255,79,163,.96), rgba(255,138,200,.82));
+  background: var(--accent);
 }
 
 body.user-theme-pink .input:focus,
 body.user-theme-pink .select:focus{
-  border-color: rgba(255,79,163,.55);
-  box-shadow: 0 0 0 4px rgba(255,79,163,.18);
+  border-color: rgba(84,120,255,.55);
+  box-shadow: 0 0 0 4px rgba(84,120,255,.18);
 }
 
 a{ color:inherit; text-decoration:none; }
@@ -102,11 +92,8 @@ small,.small{ color: var(--muted); }
   top:0;
   z-index: 20;
   backdrop-filter: blur(10px);
-  background: linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,0));
-  border-bottom: 1px solid rgba(255,255,255,.08);
-}
-@media (prefers-color-scheme: light){
-  .topbar{ background: linear-gradient(to bottom, rgba(255,255,255,.75), rgba(255,255,255,0)); }
+  background: rgba(39,39,39,.96);
+  border-bottom: 1px solid rgba(255,255,255,.10);
 }
 
 .topbar-inner{
@@ -140,7 +127,7 @@ small,.small{ color: var(--muted); }
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(124,92,255,.9), rgba(61,214,255,.75));
+  background: var(--accent);
   box-shadow: var(--shadow);
 }
 .brand span{ opacity:.98; }
@@ -196,14 +183,14 @@ small,.small{ color: var(--muted); }
 .btn:active{ transform: translateY(1px); }
 
 .btn-primary{
-  background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(61,214,255,.75));
-  border-color: rgba(255,255,255,.16);
+  background: var(--accent);
+  border-color: rgba(84,120,255,.45);
   color: rgba(255,255,255,.95);
 }
 .btn-primary:hover{ filter: brightness(1.02); }
 .btn-danger{
-  background: rgba(251,113,133,.12);
-  border-color: rgba(251,113,133,.28);
+  background: rgba(255,101,47,.16);
+  border-color: rgba(255,101,47,.32);
 }
 .btn-ghost{
   background: transparent;
@@ -272,8 +259,8 @@ select optgroup{
 
 .input:focus, .select:focus{
   background: var(--field-bg-focus);
-  border-color: rgba(124,92,255,.55);
-  box-shadow: 0 0 0 4px rgba(124,92,255,.18);
+  border-color: rgba(84,120,255,.55);
+  box-shadow: 0 0 0 4px rgba(84,120,255,.18);
 }
 
 .help{ color: var(--faint); font-size: 13px; }
@@ -282,15 +269,15 @@ select optgroup{
   border-radius: 14px;
   padding: 12px 12px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,.05);
+  background: rgba(255,255,255,.04);
 }
-.flash.ok{ border-color: rgba(45,212,191,.35); background: rgba(45,212,191,.10); }
-.flash.warn{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.10); }
-.flash.bad{ border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.10); }
+.flash.ok{ border-color: rgba(20,167,108,.45); background: rgba(20,167,108,.12); }
+.flash.warn{ border-color: rgba(255,228,0,.4); background: rgba(255,228,0,.12); }
+.flash.bad{ border-color: rgba(255,101,47,.45); background: rgba(255,101,47,.12); }
 
 .chip-warn{
-  border-color: rgba(251,191,36,.35);
-  background: rgba(251,191,36,.12);
+  border-color: rgba(255,228,0,.35);
+  background: rgba(255,228,0,.12);
 }
 
 .tool-actions{
@@ -333,7 +320,7 @@ select optgroup{
 .pdf-mode-option input{
   width:auto;
   margin-top:2px;
-  accent-color: rgba(124,92,255,.95);
+  accent-color: rgba(84,120,255,.95);
 }
 
 .pdf-mode-option span{

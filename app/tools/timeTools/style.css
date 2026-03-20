@@ -1,12 +1,12 @@
 :root {
-  --bg: #000000;
-  --clock-red: #f32a2a;
-  --gray-strong: #c4c4c4;
-  --gray-soft: #9a9a9a;
-  --gray-icon: #7b7b7b;
-  --gray-button: #7f7f7f;
-  --gray-button-text: #121212;
-  --gray-button-muted: #595959;
+  --bg: #272727;
+  --clock-red: #ff652f;
+  --gray-strong: #f0f0f0;
+  --gray-soft: #b0b0b0;
+  --gray-icon: #8d8d8d;
+  --gray-button: #747474;
+  --gray-button-text: #1d1d1d;
+  --gray-button-muted: #5e5e5e;
   --timing-fast: 120ms;
   --timing-main: 165ms;
   --ease-enter: cubic-bezier(0.2, 0.9, 0.2, 1);
@@ -116,7 +116,7 @@ body {
 
 .clock {
   --fit-scale: 1;
-  color: var(--clock-red);
+  color: var(--gray-strong);
   line-height: 0.9;
   letter-spacing: 0;
   font-size: clamp(64px, min(24vw, 30vh), 420px);
@@ -128,7 +128,7 @@ body {
   opacity: 1;
   transition: transform var(--timing-main) var(--ease-enter), font-size var(--timing-main) var(--ease-enter), opacity var(--timing-fast) linear;
   text-align: center;
-  text-shadow: 0 0 14px rgba(243, 42, 42, 0.28);
+  text-shadow: none;
   font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
   margin: 0;
 }
@@ -191,21 +191,13 @@ body {
 }
 
 .progress-bar {
-  display: flex;
-  width: min(88vw, 500px);
-  height: 10px;
-  border-radius: 5px;
-  gap: 3px;
-  align-self: center;
-}
-
-.progress-segment {
-  flex: 0 0 auto;
   position: relative;
-  height: 100%;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.07);
+  width: min(88vw, 500px);
+  height: 18px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.10);
   overflow: hidden;
+  align-self: center;
 }
 
 .progress-fill {
@@ -213,21 +205,10 @@ body {
   left: 0;
   top: 0;
   height: 100%;
-  width: 0%;
-  border-radius: 3px;
+  width: 100%;
+  border-radius: 9px;
+  background: var(--gray-soft);
   transition: width 1s linear;
-}
-
-.progress-green .progress-fill {
-  background: #4fca5c;
-}
-
-.progress-yellow .progress-fill {
-  background: #f0b429;
-}
-
-.progress-red .progress-fill {
-  background: var(--clock-red);
 }
 
 .controls {

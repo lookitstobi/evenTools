@@ -69,18 +69,14 @@ if (in_array($ext, ['html', 'htm'], true)) {
   $style = '<style>' .
     '.tool-home-btn{' .
     'position:fixed;right:16px;top:16px;z-index:9999;' .
-    'background:#111827;color:#fff;text-decoration:none;' .
+    'background:#333333;color:#fff;text-decoration:none;' .
     'padding:8px 12px;border-radius:8px;font:600 12px/1 system-ui,Segoe UI,Roboto,Arial,sans-serif;' .
     'box-shadow:0 6px 18px rgba(0,0,0,0.25);' .
     '}' .
     '.tool-home-btn:hover{opacity:0.9}' .
     '.tool-home-inline{margin-right:8px}' .
-    'select{color:#eaf0ff;background:#11182b}' .
-    'select option,select optgroup{color:#f3f7ff;background:#11182b}' .
-    '@media (prefers-color-scheme: light){' .
-    'select{color:#111827;background:#ffffff}' .
-    'select option,select optgroup{color:#111827;background:#ffffff}' .
-    '}' .
+    'select{color:#f4f4f4;background:#333333}' .
+    'select option,select optgroup{color:#f4f4f4;background:#333333}' .
     '@media (max-width: 600px){' .
     '.tool-home-btn{top:auto;bottom:12px;right:12px;padding:10px 12px;border-radius:10px}' .
     '.tool-home-inline{margin-right:6px}' .
