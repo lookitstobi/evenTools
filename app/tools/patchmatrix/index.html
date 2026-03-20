@@ -117,32 +117,35 @@
     </section>
 
     <section id="tabMatrix" class="pm-tab-panel hidden">
-      <article class="card pm-panel" data-help-title="Patch-Matrix" data-help="Hier setzt du Verbindungen zwischen Output- und Input-Ports.">
-        <div class="pm-section">
+      <article class="card pm-panel pm-matrix-panel" data-help-title="Patch-Matrix" data-help="Hier setzt du Verbindungen zwischen Output- und Input-Ports.">
+        <div class="pm-section pm-matrix-section">
           <div class="pm-section-head">
             <div class="pm-section-title">Matrix (Patchverbindungen)</div>
             <button id="btnNewPatch" class="btn" type="button" disabled data-help-title="Patch hinzufügen" data-help="Legt einen neuen Patch-Eintrag (initial deaktiviert) an.">+ Patch</button>
           </div>
-          <div class="pm-matrix-controls">
-            <label class="pm-field" data-help-title="Quellkarte" data-help="Begrenzt die Matrix auf Output-Ports der gewählten Karte.">
-              <span class="label">Quellkarte</span>
-              <select id="matrixSourceCard" class="select" disabled></select>
-            </label>
-            <label class="pm-field" data-help-title="Zielkarte" data-help="Begrenzt die Matrix auf Input-Ports der gewählten Karte.">
-              <span class="label">Zielkarte</span>
-              <select id="matrixTargetCard" class="select" disabled></select>
-            </label>
-            <label class="pm-field" data-help-title="Patch-Filter" data-help="Legt fest, ob nur aktive oder auch deaktivierte Patches gezeigt werden.">
-              <span class="label">Patch-Filter</span>
-              <select id="matrixStateFilter" class="select" disabled>
-                <option value="active">Nur aktive</option>
-                <option value="all">Aktive + inaktive</option>
-              </select>
-            </label>
+          <div class="pm-matrix-layout">
+            <div class="pm-matrix-main">
+              <div class="pm-matrix-controls">
+                <label class="pm-field" data-help-title="Quellkarte" data-help="Begrenzt die Matrix auf Output-Ports der gewählten Karte.">
+                  <span class="label">Quellkarte</span>
+                  <select id="matrixSourceCard" class="select" disabled></select>
+                </label>
+                <label class="pm-field" data-help-title="Zielkarte" data-help="Begrenzt die Matrix auf Input-Ports der gewählten Karte.">
+                  <span class="label">Zielkarte</span>
+                  <select id="matrixTargetCard" class="select" disabled></select>
+                </label>
+                <label class="pm-field" data-help-title="Patch-Filter" data-help="Legt fest, ob nur aktive oder auch deaktivierte Patches gezeigt werden.">
+                  <span class="label">Patch-Filter</span>
+                  <select id="matrixStateFilter" class="select" disabled>
+                    <option value="active">Nur aktive</option>
+                    <option value="all">Aktive + inaktive</option>
+                  </select>
+                </label>
+              </div>
+              <div id="matrixLegend" class="pm-matrix-legend" data-help-title="Matrix-Legende" data-help="Zeigt den aktuell sichtbaren Matrix-Ausschnitt und kurze Bedienhinweise."></div>
+              <div id="matrixWrap" class="pm-matrix-wrap" data-help-title="Matrix" data-help="Klick auf eine Zelle setzt oder ersetzt eine Verbindung."></div>
+            </div>
           </div>
-          <div id="matrixLegend" class="pm-matrix-legend" data-help-title="Matrix-Legende" data-help="Zeigt den aktuell sichtbaren Matrix-Ausschnitt und kurze Bedienhinweise."></div>
-          <div id="matrixWrap" class="pm-matrix-wrap" data-help-title="Matrix" data-help="Klick auf eine Zelle setzt oder ersetzt eine Verbindung."></div>
-          <div id="patchList" class="pm-list pm-patch-list" data-help-title="Patch-Liste" data-help="Zeigt die Patches passend zum aktuellen Filter."></div>
         </div>
       </article>
     </section>

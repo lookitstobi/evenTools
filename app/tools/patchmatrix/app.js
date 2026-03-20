@@ -51,7 +51,6 @@
     matrixStateFilter: byId('matrixStateFilter'),
     matrixLegend: byId('matrixLegend'),
     matrixWrap: byId('matrixWrap'),
-    patchList: byId('patchList'),
     detailEmpty: byId('detailEmpty'),
     detailForm: byId('detailForm'),
     detailFields: byId('detailFields'),
@@ -281,21 +280,6 @@
         return;
       }
       onMatrixCellClick(sourcePortId, targetPortId);
-    });
-
-    el.patchList.addEventListener('click', (ev) => {
-      const target = ev.target;
-      const button = target.closest('button[data-patch-id]');
-      if (!button) {
-        return;
-      }
-      const patchId = String(button.dataset.patchId || '');
-      if (!patchId) {
-        return;
-      }
-      state.selection = { type: 'patch', id: patchId };
-      renderMatrixSection();
-      renderDetails();
     });
 
     el.detailForm.addEventListener('submit', (ev) => {
@@ -1212,7 +1196,6 @@
     syncMatrixFilters(payload);
     renderMatrixFilterOptions(payload);
     renderMatrixTable(payload);
-    renderPatchList(payload);
   }
 
   function syncMatrixFilters(payload) {
@@ -1953,6 +1936,15 @@
   }
 
   function sortPorts(a, b) {
+    // Sortiere nach numerischer ID (aufsteigend)
+    const aNumId = a.numeric_id !== null && a.numeric_id !== undefined ? Number(a.numeric_id) : Infinity;
+    const bNumId = b.numeric_id !== null && b.numeric_id !== undefined ? Number(b.numeric_id) : Infinity;
+    
+    if (aNumId !== bNumId) {
+      return aNumId - bNumId;
+    }
+
+    // Fallback auf Kartensortierung, falls keine numeric_id
     const aCard = String(a.card_id || '');
     const bCard = String(b.card_id || '');
     if (aCard !== bCard) {
