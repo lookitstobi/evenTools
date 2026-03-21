@@ -56,39 +56,39 @@ $tool_meta = [
   'cuesheet' => [
     'title' => 'cueTools',
     'sub' => 'Cue-Planung und Ablaufhilfe',
-    'logo' => '/assets/cueTools%20Logo.png'
+    'logo' => '/assets/Logos/cueTools.png'
   ],
   'dev_todo' => [
     'title' => 'todoTools',
     'sub' => 'Aufgaben fuer Tools, Seiten und Infrastruktur',
-    'logo' => '/assets/todoTools%20Logo.png'
+    'logo' => '/assets/Logos/todoTools.png'
   ],
   'dguv_v3' => [
     'title' => 'dguvTools',
     'sub' => 'Prüflinge, Prüfungen, CSV-Labeldruckjobs',
-    'logo' => '/assets/dguvTools%20Logo.png'
+    'logo' => '/assets/Logos/dguvTools.png'
   ],
   'nti_tool' => [
     'title' => 'ntiTools',
     'sub' => 'Netzwerk- und Infrastrukturtool',
-    'logo' => '/assets/ntiTools%20Logo.png'
+    'logo' => '/assets/Logos/ntiTools.png'
   ],
   'patchmatrix' => [
     'title' => 'nexusTools',
     'sub' => 'Patchmatrix und Verbindungsübersicht',
-    'logo' => '/assets/nexusTools%20Logo.png'
+    'logo' => '/assets/Logos/nexusTools.png'
   ],
   'pdf_template_builder' => [
     'title' => 'pdfTools',
     'sub' => 'GUI fuer PDF-Vorlagen und Platzhalter',
-    'logo' => '/assets/pdfTools.png',
+    'logo' => '/assets/Logos/pdfTools.png',
     'disabled' => true,
     'disabled_note' => 'Der Editor ist aktuell inaktiv und bleibt fuer laufende Arbeiten erhalten.'
   ],
   'timeTools' => [
     'title' => 'timeTools',
     'sub' => 'Inspizientenuhr mit Countdown und Intervallen',
-    'logo' => '/assets/timeTools.png'
+    'logo' => '/assets/Logos/timeTools.png'
   ]
 ];
 
@@ -134,7 +134,6 @@ page_start('Dashboard');
                   <img class="tool-logo" src="<?=h((string)$meta['logo'])?>" alt="<?=h(($meta['title'] ?? (string)$t) . ' Logo')?>">
                 <?php endif; ?>
                 <div>
-                  <div class="tool-title"><?=h($meta['title'] ?? (string)$t)?></div>
                   <div class="tool-sub"><?=h($meta['sub'] ?? 'Startet über den geschützten Loader')?></div>
                   <?php if ($toolDisabled): ?>
                     <div class="tool-note"><?=h((string)($meta['disabled_note'] ?? 'Dieses Tool ist derzeit inaktiv.'))?></div>
