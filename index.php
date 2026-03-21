@@ -65,13 +65,13 @@ $tool_meta = [
   ],
   'dguv_v3' => [
     'title' => 'dguvTools',
-    'sub' => 'Prüflinge, Prüfungen, CSV-Labeldruckjobs',
+    'sub' => 'Tool zum Management von DGUV-Prüfungen und Betriebsmitteln',
     'logo' => '/assets/Logos/dguvTools.png'
   ],
   'nti_tool' => [
-    'title' => 'ntiTools',
-    'sub' => 'Netzwerk- und Infrastrukturtool',
-    'logo' => '/assets/Logos/ntiTools.png'
+    'title' => 'pegelTools',
+    'sub' => 'Protokollierung und Auswertung von Schallpegelmessungen',
+    'logo' => '/assets/Logos/pegelTools.png'
   ],
   'patchmatrix' => [
     'title' => 'nexusTools',
