@@ -2,10 +2,18 @@ body {
   margin: 0;
   overflow: hidden;
   height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tool-global-header {
+  min-height: 0;
 }
 
 .pm-app {
   width: 100%;
+  min-height: 0;
   height: 100%;
   margin: 0;
   padding: 0;
@@ -13,74 +21,79 @@ body {
   gap: 0;
   position: relative;
   z-index: 1;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
 #tabMatrix {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   overflow: hidden;
   min-height: 0;
   flex: 1;
-  padding: 12px;
+  padding: 8px;
 }
 
 .pm-matrix-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
   overflow: hidden;
   flex: 1;
+  padding: 8px;
 }
 
 .pm-title {
-  margin: 0 0 4px;
+  margin: 0 0 2px;
+  font-size: 22px;
 }
 
 .pm-toolbar {
   display: grid;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 8px 10px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
 .pm-toolbar-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
 }
 
 .pm-toolbar-row-compact {
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .pm-toolbar-main-text {
   display: grid;
-  gap: 2px;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 220px;
 }
 
 .pm-toolbar-main-text .small {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .pm-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .pm-actions .btn,
 .pm-tabs-inline .btn {
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 5px 8px;
+  font-size: 11px;
 }
 
 #btnHelpMode.is-active {
@@ -90,12 +103,12 @@ body {
 }
 
 .pm-status {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
-  min-height: 30px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 7px;
   border: 1px solid var(--border);
   border-radius: 999px;
 }
@@ -107,16 +120,16 @@ body {
 .pm-header-guide {
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 6px 9px;
+  padding: 5px 8px;
   background: rgba(255, 255, 255, 0.03);
   margin-left: auto;
-  width: min(680px, 100%);
+  width: min(600px, 100%);
 }
 
 .pm-header-guide > summary {
   cursor: pointer;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .pm-header-guide-grid {
@@ -150,11 +163,13 @@ body {
 }
 
 .pm-tabs-inline {
-  margin-left: auto;
+  margin-left: 0;
+  flex: 0 0 auto;
 }
 
 .pm-doc-title-field {
-  min-width: min(440px, 100%);
+  flex: 1 1 320px;
+  min-width: min(320px, 100%);
 }
 
 .pm-doc-title-field .label {
@@ -162,7 +177,17 @@ body {
 }
 
 .pm-doc-title-field .input {
-  min-height: 32px;
+  min-height: 30px;
+  padding: 8px 10px;
+}
+
+.pm-meta-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .pm-meta-row .chip {
@@ -171,9 +196,10 @@ body {
 
 .pm-tab-panel {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .pm-manage-grid {
@@ -192,13 +218,13 @@ body {
 .pm-matrix-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
   overflow: hidden;
   flex: 1;
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 10px;
+  padding: 8px;
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -244,11 +270,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pm-section-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -543,8 +569,18 @@ body {
 .pm-matrix-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+.pm-matrix-controls .label {
+  font-size: 11px;
+}
+
+.pm-matrix-controls .select,
+.pm-matrix-controls .input {
+  min-height: 30px;
+  padding: 8px 10px;
 }
 
 .pm-matrix-layout {
@@ -559,15 +595,16 @@ body {
 .pm-matrix-main {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
   overflow: hidden;
   flex: 1;
 }
 
 .pm-matrix-legend {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
+  flex-shrink: 0;
 }
 
 .pm-matrix-wrap {
@@ -575,6 +612,8 @@ body {
   border-radius: 10px;
   overflow: auto;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
   max-width: 100%;
   flex: 1;
   overscroll-behavior: contain;
@@ -962,7 +1001,7 @@ body.pm-help-on [data-help]:hover {
 
 @media (max-width: 1024px) {
   .pm-app {
-    width: calc(100% - 16px);
+    width: 100%;
   }
 
   .pm-header-guide {
@@ -983,11 +1022,31 @@ body.pm-help-on [data-help]:hover {
   }
 }
 
+@media (min-width: 1180px) {
+  .pm-toolbar-row:first-child {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .pm-toolbar-row:first-child .pm-actions {
+    justify-content: flex-end;
+    flex: 0 1 auto;
+  }
+
+  .pm-toolbar-row-compact {
+    flex-wrap: nowrap;
+  }
+}
+
 @media (max-width: 680px) {
   .pm-actions .btn,
   .pm-detail-actions .btn,
   .pm-tabs .btn {
     width: 100%;
+  }
+
+  .pm-toolbar {
+    overflow-y: auto;
   }
 
   .pm-status {

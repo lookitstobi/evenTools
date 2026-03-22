@@ -1,5 +1,7 @@
 :root {
-  --bg: #272727;
+  /* IMPORTANT: This stage clock must always keep a pure black background (#000). */
+  /* Do not change this in future updates, even when other theme colors evolve. */
+  --bg: #000000;
   --clock-red: #ff652f;
   --gray-strong: #f0f0f0;
   --gray-soft: #b0b0b0;
@@ -23,7 +25,7 @@ body {
   margin: 0;
   width: 100%;
   height: 100%;
-  background: var(--bg);
+  background: #000000 !important;
   color: var(--gray-strong);
   overflow: hidden;
   overscroll-behavior: none;
@@ -43,6 +45,7 @@ body {
   display: flex;
   align-items: stretch;
   justify-content: stretch;
+  background: #000000 !important;
 }
 
 .tool-global-header {

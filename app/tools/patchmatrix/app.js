@@ -51,6 +51,7 @@
     matrixStateFilter: byId('matrixStateFilter'),
     matrixLegend: byId('matrixLegend'),
     matrixWrap: byId('matrixWrap'),
+    patchList: byId('patchList'),
     detailEmpty: byId('detailEmpty'),
     detailForm: byId('detailForm'),
     detailFields: byId('detailFields'),
@@ -1046,7 +1047,9 @@
       el.metaNotes.value = '';
       el.matrixLegend.textContent = '';
       el.matrixWrap.innerHTML = '<div class="pm-empty-list">Keine Matrixdaten.</div>';
-      el.patchList.innerHTML = '<div class="pm-empty-list">Keine Patches.</div>';
+      if (el.patchList) {
+        el.patchList.innerHTML = '<div class="pm-empty-list">Keine Patches.</div>';
+      }
       return;
     }
 
@@ -1357,6 +1360,10 @@
   }
 
   function renderPatchList(payload) {
+    if (!el.patchList) {
+      return;
+    }
+
     const patches = Array.isArray(payload.patches) ? payload.patches : [];
     const portMap = mapById(payload.ports || []);
 

@@ -162,7 +162,7 @@ page_start('Dashboard');
       <div class="card todo-dashboard-panel" id="todoDashboardPanel">
         <div class="todo-dashboard-head">
           <a class="todo-dashboard-title" href="/tool.php?name=dev_todo" title="Zum todoTools Board">
-            <div class="h2" style="margin-top:0;">todoTools</div>
+            <div class="h2">todoTools</div>
           </a>
           <span class="chip" id="todoDashboardCount">0 offen</span>
         </div>
@@ -234,7 +234,7 @@ page_start('Dashboard');
     <?php endif; ?>
 
     <div class="card">
-      <div class="h2" style="margin-top:0;">Status</div>
+      <div class="h2">Status</div>
       <div class="small">Session aktiv · Tools per Whitelist</div>
       <div class="sep"></div>
 

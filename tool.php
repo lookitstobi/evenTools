@@ -21,7 +21,7 @@ if ($name === 'pdf_template_builder') {
   echo '<div class="small">Der Editor bleibt als Entwicklungsstand erhalten, ist aber vorübergehend deaktiviert.</div>';
   echo '<div class="sep"></div>';
   echo '<div class="flash warn">Bitte nutze im Dashboard den PDF-Modus-Schalter, um für Berichte zwischen Legacy und neuem Templatesystem zu wechseln.</div>';
-  echo '<div style="height:10px;"></div>';
+  echo '<div class="spacer-10"></div>';
   echo '<a class="btn" href="/index.php">Zurück zum Dashboard</a>';
   echo '</div>';
   page_end();

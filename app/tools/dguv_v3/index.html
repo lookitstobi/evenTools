@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DGUV V3 Prüfungen</title>
+  <link rel="stylesheet" href="/assets/app.css">
   <style>
     :root{
       --bg:#272727;
       --panel:#333333;
-      --panel-soft:#3d3d3d;
-      --line:#747474;
+      --panel-soft:#2f2f2f;
+      --line:rgba(255,255,255,.16);
       --text:#f4f4f4;
       --muted:#b8b8b8;
       --ok:#14a76c;
@@ -17,12 +18,13 @@
       --bad:#ff652f;
       --brand:#5478ff;
       --brand2:#ffe400;
-      --radius:14px;
+      --radius:16px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
     }
 
     *{box-sizing:border-box}
+
     body{
       margin:0;
       font-family:var(--sans);
@@ -40,10 +42,10 @@
     }
 
     .card{
-      background:rgba(51,51,51,.92);
+      background:var(--panel);
       border:1px solid var(--line);
       border-radius:var(--radius);
-      padding:14px;
+      padding:18px;
       box-shadow:0 10px 30px rgba(0,0,0,.25);
     }
 
@@ -51,6 +53,7 @@
     .col-8{grid-column:span 8}
     .col-6{grid-column:span 6}
     .col-4{grid-column:span 4}
+
     @media (max-width: 980px){
       .col-8,.col-6,.col-4{grid-column:span 12}
     }
@@ -65,34 +68,39 @@
     .f4{grid-column:span 4}
     .f3{grid-column:span 3}
     .f12{grid-column:span 12}
+
     @media (max-width: 980px){
       .f6,.f4,.f3{grid-column:span 12}
     }
 
     label{font-size:12px;color:var(--muted);font-weight:600}
+
     input,select,textarea{
       width:100%;
       background:var(--panel-soft);
       color:var(--text);
       border:1px solid var(--line);
-      border-radius:10px;
+      border-radius:12px;
       padding:10px;
       outline:none;
       font:inherit;
     }
+
     textarea{min-height:86px;resize:vertical}
     input:focus,select:focus,textarea:focus{border-color:#5478ff;box-shadow:0 0 0 3px rgba(84,120,255,.22)}
 
     .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
     button{
       border:1px solid var(--line);
       background:var(--panel-soft);
       color:var(--text);
-      border-radius:10px;
+      border-radius:12px;
       padding:9px 12px;
       cursor:pointer;
       font-weight:650;
     }
+
     button:hover{filter:brightness(1.08)}
     .primary{background:var(--brand);border-color:rgba(84,120,255,.4);color:#fff}
 
@@ -111,9 +119,11 @@
     .pill{padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
 
     .asset-nav-layout{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:12px}
+
     @media (max-width: 980px){
       .asset-nav-layout{grid-template-columns:1fr}
     }
+
     .tree-panel{
       border:1px solid var(--line);
       border-radius:12px;
@@ -122,7 +132,9 @@
       max-height:420px;
       overflow:auto;
     }
+
     .tree-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+
     .tree-btn{
       width:100%;
       text-align:left;
@@ -132,6 +144,7 @@
       padding:6px 8px;
       font-weight:550;
     }
+
     .tree-btn:hover{background:rgba(255,255,255,.08)}
     .tree-btn.active{background:rgba(84,120,255,.18);border-color:rgba(84,120,255,.45)}
     .tree-count{color:var(--muted);font-size:12px}
@@ -142,6 +155,7 @@
     .quicklist{margin-top:12px}
     .quicklist-title{font-size:12px;color:var(--muted);font-weight:650;margin-bottom:6px}
     .quicklist-items{display:flex;flex-direction:column;gap:6px;max-height:170px;overflow:auto}
+
     .quick-asset-btn{
       text-align:left;
       border:1px solid var(--line);
@@ -151,8 +165,17 @@
       font-size:13px;
       font-weight:550;
     }
+
     .quick-asset-btn.active{border-color:rgba(84,120,255,.5);background:rgba(84,120,255,.16)}
     tr.row-active td{background:rgba(84,120,255,.12)}
+
+    .mt-8{margin-top:8px}
+    .mt-10{margin-top:10px}
+    .mb-8{margin-bottom:8px}
+    .maxw-420{max-width:420px}
+    .maxw-220{max-width:220px}
+    .scroll-y-420{overflow:auto;max-height:420px}
+    .scroll-y-260{overflow:auto;max-height:260px}
   </style>
 </head>
 <body>
@@ -160,7 +183,7 @@
     <section class="card col-12">
       <div class="title">DGUV V3 Prüfverwaltung</div>
       <div class="subtitle">MVP: Hierarchie (Kunde/Standort/Abteilung), Prüflinge, Prüfungen, Import-Zwischenlager, Druck- und Geräte-Jobs.</div>
-      <div id="flash" class="flash" style="margin-top:10px">Bereit.</div>
+      <div id="flash" class="flash mt-10">Bereit.</div>
     </section>
 
     <section class="card col-6">
@@ -179,7 +202,7 @@
         <div class="field f4"><label>Seriennummer</label><input id="asset_serial"></div>
         <div class="field f12"><label>Notizen</label><textarea id="asset_notes"></textarea></div>
       </div>
-      <div class="btn-row" style="margin-top:10px">
+      <div class="btn-row mt-10">
         <button class="primary" id="btn_create_asset">Prüfling speichern</button>
         <button id="btn_create_asset_print">Speichern + Etikett drucken</button>
       </div>
@@ -202,7 +225,7 @@
         <div class="field f6"><label>Messwerte JSON (optional)</label><input id="inspection_values" placeholder='{"rpe": "0.12"}'></div>
         <div class="field f12"><label>Mängel</label><textarea id="inspection_defects"></textarea></div>
       </div>
-      <div class="btn-row" style="margin-top:10px">
+      <div class="btn-row mt-10">
         <button class="primary" id="btn_create_inspection">Prüfung speichern</button>
       </div>
     </section>
@@ -210,7 +233,7 @@
     <section class="card col-12">
       <h3>Druckprofil (CSV-Mapping)</h3>
       <div class="subtitle">Felder frei mappbar; jede Zeile als Objekt mit <span class="mono">header</span> und <span class="mono">source</span>.</div>
-      <div class="grid" style="margin-top:8px">
+      <div class="grid mt-8">
         <div class="field f3"><label>Profilname</label><input id="profile_name" value="Brother Standard"></div>
         <div class="field f3"><label>Delimiter</label><input id="profile_delimiter" value=";"></div>
         <div class="field f3"><label>Enclosure</label><input id="profile_enclosure" value='"'></div>
@@ -229,7 +252,7 @@
 ]</textarea>
         </div>
       </div>
-      <div class="btn-row" style="margin-top:10px">
+      <div class="btn-row mt-10">
         <button id="btn_save_profile">Profil speichern</button>
       </div>
     </section>
@@ -251,14 +274,14 @@
         </aside>
 
         <div>
-          <div class="btn-row" style="margin-bottom:8px">
-            <input id="search" placeholder="Filter (Nummer, Name, Kunde, Standort, Abteilung, Typ, Autotest)" style="max-width:420px">
+          <div class="btn-row mb-8">
+            <input id="search" class="maxw-420" placeholder="Filter (Nummer, Name, Kunde, Standort, Abteilung, Typ, Autotest)">
             <button id="btn_search">Suchen</button>
             <button id="btn_refresh">Neu laden</button>
           </div>
-          <div class="btn-row" style="margin-bottom:8px">
-            <select id="print_profile_id" style="max-width:220px"></select>
-            <select id="job_mode" style="max-width:220px">
+          <div class="btn-row mb-8">
+            <select id="print_profile_id" class="maxw-220"></select>
+            <select id="job_mode" class="maxw-220">
               <option value="open_only">Nur Software öffnen</option>
               <option value="print_now">Direkt drucken</option>
             </select>
@@ -268,7 +291,7 @@
             <button id="btn_export_filtered">Gefilterte an Prüfgerät</button>
           </div>
 
-          <div style="overflow:auto;max-height:420px">
+          <div class="scroll-y-420">
             <table>
               <thead>
                 <tr>
@@ -294,7 +317,7 @@
       <h3>Druckjobs</h3>
       <div class="subtitle">Der lokale Bridge-Agent holt <span class="mono">queued</span>-Jobs ab, schreibt die CSV und öffnet/printet über Brother.</div>
       <div class="sep"></div>
-      <div style="overflow:auto;max-height:260px">
+      <div class="scroll-y-260">
         <table>
           <thead>
             <tr>
@@ -316,7 +339,7 @@
     <section class="card col-6">
       <h3>Geräte-Jobs</h3>
       <div class="subtitle">Export-Jobs für den lokalen Device-Agent (Live-USB/Datei-Bridge).</div>
-      <div style="overflow:auto;max-height:260px;margin-top:8px">
+      <div class="scroll-y-260 mt-8">
         <table>
           <thead>
             <tr>
@@ -337,15 +360,15 @@
     <section class="card col-6">
       <h3>Zwischenlager</h3>
       <div class="subtitle">Nicht automatisch zuordenbare Prüfungen (Prüflingsnummer unbekannt/invalid).</div>
-      <div class="grid" style="margin-top:8px">
+      <div class="grid mt-8">
         <div class="field f4"><label>Staging-ID</label><input id="staging_id" type="number" min="1"></div>
         <div class="field f8"><label>Zu Prüfling zuordnen</label><select id="staging_asset"></select></div>
       </div>
-      <div class="btn-row" style="margin-top:8px">
+      <div class="btn-row mt-8">
         <button id="btn_resolve_staging">Staging zuordnen</button>
         <button id="btn_reload_staging">Zwischenlager laden</button>
       </div>
-      <div style="overflow:auto;max-height:260px;margin-top:8px">
+      <div class="scroll-y-260 mt-8">
         <table>
           <thead>
             <tr>

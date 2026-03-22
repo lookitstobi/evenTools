@@ -43,7 +43,7 @@ page_start('Login', false);
 
     <div class="login-intro">
       <div>
-        <div class="h1" style="margin:0;">Login</div>
+        <div class="h1">Login</div>
         <div class="small">Bitte anmelden, um Tools zu öffnen.</div>
       </div>
     </div>
@@ -66,7 +66,7 @@ page_start('Login', false);
         <input class="input" type="password" name="password" autocomplete="current-password" required>
       </div>
 
-      <button class="btn btn-primary" type="submit" style="width:100%;">Einloggen</button>
+      <button class="btn btn-primary btn-fullwidth" type="submit">Einloggen</button>
 
       <div class="help">
         Tipp: Wenn du irgendwann “privat/beruflich” trennen willst, bauen wir das später über Rollen & Mandanten sauber ein.

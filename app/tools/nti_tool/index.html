@@ -13,9 +13,9 @@
 <style>
 :root{
   --bg:#272727;
-  --primary-panel:rgba(255,255,255,.06);
-  --secondary-panel:rgba(255,255,255,.08);
-  --border:rgba(255,255,255,.14);
+  --primary-panel:#333333;
+  --secondary-panel:#3d3d3d;
+  --border:rgba(255,255,255,.16);
   --border-strong:rgba(255,255,255,.2);
   --text:rgba(255,255,255,.94);
   --text-secondary:rgba(255,255,255,.72);
@@ -34,9 +34,9 @@
 @media (prefers-color-scheme: light){
   :root{
     --bg:#272727;
-    --primary-panel:rgba(255,255,255,.06);
-    --secondary-panel:rgba(255,255,255,.08);
-    --border:rgba(255,255,255,.14);
+    --primary-panel:#333333;
+    --secondary-panel:#3d3d3d;
+    --border:rgba(255,255,255,.16);
     --border-strong:rgba(255,255,255,.2);
     --text:rgba(255,255,255,.94);
     --text-secondary:rgba(255,255,255,.72);
@@ -134,6 +134,15 @@ label.label-required::after{
   margin-left:4px;
 }
 
+.hidden-file{display:none}
+.chips-offset{margin-left:16px}
+.mt-6{margin-top:6px}
+.mt-8{margin-top:8px}
+.panel-grid-spaced{margin-top:10px;gap:24px}
+.min-h-140{min-height:140px}
+.row-between{justify-content:space-between}
+.heading-reset{margin:0}
+
 @media(max-width:600px){
   .header h1{font-size:18px}
   .icon-btn,.menu-item-btn,button{min-height:44px}
@@ -166,14 +175,14 @@ label.label-required::after{
         <div class="header-dropdown">
           <div class="menu-list">
             <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Gespeicherten Stand laden</button>
-            <button id="btnRecover" class="menu-item-btn" type="button" style="display:none" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung wiederherstellen</button>
+            <button id="btnRecover" class="menu-item-btn hidden-file" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung wiederherstellen</button>
           </div>
         </div>
       </details>
     </div>
-    <input type="file" id="fileInput" accept=".txt" style="display:none" />
-    <input type="file" id="stateInput" accept=".json,.nti,.html,.htm" style="display:none" />
-    <div class="chips" style="margin-left:16px">
+    <input type="file" id="fileInput" class="hidden-file" accept=".txt" />
+    <input type="file" id="stateInput" class="hidden-file" accept=".json,.nti,.html,.htm" />
+    <div class="chips chips-offset">
       <div class="chip"><span class="dot warn" id="dotLog"></span><span id="chipLog">Log: nicht geladen</span></div>
       <div class="chip"><span class="dot warn" id="dotSummary"></span><span id="chipSummary">Summary: —</span></div>
     </div>
@@ -197,12 +206,12 @@ label.label-required::after{
           <tbody></tbody>
         </table>
       </div>
-      <div class="small" id="chartInfo" style="margin-top:6px"></div>
+      <div class="small mt-6" id="chartInfo"></div>
     </div>
 
     <div class="section">
       <h3>Diagramme (Vorschau)</h3>
-      <div class="grid-2" style="margin-top:10px; gap:24px">
+      <div class="grid-2 panel-grid-spaced">
         <div>
           <div class="small" id="laeqChartLabel">LAeq mit Grenzwert 99 dB(A)</div>
           <canvas id="chartLAeq"></canvas>
@@ -236,7 +245,7 @@ label.label-required::after{
         <div><label>Korrekturwert k2</label><input id="k2" readonly /></div>
       </div>
 
-      <details style="margin-top:8px">
+      <details class="mt-8">
         <summary>Parser / Debug</summary>
         <div class="inner small" id="parseInfo"></div>
       </details>
@@ -298,14 +307,14 @@ label.label-required::after{
     <div class="section grid-2">
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
-        <textarea id="organisator" style="min-height:140px">Theater und Philharmonie Essen GmbH
+        <textarea id="organisator" class="min-h-140">Theater und Philharmonie Essen GmbH
 Opernplatz 10, 45128 Essen
 Geschäftsführer: Fritz Frömming
 Intendanz Philharmonie Essen: Babette Nierenz</textarea>
       </div>
       <div>
         <label>Beschreibung</label>
-        <textarea id="beschreibung" style="min-height:140px" placeholder="z.B. Verstärkte Live-Band" tabindex="6"></textarea>
+        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band" tabindex="6"></textarea>
       </div>
     </div>
 
@@ -326,12 +335,12 @@ Intendanz Philharmonie Essen: Babette Nierenz</textarea>
     </div>
 
     <div class="section">
-      <div class="compact-row" style="justify-content:space-between">
-        <h3 style="margin:0">PA Setup</h3>
+      <div class="compact-row row-between">
+        <h3 class="heading-reset">PA Setup</h3>
         <div class="small" id="paPresetInfo"></div>
       </div>
       <div id="paContainer"></div>
-      <div class="compact-row" style="margin-top:8px">
+      <div class="compact-row mt-8">
         <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
         <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
       </div>

@@ -164,6 +164,10 @@ small,.small{ color: var(--muted); }
 .chip strong{ font-weight: 720; }
 .chip a{ text-decoration:none; }
 .chip a:hover{ text-decoration:underline; }
+.chip-flex{
+  justify-content: flex-start;
+  gap: 10px;
+}
 
 .btn{
   display:inline-flex;
@@ -197,6 +201,7 @@ small,.small{ color: var(--muted); }
   border-color: transparent;
 }
 .btn-ghost:hover{ background: var(--panel); border-color: var(--border); }
+.btn-fullwidth{ width: 100%; }
 
 .card{
   border: 1px solid var(--border);
@@ -206,9 +211,12 @@ small,.small{ color: var(--muted); }
   padding: 18px;
 }
 .card + .card{ margin-top: 14px; }
+.card-compact-bottom{ padding-bottom: 8px; }
 
 .h1{ font-size: 28px; margin: 10px 0 6px; letter-spacing: .2px; }
 .h2{ font-size: 18px; margin: 18px 0 10px; }
+.login-shell .h1:first-of-type,
+.card > .h2:first-of-type{ margin-top: 0; }
 .sep{ height: 1px; background: var(--border); margin: 14px 0; opacity:.8; }
 
 .grid{
@@ -444,6 +452,45 @@ select optgroup{
 .form-grid{
   display:grid;
   gap:12px;
+}
+
+.modal-form-grid{
+  display:grid;
+  gap:14px;
+}
+
+.modal-actions{
+  display:flex;
+  gap:10px;
+  margin-top:4px;
+}
+
+.modal-actions .btn-primary{
+  flex:1;
+}
+
+.modal-actions .btn{
+  flex:0 0 auto;
+}
+
+.um-section-spacing{
+  margin:14px 0 10px;
+}
+
+.label-bottom-margin{
+  margin-bottom:8px;
+}
+
+.help-top-margin{
+  margin-top:6px;
+}
+
+.form-display-contents{
+  display:contents;
+}
+
+.flash-spaced{
+  margin-bottom:16px;
 }
 
 .admin-edit-tool-grid{
@@ -791,5 +838,258 @@ select optgroup{
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   USER MANAGEMENT – Accordion-Verwaltung (admin_users.php)
+   ════════════════════════════════════════════════════════════ */
+
+/* Toolbar */
+.um-toolbar{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.um-count{
+  margin-left: auto;
+  font-size: .82rem;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.um-sort-select{
+  width: auto;
+  padding: 6px 10px;
+  font-size: .88rem;
+}
+.um-search-wrap{
+  flex: 1;
+  min-width: 160px;
+}
+.um-search{
+  width: 100%;
+  padding: 7px 12px;
+  font-size: .9rem;
+}
+
+/* Liste */
+.um-list{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Item */
+.um-item{
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.um-item.um-open{
+  border-color: var(--accent);
+}
+
+/* Row (klickbarer Header) */
+.um-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--panel);
+  transition: background .12s;
+}
+.um-row:hover{
+  background: var(--panel2);
+}
+.um-row:focus-visible{
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Avatar */
+.um-avatar{
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Meta (Name + Badges) */
+.um-meta{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.um-username{
+  font-weight: 600;
+  font-size: .97rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badges */
+.um-badge{
+  font-size: .72rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.um-badge-admin{
+  background: rgba(84,120,255,.22);
+  color: var(--accent);
+  border: 1px solid rgba(84,120,255,.3);
+}
+.um-badge-tools{
+  background: rgba(255,255,255,.08);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* Chevron */
+.um-chevron{
+  flex-shrink: 0;
+  font-size: 1.3rem;
+  color: var(--faint);
+  transition: transform .2s;
+  line-height: 1;
+}
+.um-item.um-open .um-chevron{
+  transform: rotate(90deg);
+}
+
+/* Panel */
+.um-panel{
+  display: none;
+  padding: 20px 20px 8px;
+  background: var(--panel2);
+  border-top: 1px solid var(--border);
+}
+
+/* Felder im Panel */
+.um-panel-fields{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Tools-Grid */
+.um-tools-section{
+  margin-top: 4px;
+}
+.um-tools-grid{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.um-tool-chip{
+  font-size: .82rem;
+}
+.um-tool-disabled{
+  opacity: .42;
+  pointer-events: none;
+}
+
+/* Panel-Aktionszeile */
+.um-panel-actions{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 0 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.um-divider{
+  flex: 1;
+}
+
+/* Delete-Konfirmation */
+.um-delete-confirm{
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.um-delete-warn{
+  font-size: .84rem;
+  color: var(--bad);
+}
+
+/* Modal Overlay */
+.modal-overlay{
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.62);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Modal Box */
+.modal-box{
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 28px 24px;
+  width: 100%;
+  max-width: 440px;
+}
+.modal-close{
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background .12s, color .12s;
+}
+.modal-close:hover{
+  background: var(--panel2);
+  color: var(--text);
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 600px){
+  .um-toolbar{
+    gap: 8px;
+  }
+  .um-count{
+    margin-left: 0;
+    width: 100%;
+    text-align: right;
+  }
+  .um-panel-fields{
+    grid-template-columns: 1fr;
+  }
+  .modal-box{
+    padding: 22px 18px 18px;
   }
 }
