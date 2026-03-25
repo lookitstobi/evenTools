@@ -1,11 +1,21 @@
 {
   "name": "Toolsapp",
   "postStartCommand": "bash -lc 'if ! lsof -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1; then nohup php -S 0.0.0.0:8080 -t /workspaces/toolsapp >/tmp/toolsapp-server.log 2>&1 & fi'",
+  "postAttachCommand": "bash -lc 'if ! lsof -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1; then nohup php -S 0.0.0.0:8080 -t /workspaces/toolsapp >/tmp/toolsapp-server.log 2>&1 & fi'",
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {
       "label": "Toolsapp",
-      "onAutoForward": "openPreview"
+      "onAutoForward": "openPreview",
+      "protocol": "http"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "remote.autoForwardPorts": true,
+        "remote.restoreForwardedPorts": true
+      }
     }
   }
 }
