@@ -24,17 +24,17 @@ $errors = [];
 function list_files(string $root): array {
     $allowedExt = ['php', 'html', 'js', 'css'];
     $skipPaths = [
-        '/.git/',
-        '/.github/',
-        '/__pycache__/',
-        '/memories/',
-        '/app/tools/nti_tool/vendor/',
-        '/scripts/',
+        '.git/',
+        '.github/',
+        '__pycache__/',
+        'memories/',
+        'app/tools/nti_tool/vendor/',
+        'scripts/',
     ];
 
     $skipFiles = [
-        '/download_vendor.php',
-        '/dguv_print_agent.php',
+        'download_vendor.php',
+        'dguv_print_agent.php',
     ];
 
     $result = [];
@@ -49,11 +49,15 @@ function list_files(string $root): array {
         }
 
         $path = $file->getPathname();
-        $rel = str_replace('\\', '/', substr($path, strlen($root)));
+        $rel = ltrim(str_replace('\\', '/', substr($path, strlen($root))), '/');
+
+        if (strtolower((string)pathinfo($rel, PATHINFO_EXTENSION)) === 'md') {
+            continue;
+        }
 
         $skip = false;
         foreach ($skipPaths as $needle) {
-            if (strpos($rel, $needle) !== false) {
+            if (strpos($rel, $needle) === 0) {
                 $skip = true;
                 break;
             }
