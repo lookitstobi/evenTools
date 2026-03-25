@@ -292,7 +292,7 @@ page_start('Admin · Benutzer');
 
 </div>
 
-<script>
+<script nonce="<?= csp_nonce() ?>">
 // ── State ──────────────────────────────────────────────────────────────────
 var openUserId = <?=($open_id > 0 ? $open_id : 'null')?>;
 

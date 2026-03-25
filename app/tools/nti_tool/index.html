@@ -7,9 +7,9 @@
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+<script src="/toolserve.php?name=nti_tool&file=vendor/chart.umd.min.js"></script>
+  <script src="/toolserve.php?name=nti_tool&file=vendor/jspdf.umd.min.js"></script>
+  <script src="/toolserve.php?name=nti_tool&file=vendor/pdf-lib.min.js"></script>
 <style>
 :root{
   --bg:#272727;
@@ -157,7 +157,7 @@ label.label-required::after{
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdf" class="icon-btn subtle" type="button" onclick="generatePDF()" disabled title="Messbericht als PDF-Vorschau oeffnen">PDF-Vorschau</button>
+      <button id="btnPdf" class="icon-btn subtle" type="button" disabled title="Messbericht als PDF-Vorschau oeffnen">PDF-Vorschau</button>
     </div>
     <div class="header-secondary-actions">
       <details class="header-menu">
@@ -2300,6 +2300,7 @@ document.querySelectorAll('.header-menu').forEach(menu => {
 });
 
 // wire import button to hidden file input
+el('btnPdf').addEventListener('click', generatePDF);
 el('btnImport').addEventListener('click', ()=>{
   const inp = el('fileInput'); if(inp) inp.click();
 });

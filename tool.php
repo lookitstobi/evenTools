@@ -37,17 +37,20 @@ if (!$path || !$base || strncmp($path, $base, strlen($base)) !== 0) {
   exit;
 }
 
-// Erlaubt externe CDNs für Tool-Libraries + Inline-Skripte der Tools
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
+$nonce = csp_nonce();
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'nonce-{$nonce}'; script-src 'self' 'nonce-{$nonce}'; connect-src 'self'; font-src 'self' data:; worker-src blob:; frame-ancestors 'self';");
 
 $html = file_get_contents($path);
-$runtimeScript = '<script>window.TOOLSAPP_RUNTIME=' . json_encode([
+// Nonce zu vorhandenen inline <script>- und <style>-Tags im Tool-HTML hinzufügen
+$html = preg_replace('/<script\b(?![^>]*\b(?:src|nonce)\b)/i', '<script nonce="' . $nonce . '"', $html);
+$html = preg_replace('/<style\b(?![^>]*\bnonce\b)/i', '<style nonce="' . $nonce . '"', $html);
+$runtimeScript = '<script nonce="' . $nonce . '">window.TOOLSAPP_RUNTIME=' . json_encode([
   'pdf_mode' => get_pdf_runtime_mode(),
   'can_switch_pdf_mode' => is_pdf_mode_switch_user(),
   'username' => (string)($_SESSION['username'] ?? ''),
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
 
-$style = '<style>' .
+$style = '<style nonce="' . $nonce . '">' .
   '.tool-home-link{' .
   'display:inline-flex;align-items:center;gap:6px;' .
   'text-decoration:none;color:inherit;font-weight:700;font-size:13px;' .

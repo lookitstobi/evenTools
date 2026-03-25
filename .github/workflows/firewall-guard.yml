@@ -1,0 +1,23 @@
+name: Firewall Compatibility Guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  firewall-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Run firewall compatibility guard
+        run: php scripts/firewall_guard.php

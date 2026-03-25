@@ -4,6 +4,8 @@ declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/app/patchmatrix_lib.php';
 
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none';");
+
 function patchmatrix_json_response(array $payload, int $status = 200): never {
   http_response_code($status);
   header('Content-Type: application/json; charset=utf-8');

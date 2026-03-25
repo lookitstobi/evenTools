@@ -45,7 +45,7 @@
    - File path: remove null bytes, strip leading `/`, reject `..`, use `realpath()` + boundary checks
    - Pattern: `if (strpos($target, $toolBase . DIRECTORY_SEPARATOR) !== 0)` ensures file is within tool directory
 3. **Content-Type Validation:** Map extensions (html, css, js, json, svg, png, jpg, woff2, ttf) to correct MIME types
-4. **CSP Header:** `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self';`
+4. **CSP Header:** nonce-basiert ohne `unsafe-inline`/`unsafe-eval`, `connect-src 'self'`
 
 **Adding New Tools:**
 - Create directory: `/app/tools/{toolname}/` with `index.html`
@@ -123,3 +123,28 @@ CREATE TABLE users (
 - **Tool assignment via JSON:** Roadmap includes role-based permission layer (see comments in [admin_users.php](../admin_users.php))
 - **No audit logging:** Admin actions not tracked
 - **Single tenant:** Current design for single organization; private/business separation mentioned as future scenario
+
+## Firewall Compatibility Policy (MUST)
+
+These rules are mandatory for all new code and all edits:
+
+1. **No external frontend dependencies in production pages:**
+  - No jsdelivr/cloudflare/google fonts URLs in HTML/CSS/JS.
+  - Libraries must be shipped locally under the tool folder and served via `toolserve.php`.
+2. **No unsafe CSP directives:**
+  - `unsafe-inline` and `unsafe-eval` are forbidden.
+  - Use nonce-based CSP (`csp_nonce()`) for inline `<script>`/`<style>` where unavoidable.
+3. **No broad exfiltration-friendly CSP:**
+  - Do not use `connect-src 'self' https:`.
+  - Keep `connect-src` narrowed to `'self'` unless explicitly reviewed.
+4. **No insecure protocols:**
+  - No `http://` URLs.
+  - No `ws://` sockets.
+5. **No inline event handlers:**
+  - `onclick=`, `onchange=`, ... are forbidden.
+  - Use `addEventListener(...)`.
+6. **No dangerous dynamic JS execution:**
+  - `eval`, `new Function`, `document.write` are forbidden.
+7. **CI enforcement is required:**
+  - `scripts/firewall_guard.php` must pass on every PR/push.
+  - Do not disable `.github/workflows/firewall-guard.yml`.

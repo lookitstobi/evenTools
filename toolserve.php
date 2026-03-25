@@ -58,15 +58,19 @@ $types = [
   'ttf'  => 'font/ttf',
 ];
 if (in_array($ext, ['html', 'htm'], true)) {
-  header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https:;");
+  $nonce = csp_nonce();
+  header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'nonce-{$nonce}'; script-src 'self' 'nonce-{$nonce}'; connect-src 'self'; font-src 'self' data:; worker-src blob:; frame-ancestors 'self';");
 }
 header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
 header('X-Content-Type-Options: nosniff');
 
 if (in_array($ext, ['html', 'htm'], true)) {
   $html = file_get_contents($target);
+  // Nonce zu vorhandenen inline <script>- und <style>-Tags im Tool-HTML hinzufügen
+  $html = preg_replace('/<script\b(?![^>]*\b(?:src|nonce)\b)/i', '<script nonce="' . $nonce . '"', $html);
+  $html = preg_replace('/<style\b(?![^>]*\bnonce\b)/i', '<style nonce="' . $nonce . '"', $html);
 
-  $style = '<style>' .
+  $style = '<style nonce="' . $nonce . '">' .
     '.tool-home-btn{' .
     'position:fixed;right:16px;top:16px;z-index:9999;' .
     'background:#333333;color:#fff;text-decoration:none;' .

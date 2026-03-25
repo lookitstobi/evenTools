@@ -278,7 +278,7 @@ page_start('Dashboard');
   </div>
 </div>
 <?php if ($can_switch_pdf_mode): ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 const pdfModeCompactForm = document.getElementById("pdfModeCompactForm");
 const pdfModeCompactSelect = document.getElementById("pdfModeCompactSelect");
 
@@ -303,7 +303,7 @@ if (pdfModeCompactForm && pdfModeCompactSelect) {
 </script>
 <?php endif; ?>
 <?php if ($has_todo_tool): ?>
-<script>
+<script nonce="<?= csp_nonce() ?>">
 const TODO_DASHBOARD_KEY = "toolsapp_dev_todos_v1";
 const todoPanel = document.getElementById("todoDashboardPanel");
 

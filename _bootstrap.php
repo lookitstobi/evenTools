@@ -23,8 +23,27 @@ session_set_cookie_params([
 ]);
 session_start();
 
+// Universelle Security-Header (CSP wird seitenspezifisch über csp_nonce() gesetzt)
+if (!headers_sent()) {
+  if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+  }
+  header('X-Frame-Options: SAMEORIGIN');
+  header('X-Content-Type-Options: nosniff');
+  header('Referrer-Policy: strict-origin-when-cross-origin');
+  header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+}
+
 function h(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function csp_nonce(): string {
+  static $nonce = null;
+  if ($nonce === null) {
+    $nonce = base64_encode(random_bytes(16));
+  }
+  return $nonce;
 }
 
 function redirect(string $to): never {
@@ -136,6 +155,11 @@ function all_tools(): array {
 }
 
 function page_start(string $title, bool $show_nav = true): void {
+  $nonce = csp_nonce();
+  if (!headers_sent()) {
+    header("Content-Security-Policy: default-src 'self'; style-src 'self' 'nonce-{$nonce}'; script-src 'self' 'nonce-{$nonce}'; img-src 'self' data:; font-src 'self'; frame-ancestors 'self';");
+  }
+
   $site = h(($GLOBALS['config']['site_name'] ?? 'Tools'));
   $t = h($title);
   $cssVersion = (string)@filemtime(__DIR__ . '/assets/app.css');

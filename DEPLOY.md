@@ -43,6 +43,15 @@ Hinweis: Werte in GitHub Secrets **ohne Anführungszeichen** eintragen.
 3. Datenordner erstellen: `mkdir -p data/backups`.
 4. Schreibtest: `touch data/.write_test && rm data/.write_test`.
 5. Migration mit explizitem Datenpfad:
+6. Vendor-Bibliotheken für nti_tool herunterladen:
+
+```bash
+php download_vendor.php
+```
+
+Dieses Skript lädt Chart.js, jsPDF und pdf-lib lokal in `app/tools/nti_tool/vendor/` herunter.
+Ohne diese Dateien ist die PDF-Export-Funktion im NTI-Tool nicht verfügbar.
+
 
 ```bash
 APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php app/migrate.php
@@ -57,10 +66,11 @@ ls -lah /home/www/HTML_Tools/toolsapp/data/*.sqlite
 ## Standard-Deployablauf
 
 1. Push nach `main`.
-2. GitHub Action führt `deploy.py` aus.
-3. Optionales Backup nach `data/backups/deploy_<timestamp>/`.
-4. Code-Sync nach `STRATO_PATH`.
-5. Optional bei Schemaänderungen: Migration ausführen.
+2. Firewall-Guard muss grün sein (`.github/workflows/firewall-guard.yml`).
+3. GitHub Action führt `deploy.py` aus.
+4. Optionales Backup nach `data/backups/deploy_<timestamp>/`.
+5. Code-Sync nach `STRATO_PATH`.
+6. Optional bei Schemaänderungen: Migration ausführen.
 
 ## Verifikation nach Deploy (Smoke Test)
 

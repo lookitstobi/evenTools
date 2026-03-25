@@ -423,7 +423,7 @@ page_start('Farb-Inventar', true);
   </div>
 </section>
 
-<style>
+<style nonce="<?= csp_nonce() ?>">
 .color-audit-card h1 {
   margin-top: 0;
 }
