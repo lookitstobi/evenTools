@@ -22,11 +22,19 @@ $errors = [];
 
 /** @return list<string> */
 function list_files(string $root): array {
-    $allowedExt = ['php', 'html', 'js', 'css', 'md', 'txt'];
+    $allowedExt = ['php', 'html', 'js', 'css'];
     $skipPaths = [
         '/.git/',
+        '/.github/',
         '/__pycache__/',
+        '/memories/',
         '/app/tools/nti_tool/vendor/',
+        '/scripts/',
+    ];
+
+    $skipFiles = [
+        '/download_vendor.php',
+        '/dguv_print_agent.php',
     ];
 
     $result = [];
@@ -48,6 +56,14 @@ function list_files(string $root): array {
             if (strpos($rel, $needle) !== false) {
                 $skip = true;
                 break;
+            }
+        }
+        if (!$skip) {
+            foreach ($skipFiles as $exactFile) {
+                if ($rel === $exactFile) {
+                    $skip = true;
+                    break;
+                }
             }
         }
         if ($skip) {
