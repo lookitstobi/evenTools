@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 $config = require __DIR__ . '/app/config.php';
+$GLOBALS['config'] = $config;
 
 $error = null;
 
