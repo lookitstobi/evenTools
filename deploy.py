@@ -65,6 +65,7 @@ if IS_GITHUB_ACTIONS and STRICT_DATA_PATH and not REMOTE_DATA_PATH:
     sys.exit(1)
 
 ROOT_FILES = {
+    ".htaccess",
     "_bootstrap.php",
     "admin_edit.php",
     "admin_users.php",
@@ -106,6 +107,10 @@ EXCLUDE_PATTERNS = {
     "*.pyc",
 }
 
+INCLUDE_DOTFILES = {
+    ".htaccess",
+}
+
 PROTECTED_REMOTE_PATTERNS = {
     "*.sqlite",
     "backups",
@@ -137,6 +142,8 @@ def remote_rel(base: str, target: str) -> str:
 
 
 def is_excluded_name(name: str) -> bool:
+    if name in INCLUDE_DOTFILES:
+        return False
     if name.startswith("."):
         return True
     if name in EXCLUDE_NAMES:
