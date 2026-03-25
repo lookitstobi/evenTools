@@ -5,6 +5,36 @@ $config = require __DIR__ . '/app/config.php';
 
 $error = null;
 
+function verify_login_password(PDO $db, int $userId, string $plainPassword, string $storedPasshash): bool {
+  $normalizedHash = trim($storedPasshash);
+
+  if ($normalizedHash !== '' && password_verify($plainPassword, $normalizedHash)) {
+    if (password_needs_rehash($normalizedHash, PASSWORD_DEFAULT)) {
+      $db->prepare('UPDATE users SET passhash = ? WHERE id = ?')
+         ->execute([password_hash($plainPassword, PASSWORD_DEFAULT), $userId]);
+    }
+    return true;
+  }
+
+  // Legacy fallback for migrated installations with non-password_hash storage.
+  $legacyCandidates = [
+    $plainPassword,
+    md5($plainPassword),
+    sha1($plainPassword),
+    hash('sha256', $plainPassword),
+  ];
+
+  foreach ($legacyCandidates as $candidate) {
+    if (hash_equals($normalizedHash, $candidate)) {
+      $db->prepare('UPDATE users SET passhash = ? WHERE id = ?')
+         ->execute([password_hash($plainPassword, PASSWORD_DEFAULT), $userId]);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $username = trim($_POST['username'] ?? '');
   $password = $_POST['password'] ?? '';
@@ -12,14 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $db = new PDO('sqlite:' . $config['db_path']);
   $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $stmt = $db->prepare("SELECT id, passhash, tools, is_admin FROM users WHERE username = ?");
+  $stmt = $db->prepare("SELECT id, username, passhash, tools, is_admin FROM users WHERE username = ?");
   $stmt->execute([$username]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-  if ($row && password_verify($password, $row['passhash'])) {
+  if ($row && verify_login_password($db, (int)$row['id'], $password, (string)$row['passhash'])) {
     session_regenerate_id(true);
     $_SESSION['uid'] = (int)$row['id'];
-    $_SESSION['username'] = $username;
+    $_SESSION['username'] = (string)$row['username'];
     $_SESSION['is_admin'] = (int)$row['is_admin'];
     if ((int)$row['is_admin'] === 1) {
       $_SESSION['tools'] = all_tools();
