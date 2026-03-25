@@ -139,7 +139,7 @@ page_start('Admin · Benutzer');
      ══════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="create-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-box">
-    <button class="modal-close" onclick="closeCreateModal()" aria-label="Schliessen">&#x2715;</button>
+    <button class="modal-close js-close-create" type="button" aria-label="Schliessen">&#x2715;</button>
     <div class="h2" id="modal-title">Neuer Benutzer</div>
     <div class="sep"></div>
     <form method="post" class="modal-form-grid" id="create-form">
@@ -159,7 +159,7 @@ page_start('Admin · Benutzer');
       </label>
       <div class="modal-actions">
         <button class="btn btn-primary" type="submit">Benutzer anlegen</button>
-        <button class="btn" type="button" onclick="closeCreateModal()">Abbrechen</button>
+        <button class="btn js-close-create" type="button">Abbrechen</button>
       </div>
     </form>
   </div>
@@ -176,14 +176,14 @@ page_start('Admin · Benutzer');
 
   <!-- Toolbar -->
   <div class="um-toolbar">
-    <button class="btn btn-primary" onclick="openCreateModal()">&#43; Neuer Benutzer</button>
-    <select class="select um-sort-select" id="um-sort" onchange="sortUsers(this.value)" title="Sortierung">
+    <button class="btn btn-primary" id="open-create-modal" type="button">&#43; Neuer Benutzer</button>
+    <select class="select um-sort-select" id="um-sort" title="Sortierung">
       <option value="az">A &#x2013; Z</option>
       <option value="za">Z &#x2013; A</option>
       <option value="admin">Admins zuerst</option>
     </select>
     <div class="um-search-wrap">
-      <input class="input um-search" id="um-search" type="search" placeholder="Benutzer suchen &#x2026;" oninput="filterUsers(this.value)" autocomplete="off">
+      <input class="input um-search" id="um-search" type="search" placeholder="Benutzer suchen &#x2026;" autocomplete="off">
     </div>
     <span class="um-count" id="um-count"><?=count($users)?> Benutzer</span>
   </div>
@@ -202,7 +202,7 @@ page_start('Admin · Benutzer');
     <div class="um-item" id="um-item-<?=$uid?>" data-uid="<?=$uid?>" data-username="<?=h(strtolower($uname))?>" data-admin="<?=$uadmin?>">
 
       <!-- Row (klickbar) -->
-      <div class="um-row" onclick="toggleUser(<?=$uid?>)" tabindex="0" role="button" aria-expanded="false" aria-controls="um-panel-<?=$uid?>">
+      <div class="um-row" data-uid="<?=$uid?>" tabindex="0" role="button" aria-expanded="false" aria-controls="um-panel-<?=$uid?>">
         <div class="um-avatar"><?=h($initial)?></div>
         <div class="um-meta">
           <span class="um-username"><?=h($uname)?></span>
@@ -238,7 +238,8 @@ page_start('Admin · Benutzer');
             <label class="chip um-admin-chip chip-flex">
               <input type="checkbox" name="is_admin" value="1"
                 <?=($uadmin ? 'checked' : '')?>
-                onchange="onAdminToggle(<?=$uid?>, this.checked)">
+                class="js-admin-toggle"
+                data-uid="<?=$uid?>">
               <span>Adminrechte</span>
             </label>
           </div>
@@ -268,7 +269,7 @@ page_start('Admin · Benutzer');
             <button class="btn btn-primary" type="submit">Speichern</button>
             <span class="um-divider"></span>
             <?php if ((int)($_SESSION['uid'] ?? 0) !== $uid): ?>
-              <button class="btn btn-danger um-delete-btn" type="button" onclick="showDeleteConfirm(<?=$uid?>)">Benutzer loschen</button>
+              <button class="btn btn-danger um-delete-btn" type="button" data-uid="<?=$uid?>">Benutzer loschen</button>
               <div class="um-delete-confirm" id="um-del-<?=$uid?>">
                 <span class="um-delete-warn">Wirklich loschen? Diese Aktion ist unwiederruflich.</span>
                 <form method="post" class="form-display-contents">
@@ -277,7 +278,7 @@ page_start('Admin · Benutzer');
                   <input type="hidden" name="delete_id" value="<?=$uid?>">
                   <button class="btn btn-danger" type="submit">Ja, loschen</button>
                 </form>
-                <button class="btn" type="button" onclick="hideDeleteConfirm(<?=$uid?>)">Abbrechen</button>
+                <button class="btn js-hide-delete" type="button" data-uid="<?=$uid?>">Abbrechen</button>
               </div>
             <?php else: ?>
               <span class="help">Du kannst deinen eigenen Account nicht loschen.</span>
@@ -316,12 +317,72 @@ function toggleUser(uid) {
 }
 
 document.querySelectorAll('.um-row').forEach(function(row) {
+  row.addEventListener('click', function() {
+    var uid = parseInt(row.dataset.uid || '0', 10);
+    if (uid > 0) {
+      toggleUser(uid);
+    }
+  });
+
   row.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      toggleUser(parseInt(row.closest('.um-item').dataset.uid, 10));
+      var uid = parseInt(row.dataset.uid || '0', 10);
+      if (uid > 0) {
+        toggleUser(uid);
+      }
     }
   });
+});
+
+document.querySelectorAll('.js-admin-toggle').forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    var uid = parseInt(cb.dataset.uid || '0', 10);
+    if (uid > 0) {
+      onAdminToggle(uid, cb.checked);
+    }
+  });
+});
+
+var searchInput = document.getElementById('um-search');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    filterUsers(searchInput.value);
+  });
+}
+
+var sortSelect = document.getElementById('um-sort');
+if (sortSelect) {
+  sortSelect.addEventListener('change', function() {
+    sortUsers(sortSelect.value);
+  });
+}
+
+document.querySelectorAll('.um-delete-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var uid = parseInt(btn.dataset.uid || '0', 10);
+    if (uid > 0) {
+      showDeleteConfirm(uid);
+    }
+  });
+});
+
+document.querySelectorAll('.js-hide-delete').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var uid = parseInt(btn.dataset.uid || '0', 10);
+    if (uid > 0) {
+      hideDeleteConfirm(uid);
+    }
+  });
+});
+
+var openCreateBtn = document.getElementById('open-create-modal');
+if (openCreateBtn) {
+  openCreateBtn.addEventListener('click', openCreateModal);
+}
+
+document.querySelectorAll('.js-close-create').forEach(function(btn) {
+  btn.addEventListener('click', closeCreateModal);
 });
 
 // ── Admin-Toggle ───────────────────────────────────────────────────────────
