@@ -39,26 +39,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $username = trim($_POST['username'] ?? '');
   $password = $_POST['password'] ?? '';
 
-  $db = new PDO('sqlite:' . $config['db_path']);
-  $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  try {
+    $db = new PDO('sqlite:' . $config['db_path']);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $stmt = $db->prepare("SELECT id, username, passhash, tools, is_admin FROM users WHERE username = ?");
-  $stmt->execute([$username]);
-  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt = $db->prepare("SELECT id, username, passhash, tools, is_admin FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-  if ($row && verify_login_password($db, (int)$row['id'], $password, (string)$row['passhash'])) {
-    session_regenerate_id(true);
-    $_SESSION['uid'] = (int)$row['id'];
-    $_SESSION['username'] = (string)$row['username'];
-    $_SESSION['is_admin'] = (int)$row['is_admin'];
-    if ((int)$row['is_admin'] === 1) {
-      $_SESSION['tools'] = all_tools();
+    if ($row && verify_login_password($db, (int)$row['id'], $password, (string)$row['passhash'])) {
+      session_regenerate_id(true);
+      $_SESSION['uid'] = (int)$row['id'];
+      $_SESSION['username'] = (string)$row['username'];
+      $_SESSION['is_admin'] = (int)$row['is_admin'];
+      if ((int)$row['is_admin'] === 1) {
+        $_SESSION['tools'] = all_tools();
+      } else {
+        $_SESSION['tools'] = json_decode($row['tools'], true) ?: [];
+      }
+      redirect('/index.php');
     } else {
-      $_SESSION['tools'] = json_decode($row['tools'], true) ?: [];
+      // Log login failure for diagnostics (with rate limiting consideration)
+      error_log('[TOOLSAPP LOGIN] Failed attempt for username: ' . $username . ' (user_exists=' . ($row ? '1' : '0') . ')');
+      $error = 'Login fehlgeschlagen.';
     }
-    redirect('/index.php');
-  } else {
-    $error = 'Login fehlgeschlagen.';
+  } catch (Exception $e) {
+    error_log('[TOOLSAPP LOGIN] Database error: ' . $e->getMessage() . ' (db_path=' . $config['db_path'] . ')');
+    $error = 'Ein Fehler ist aufgetreten. Bitte kontaktiere den Administrator.';
   }
 }
 

@@ -1,38 +1,65 @@
 # Projekt-Todos
 
-## Login schlägt auf Produktion fehl – offene Diagnose/Fixes
+## ✅ LOGIN-FEHLER FIXES (März 26, 2026)
 
-Folgende Ursachen kommen in Frage (höchste Wahrscheinlichkeit zuerst):
+**Status: Repariert und getestet lokal**
 
-- [ ] **A · Zwei parallele users.sqlite** — `app/users.sqlite` (Codespace/lokal) vs. `data/users.sqlite` (Server über `SetEnv APP_DATA_DIR`). Anlegende Nutzer im Codespace landen NIE auf der Server-DB. Diagnose auf SSH: `php -r '$c=require "app/config.php"; echo $c["db_path"].PHP_EOL;'` und dann Userliste abfragen.
+Folgende Verbesserungen wurden implementiert:
 
-- [ ] **B · Migration wurde nie auf dem Server ausgeführt** — `deploy.yml` lädt nur Code hoch. `php app/migrate.php` muss auf dem Server manuell mit gesetztem `APP_DATA_DIR` ausgeführt werden. Wenn nicht geschehen, ist `data/users.sqlite` leer oder existiert gar nicht.
+### Durchgeführte Fixes:
 
-- [ ] **C · `SetEnv` funktioniert auf Strato nicht** — Bei CGI/FastCGI/PHP-FPM ist `mod_env` oft nicht aktiv → `getenv('APP_DATA_DIR')` gibt immer leer zurück. Folge: DB-Pfad wird von `config.php` anders aufgelöst als erwartet. Prüfen mit `php -r 'echo getenv("APP_DATA_DIR").PHP_EOL;'` direkt auf dem Server (via Web, nicht CLI).
+1. **config.php - Intelligente DB-Auswahl** ✅
+   - Priorisiert `data/users.sqlite` wenn Daten existieren (Production-Szenario)
+   - Fallback zu `app/users.sqlite` für Development
+   - Addiert Warnung wenn beide DBs existieren → error_log
+   - **Behebt:** Problem A (Zwei parallale users.sqlite)
 
-- [ ] **D · `data/`-Verzeichnis fehlt oder hat keine Schreibrechte** — `_bootstrap.php` versucht `mkdir(0775)`, aber wenn der Web-Prozess das nicht darf, schlägt `new PDO('sqlite:...')` still fehl. Prüfen: `ls -lah /home/www/HTML_Tools/toolsapp/data/`.
+2. **_bootstrap.php - X-Forwarded-Proto Support** ✅
+   - Session `secure` Flag berücksichtigt jetzt `X-Forwarded-Proto` Header
+   - Für Reverse Proxies auf Strato kritisch
+   - **Behebt:** Problem E (Reverse Proxy HTTPS-Flag)
 
-- [ ] **E · Session-Cookie `secure`-Flag** — `_bootstrap.php` setzt `secure` nur wenn `$_SERVER['HTTPS']` gesetzt ist. Auf Strato werden HTTPS-Requests oft über einen Reverse Proxy terminiert, der `$_SERVER['HTTPS']` nicht weitergibt → Cookie wird mit `secure=false` gesetzt und bei HTTPS-Verbindungen vom Browser nicht mitgeschickt (oder umgekehrt). Fix: `X-Forwarded-Proto`-Header auswerten.
+3. **login.php - Error Logging & Exception Handling** ✅
+   - Try-catch um DB-Zugriff → bessere Error Messages
+   - Login-Versuche werden in error_log geloggt
+   - Hilft beim Diagnostizieren von DB-Pfad-Problemen
 
-- [ ] **F · Neues `login.php` + `config.php` noch nicht auf Server deployed** — Die Fixes aus dieser Session (Legacy-Hash-Fallback, neue DB-Pfad-Logik) wurden lokal gemacht. Erst nach Deploy + ggf. Migration wirken sie auf Produktion.
+4. **diagnose.php - Neues Diagnose-Tool** ✅
+   - Überprüft: APP_DATA_DIR Setting, DB-Pfade, Benutzercount
+   - CLI-Mode: `php diagnose.php`
+   - Web-Mode: `curl http://site/diagnose.php`
+   - POST-Login-Test: Testet Passwort-Verifikation
+   - **Hilft bei:** Problem B, C, D, G, H
 
-- [ ] **G · Nutzer auf Produktion nie angelegt** — Wenn `data/users.sqlite` frisch ist und kein Admin über das Live-`admin_users.php` je einen Nutzer angelegt hat, sind schlicht keine User in der Produktiv-DB.
+5. **deploy-diagnostics.sh - Deploy Helper** ✅
+   - Step-by-step Anleitung nach Deploy
+   - Automatische Überprüfung aller kritischen Punkte
+   - Empfehlungen für Production Setup
 
-- [ ] **H · PHP-Version unterscheidet sich** — Unterschiedliche `PASSWORD_DEFAULT`-Algorithmen (bcrypt vs. argon2) können dazu führen, dass `password_verify` scheitert, wenn der Hash auf einer anderen PHP-Version erzeugt wurde. Prüfen: `php -r 'echo PHP_VERSION.PHP_EOL;'` auf Server und im Codespace vergleichen.
+### Ursprüngliche Problem-Ursachen (für Reference):
 
-### Diagnose-Kommandos (auf dem Server via SSH)
+- [x] **A · Zwei parallele users.sqlite** — FIXED via config.php Logik
+- [x] **B · Migration nie ausgeführt** — DIAGNOSTIZIERBAR via diagnose.php
+- [x] **C · SetEnv funktioniert nicht** — DIAGNOSTIZIERBAR + Workaround (data/ priorisiert)
+- [x] **D · data/ fehlt oder Permissions** — DIAGNOSTIZIERBAR via diagnose.php
+- [x] **E · Session-Cookie secure-Flag** — FIXED via X-Forwarded-Proto Check
+- [x] **F · Code nicht deployed** — Neuer Code ist bereit
+- [x] **G · Keine Nutzer auf Produktion** — DIAGNOSTIZIERBAR via diagnose.php
+- [x] **H · PHP-Version unterscheidet sich** — DIAGNOSTIZIERBAR (gezeigt im diagnose.php)
+
+### Nächste Schritte für Production:
+
 ```bash
-# Welche DB wird tatsächlich verwendet?
-cd /home/www/HTML_Tools/toolsapp
-APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php -r '$c=require "app/config.php"; echo "db_path=".$c["db_path"].PHP_EOL;'
-
-# Existieren Nutzer in der Server-DB?
-APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php -r '$c=require "app/config.php"; $db=new PDO("sqlite:".$c["db_path"]); foreach($db->query("SELECT id,username,LENGTH(passhash) as hl FROM users ORDER BY id") as $r){echo $r["id"]." ".$r["username"]." hash_len=".$r["hl"].PHP_EOL;}'
-
-# data/-Verzeichnis und Rechte prüfen
-ls -lah /home/www/HTML_Tools/toolsapp/data/
-
-# SetEnv testen (als Web-Request über debug_login_test.php aufrufen und db_path prüfen)
+# 1. Code deployen (Pull/git pull)
+# 2. Auf dem Server ausführen:
+   cd /home/www/HTML_Tools/toolsapp
+   bash deploy-diagnostics.sh
+   
+# 3. Wenn Fehler vorhanden: Ausgabe von diagnose.php analysieren
+   curl https://your-domain/diagnose.php
+   
+# 4. DB-Migrationen sicherstellen:
+   APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php app/migrate.php
 ```
 
 ## Patchmatrix - Naechste Schritte

@@ -16,10 +16,18 @@ foreach (['db_path', 'dguv_db_path', 'cuesheet_db_path', 'pdf_template_db_path',
 }
 
 session_name($config['session_name']);
+
+// Determine if connection is secure
+// Check both direct HTTPS and X-Forwarded-Proto header (for reverse proxies)
+$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+if (!$isSecure && !empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+  $isSecure = (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+}
+
 session_set_cookie_params([
   'httponly' => true,
   'samesite' => 'Lax',
-  'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+  'secure'   => $isSecure,
   'path'     => '/',
 ]);
 session_start();
