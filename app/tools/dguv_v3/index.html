@@ -1099,6 +1099,12 @@
   }, 7000);
 
   // CSE-Import
+  // ES Control Pro field codes:
+  //   3 = Gerätename (asset_name)           2 = Autotest-Code (autotest_code)
+  //   0 = Auftraggeber-Kürzel (customer)    7 = Auftraggeber-Name (site)
+  //   4 = Messort-Kürzel (department short) 8 = Messort-Name (department full)
+  //   5 = Kategorie (device_type)           6 = Prüfintervall (z.B. M12, not imported)
+  //   D = Nächste Prüfung (next_due_date, DD/MM/YYYY)
   let cseRows = [];
 
   function parseCseBuffer(buffer) {
@@ -1107,6 +1113,7 @@
     const lines = text.split('\n');
     const parsed = [];
     let current = null;
+    // Field codes recognized in each record (6=interval is tracked but not mapped to an asset field)
     const knownCodes = new Set(['0', '2', '3', '4', '5', '6', '7', '8', 'D']);
 
     for (const rawLine of lines) {
@@ -1146,13 +1153,17 @@
     let nextDue = '';
     if (rec.fD) {
       const m = rec.fD.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (m) nextDue = `${m[3]}-${m[2]}-${m[1]}`;
+      // Validate day (01-31) and month (01-12) before conversion
+      if (m && Number(m[1]) >= 1 && Number(m[1]) <= 31 && Number(m[2]) >= 1 && Number(m[2]) <= 12) {
+        nextDue = `${m[3]}-${m[2]}-${m[1]}`;
+      }
     }
     return {
       asset_uid: rec.uid,
       asset_name: rec.f3 || '(unbekannt)',
       customer: rec.f0 || '',
       site: rec.f7 || '',
+      // f8 = Messort full name preferred; f4 = Messort short code as fallback
       department: rec.f8 || rec.f4 || '',
       device_type: rec.f5 || '',
       autotest_code: rec.f2 || '',
