@@ -3,5 +3,11 @@
         "./deploy.sh": true
     },
     "python-envs.defaultEnvManager": "ms-python.python:system",
-    "task.allowAutomaticTasks": "on"
+    "task.allowAutomaticTasks": "on",
+    "github.copilot.chat.askAgent.additionalTools": [
+        "github/issue_read"
+    ],
+    "github.copilot.chat.planAgent.additionalTools": [
+        "github/issue_read"
+    ]
 }
