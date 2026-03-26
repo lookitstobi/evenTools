@@ -1087,4 +1087,87 @@ if ($action === 'purge_expired' && $method === 'POST') {
   dguv_json_response(['ok' => true, 'purged' => $count]);
 }
 
+if ($action === 'import_cse_assets' && $method === 'POST') {
+  $rows = $input['rows'] ?? [];
+  if (!is_array($rows)) {
+    dguv_json_response(['ok' => false, 'error' => 'invalid_rows'], 400);
+  }
+
+  $createdCount = 0;
+  $skippedCount = 0;
+  $errorCount = 0;
+  $now = dguv_iso_now();
+  $userId = (int)($_SESSION['uid'] ?? 0);
+
+  foreach ($rows as $row) {
+    if (!is_array($row)) {
+      $errorCount++;
+      continue;
+    }
+
+    $assetUid = trim((string)($row['asset_uid'] ?? ''));
+    $assetName = trim((string)($row['asset_name'] ?? ''));
+    $customer = trim((string)($row['customer'] ?? ''));
+    $site = trim((string)($row['site'] ?? ''));
+    $department = trim((string)($row['department'] ?? ''));
+    $deviceType = trim((string)($row['device_type'] ?? ''));
+    $autotestCode = trim((string)($row['autotest_code'] ?? ''));
+
+    if ($assetUid === '' || $assetName === '') {
+      $errorCount++;
+      continue;
+    }
+
+    if ($customer === '') {
+      $customer = '-';
+    }
+    if ($site === '') {
+      $site = '-';
+    }
+    if ($department === '') {
+      $department = '-';
+    }
+    if ($deviceType === '') {
+      $deviceType = '-';
+    }
+    if ($autotestCode === '') {
+      $autotestCode = '0';
+    }
+
+    $location = dguv_compose_location($customer, $site, $department);
+
+    try {
+      $stmt = $db->prepare('INSERT INTO assets (asset_uid, asset_name, location, customer, site, department, autotest_code, device_type, manufacturer, model, serial_number, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      $stmt->execute([
+        $assetUid,
+        $assetName,
+        $location,
+        $customer,
+        $site,
+        $department,
+        $autotestCode,
+        $deviceType,
+        '',
+        '',
+        '',
+        'CSE-Import',
+        $userId,
+        $now,
+        $now,
+      ]);
+      $createdCount++;
+    } catch (Throwable $e) {
+      $skippedCount++;
+    }
+  }
+
+  dguv_audit($db, 'import_cse_assets', 'asset', 'bulk', [
+    'created_count' => $createdCount,
+    'skipped_count' => $skippedCount,
+    'error_count' => $errorCount,
+  ]);
+
+  dguv_json_response(['ok' => true, 'created_count' => $createdCount, 'skipped_count' => $skippedCount, 'error_count' => $errorCount]);
+}
+
 dguv_json_response(['ok' => false, 'error' => 'unknown_action'], 404);

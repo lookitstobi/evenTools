@@ -186,6 +186,49 @@
       <div id="flash" class="flash mt-10">Bereit.</div>
     </section>
 
+    <section class="card col-12">
+      <h3>CSE-Import (Bestandsverzeichnis)</h3>
+      <div class="subtitle">CSE-Datei vom Prüfgerät einlesen und Prüflinge in die Datenbank importieren. Bereits vorhandene Prüflingsnummern werden übersprungen.</div>
+      <div class="grid mt-8">
+        <div class="field f4">
+          <label>CSE-Datei wählen</label>
+          <input type="file" id="cse_file_input" accept=".cse">
+        </div>
+        <div class="field f2">
+          <label>&nbsp;</label>
+          <button id="btn_cse_read">Datei einlesen</button>
+        </div>
+        <div class="field f6">
+          <label id="cse_status_label">&nbsp;</label>
+        </div>
+      </div>
+      <div id="cse_preview_wrap" style="display:none">
+        <div class="sep"></div>
+        <div class="btn-row mb-8">
+          <span id="cse_preview_count" class="muted"></span>
+          <button class="primary" id="btn_cse_import">In Datenbank importieren</button>
+          <button id="btn_cse_clear">Verwerfen</button>
+        </div>
+        <div class="scroll-y-260">
+          <table>
+            <thead>
+              <tr>
+                <th>Inv.-Nr.</th>
+                <th>Name</th>
+                <th>Kunde</th>
+                <th>Standort</th>
+                <th>Abteilung</th>
+                <th>Autotest</th>
+                <th>Gerätetyp</th>
+                <th>Nächste Prüfung</th>
+              </tr>
+            </thead>
+            <tbody id="cse_preview_rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="card col-6">
       <h3>Prüfling anlegen</h3>
       <div class="grid">
@@ -1054,6 +1097,144 @@
     loadDeviceJobs().catch(() => null);
     loadStaging().catch(() => null);
   }, 7000);
+
+  // CSE-Import
+  let cseRows = [];
+
+  function parseCseBuffer(buffer) {
+    const decoder = new TextDecoder('windows-1252');
+    const text = decoder.decode(buffer);
+    const lines = text.split('\n');
+    const parsed = [];
+    let current = null;
+    const knownCodes = new Set(['0', '2', '3', '4', '5', '6', '7', '8', 'D']);
+
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/\r$/, '');
+      if (!line) continue;
+
+      // 0x17 (ETB) is the record separator used by ES Control Pro
+      // Format: 0x17 + one variable byte + asset_uid digits
+      if (line.charCodeAt(0) === 0x17) {
+        if (current && current.uid) parsed.push(current);
+        const uid = (line.slice(2).match(/^(\d+)/) || [])[1] || '';
+        current = { uid, f3: '', f2: '', f0: '', f7: '', f6: '', f4: '', f8: '', f5: '', fD: '' };
+      } else if (current === null) {
+        // First record: no separator, line is a pure digit string
+        if (/^\d+$/.test(line)) {
+          current = { uid: line, f3: '', f2: '', f0: '', f7: '', f6: '', f4: '', f8: '', f5: '', fD: '' };
+        }
+      } else if (knownCodes.has(line[0]) && line.length >= 2) {
+        const code = line[0];
+        const value = line.slice(1);
+        if (code === '3') current.f3 = value;
+        else if (code === '2') current.f2 = value;
+        else if (code === '0') current.f0 = value;
+        else if (code === '7') current.f7 = value;
+        else if (code === '6') current.f6 = value;
+        else if (code === '4') current.f4 = value;
+        else if (code === '8') current.f8 = value;
+        else if (code === '5') current.f5 = value;
+        else if (code === 'D') current.fD = value;
+      }
+    }
+    if (current && current.uid) parsed.push(current);
+    return parsed;
+  }
+
+  function cseRecordToAsset(rec) {
+    let nextDue = '';
+    if (rec.fD) {
+      const m = rec.fD.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (m) nextDue = `${m[3]}-${m[2]}-${m[1]}`;
+    }
+    return {
+      asset_uid: rec.uid,
+      asset_name: rec.f3 || '(unbekannt)',
+      customer: rec.f0 || '',
+      site: rec.f7 || '',
+      department: rec.f8 || rec.f4 || '',
+      device_type: rec.f5 || '',
+      autotest_code: rec.f2 || '',
+      next_due_date: nextDue,
+    };
+  }
+
+  function renderCsePreview(rows) {
+    const tbody = document.getElementById('cse_preview_rows');
+    const wrap = document.getElementById('cse_preview_wrap');
+    const countEl = document.getElementById('cse_preview_count');
+    tbody.innerHTML = '';
+    const preview = rows.slice(0, 200);
+    for (const row of preview) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${escapeHtml(row.asset_uid)}</td>
+        <td>${escapeHtml(row.asset_name)}</td>
+        <td>${escapeHtml(row.customer)}</td>
+        <td>${escapeHtml(row.site)}</td>
+        <td>${escapeHtml(row.department)}</td>
+        <td class="mono">${escapeHtml(row.autotest_code)}</td>
+        <td>${escapeHtml(row.device_type)}</td>
+        <td class="mono">${escapeHtml(row.next_due_date)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+    countEl.textContent = rows.length + ' Prüflinge eingelesen' + (rows.length > 200 ? ' (Vorschau: erste 200)' : '');
+    wrap.style.display = '';
+  }
+
+  document.getElementById('btn_cse_read').addEventListener('click', () => {
+    const input = document.getElementById('cse_file_input');
+    const label = document.getElementById('cse_status_label');
+    if (!input.files || !input.files[0]) {
+      label.textContent = 'Keine Datei ausgewählt.';
+      return;
+    }
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.addEventListener('load', (event) => {
+      try {
+        const buffer = event.target.result;
+        const parsed = parseCseBuffer(buffer);
+        cseRows = parsed.map(cseRecordToAsset);
+        if (cseRows.length === 0) {
+          label.textContent = 'Keine Prüflinge in der Datei gefunden.';
+          document.getElementById('cse_preview_wrap').style.display = 'none';
+        } else {
+          label.textContent = '';
+          renderCsePreview(cseRows);
+        }
+      } catch (error) {
+        label.textContent = 'Fehler beim Einlesen: ' + error.message;
+      }
+    });
+    reader.readAsArrayBuffer(file);
+  });
+
+  document.getElementById('btn_cse_clear').addEventListener('click', () => {
+    cseRows = [];
+    document.getElementById('cse_preview_rows').innerHTML = '';
+    document.getElementById('cse_preview_wrap').style.display = 'none';
+    document.getElementById('cse_file_input').value = '';
+    document.getElementById('cse_status_label').textContent = '';
+  });
+
+  document.getElementById('btn_cse_import').addEventListener('click', async () => {
+    if (!cseRows.length) return;
+    try {
+      const data = await api('import_cse_assets', { rows: cseRows }, 'POST');
+      cseRows = [];
+      document.getElementById('cse_preview_rows').innerHTML = '';
+      document.getElementById('cse_preview_wrap').style.display = 'none';
+      document.getElementById('cse_file_input').value = '';
+      document.getElementById('cse_status_label').textContent = '';
+      await loadAssets(document.getElementById('search').value.trim());
+      flash(`CSE-Import abgeschlossen: ${data.created_count} neu angelegt, ${data.skipped_count} übersprungen, ${data.error_count} Fehler.`, 'ok');
+    } catch (error) {
+      flash('Fehler beim CSE-Import: ' + error.message, 'bad');
+    }
+  });
 
   bootstrap()
     .then(() => flash('DGUV-Tool geladen.', 'ok'))
