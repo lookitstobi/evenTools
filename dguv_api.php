@@ -47,8 +47,19 @@ function dguv_normalize_status(string $status): string {
   return in_array($status, $allowed, true) ? $status : 'offen';
 }
 
-function dguv_next_asset_uid(PDO $db): string {
-  $value = $db->query('SELECT MAX(CAST(asset_uid AS INTEGER)) FROM assets WHERE asset_uid GLOB "[0-9]*" AND deleted_at IS NULL')->fetchColumn();
+function dguv_next_asset_uid(PDO $db, string $customer = '', string $customerCode = ''): string {
+  $customer = trim($customer);
+  $customerCode = trim($customerCode);
+
+  if ($customer === '' && $customerCode === '') {
+    $value = $db->query('SELECT MAX(CAST(asset_uid AS INTEGER)) FROM assets WHERE asset_uid GLOB "[0-9]*" AND deleted_at IS NULL')->fetchColumn();
+    $max = is_numeric($value) ? (int)$value : 0;
+    return (string)($max + 1);
+  }
+
+  $stmt = $db->prepare('SELECT MAX(CAST(asset_uid AS INTEGER)) FROM assets WHERE asset_uid GLOB "[0-9]*" AND deleted_at IS NULL AND customer = ? AND customer_code = ?');
+  $stmt->execute([$customer, $customerCode]);
+  $value = $stmt->fetchColumn();
   $max = is_numeric($value) ? (int)$value : 0;
   return (string)($max + 1);
 }
@@ -63,6 +74,125 @@ function dguv_compose_location(string $customer, string $site, string $departmen
 
 function dguv_is_valid_date(string $value): bool {
   return (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $value);
+}
+
+function dguv_parse_cse_records(string $cseText): array {
+  if ($cseText === '') {
+    return [];
+  }
+
+  $blocks = preg_split('/\x17+/', $cseText);
+  if (!is_array($blocks)) {
+    $blocks = [];
+  }
+
+  $records = [];
+  foreach ($blocks as $block) {
+    $line = trim($block);
+    if ($line === '') {
+      continue;
+    }
+    $records[] = $line;
+  }
+
+  if ($records !== []) {
+    return $records;
+  }
+
+  $lines = preg_split('/\R+/', $cseText);
+  if (!is_array($lines)) {
+    return [];
+  }
+
+  $current = [];
+  foreach ($lines as $line) {
+    $line = trim($line);
+    if ($line === '') {
+      if ($current !== []) {
+        $records[] = implode(' ', $current);
+        $current = [];
+      }
+      continue;
+    }
+
+    if (preg_match('/^[0-9D]/', $line) && $current !== []) {
+      $records[] = implode(' ', $current);
+      $current = [];
+    }
+
+    $current[] = $line;
+  }
+
+  if ($current !== []) {
+    $records[] = implode(' ', $current);
+  }
+
+  return $records;
+}
+
+function dguv_parse_cse_record(string $record): array {
+  $result = [
+    'asset_uid' => '',
+    'asset_name' => '',
+    'autotest_code' => '',
+    'customer_code' => '',
+    'customer' => '',
+    'inspection_cycle' => '',
+    'site_code' => '',
+    'site' => '',
+    'department' => '',
+    'next_due_date' => '',
+  ];
+
+  if (!preg_match_all('/([0-9D])([^0-9D\x17\r\n]*)/', $record, $matches, PREG_SET_ORDER)) {
+    return $result;
+  }
+
+  foreach ($matches as $match) {
+    $prefix = (string)($match[1] ?? '');
+    $value = trim((string)($match[2] ?? ''));
+    if ($value === '') {
+      continue;
+    }
+
+    if ($prefix === '1') {
+      $result['asset_uid'] = $value;
+    } elseif ($prefix === '3') {
+      $result['asset_name'] = $value;
+    } elseif ($prefix === '2') {
+      $result['autotest_code'] = $value;
+    } elseif ($prefix === '0') {
+      $result['customer_code'] = $value;
+    } elseif ($prefix === '7') {
+      $result['customer'] = $value;
+    } elseif ($prefix === '6') {
+      $result['inspection_cycle'] = $value;
+    } elseif ($prefix === '4') {
+      $result['site_code'] = $value;
+    } elseif ($prefix === '8') {
+      $result['site'] = $value;
+    } elseif ($prefix === '5') {
+      $result['department'] = $value;
+    } elseif ($prefix === 'D') {
+      $result['next_due_date'] = $value;
+    }
+  }
+
+  return $result;
+}
+
+function dguv_normalize_cse_date(string $value): string {
+  $value = trim($value);
+  if ($value === '') {
+    return '';
+  }
+
+  if (!preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $value, $m)) {
+    return '';
+  }
+
+  $normalized = $m[3] . '-' . $m[2] . '-' . $m[1];
+  return dguv_is_valid_date($normalized) ? $normalized : '';
 }
 
 function dguv_insert_inspection_record(PDO $db, int $assetId, array $payload, int $createdBy): int {
@@ -345,7 +475,9 @@ if ($action === 'list_assets') {
       a.asset_name,
       a.location,
       a.customer,
+      a.customer_code,
       a.site,
+      a.site_code,
       a.department,
       a.autotest_code,
       a.device_type,
@@ -390,7 +522,9 @@ if ($action === 'list_assets') {
 }
 
 if ($action === 'next_asset_uid') {
-  dguv_json_response(['ok' => true, 'asset_uid' => dguv_next_asset_uid($db)]);
+  $customer = trim((string)($_GET['customer'] ?? ''));
+  $customerCode = trim((string)($_GET['customer_code'] ?? ''));
+  dguv_json_response(['ok' => true, 'asset_uid' => dguv_next_asset_uid($db, $customer, $customerCode)]);
 }
 
 if ($action === 'create_asset' && $method === 'POST') {
@@ -400,7 +534,9 @@ if ($action === 'create_asset' && $method === 'POST') {
   }
   $assetName = trim((string)($input['asset_name'] ?? ''));
   $customer = trim((string)($input['customer'] ?? ''));
+  $customerCode = trim((string)($input['customer_code'] ?? ''));
   $site = trim((string)($input['site'] ?? ''));
+  $siteCode = trim((string)($input['site_code'] ?? ''));
   $department = trim((string)($input['department'] ?? ''));
   $location = dguv_compose_location($customer, $site, $department, trim((string)($input['location'] ?? '')));
   $deviceType = trim((string)($input['device_type'] ?? ''));
@@ -413,13 +549,15 @@ if ($action === 'create_asset' && $method === 'POST') {
   $now = dguv_iso_now();
 
   try {
-    $stmt = $db->prepare('INSERT INTO assets (asset_uid, asset_name, location, customer, site, department, autotest_code, device_type, manufacturer, model, serial_number, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt = $db->prepare('INSERT INTO assets (asset_uid, asset_name, location, customer, customer_code, site, site_code, department, autotest_code, device_type, manufacturer, model, serial_number, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([
       $assetUid,
       $assetName,
       $location,
       $customer,
+      $customerCode,
       $site,
+      $siteCode,
       $department,
       $autotestCode,
       $deviceType,
@@ -439,7 +577,9 @@ if ($action === 'create_asset' && $method === 'POST') {
   dguv_audit($db, 'create_asset', 'asset', (string)$assetId, [
     'asset_uid' => $assetUid,
     'customer' => $customer,
+    'customer_code' => $customerCode,
     'site' => $site,
+    'site_code' => $siteCode,
     'department' => $department,
     'autotest_code' => $autotestCode,
   ]);
@@ -582,6 +722,161 @@ if ($action === 'import_upload' && $method === 'POST') {
   ]);
 
   dguv_json_response(['ok' => true, 'import_run_id' => $runId, 'created_count' => $createdCount, 'staged_count' => $stagedCount]);
+}
+
+if ($action === 'import_cse' && $method === 'POST') {
+  $sourceName = trim((string)($input['source_name'] ?? 'cse_import'));
+  if ($sourceName === '') {
+    $sourceName = 'cse_import';
+  }
+  $cseText = (string)($input['cse_text'] ?? '');
+  if ($cseText === '') {
+    dguv_json_response(['ok' => false, 'error' => 'missing_cse_text'], 400);
+  }
+  $upsert = !array_key_exists('upsert', $input) || (bool)$input['upsert'];
+
+  $records = dguv_parse_cse_records($cseText);
+  $warnings = [];
+
+  $stmtRun = $db->prepare('INSERT INTO import_runs (source_name, source_hash, source_format, imported_count, warning_count, status, raw_payload, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  $stmtRun->execute([
+    $sourceName,
+    hash('sha256', $cseText),
+    'cse',
+    0,
+    0,
+    'running',
+    $cseText,
+    (int)($_SESSION['uid'] ?? 0),
+    dguv_iso_now(),
+  ]);
+
+  $runId = (int)$db->lastInsertId();
+  $createdCount = 0;
+  $updatedCount = 0;
+  $stagedCount = 0;
+  $skippedCount = 0;
+
+  foreach ($records as $record) {
+    $parsed = dguv_parse_cse_record($record);
+    $parsed['next_due_date'] = dguv_normalize_cse_date((string)($parsed['next_due_date'] ?? ''));
+
+    $assetUid = trim((string)($parsed['asset_uid'] ?? ''));
+    $assetName = trim((string)($parsed['asset_name'] ?? ''));
+    $customer = trim((string)($parsed['customer'] ?? ''));
+    $customerCode = trim((string)($parsed['customer_code'] ?? ''));
+    $site = trim((string)($parsed['site'] ?? ''));
+    $siteCode = trim((string)($parsed['site_code'] ?? ''));
+    $department = trim((string)($parsed['department'] ?? ''));
+    $autotestCode = trim((string)($parsed['autotest_code'] ?? ''));
+    $inspectionCycle = trim((string)($parsed['inspection_cycle'] ?? ''));
+
+    if ($assetUid === '' || $assetName === '' || $customer === '' || $site === '' || $department === '' || $autotestCode === '') {
+      $stagedCount++;
+      $stmtStaging = $db->prepare('INSERT INTO import_staging (import_run_id, source_name, source_format, detected_asset_uid, payload_json, status, matched_asset_id, resolution_note, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      $stmtStaging->execute([
+        $runId,
+        $sourceName,
+        'cse',
+        $assetUid,
+        json_encode($parsed, JSON_THROW_ON_ERROR),
+        'invalid',
+        null,
+        'cse_missing_required_fields',
+        (int)($_SESSION['uid'] ?? 0),
+        dguv_iso_now(),
+      ]);
+      continue;
+    }
+
+    $location = dguv_compose_location($customer, $site, $department);
+    $notes = $inspectionCycle !== '' ? ('inspection_cycle=' . $inspectionCycle) : '';
+
+    $stmtExisting = $db->prepare('SELECT id FROM assets WHERE asset_uid = ? AND deleted_at IS NULL LIMIT 1');
+    $stmtExisting->execute([$assetUid]);
+    $existing = $stmtExisting->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+      if (!$upsert) {
+        $skippedCount++;
+        continue;
+      }
+
+      $stmtUpdate = $db->prepare('UPDATE assets SET asset_name = ?, location = ?, customer = ?, customer_code = ?, site = ?, site_code = ?, department = ?, autotest_code = ?, device_type = ?, notes = ?, updated_at = ? WHERE id = ?');
+      $stmtUpdate->execute([
+        $assetName,
+        $location,
+        $customer,
+        $customerCode,
+        $site,
+        $siteCode,
+        $department,
+        $autotestCode,
+        'Unbekannt',
+        $notes,
+        dguv_iso_now(),
+        (int)$existing['id'],
+      ]);
+      $updatedCount++;
+      continue;
+    }
+
+    $stmtCreate = $db->prepare('INSERT INTO assets (asset_uid, asset_name, location, customer, customer_code, site, site_code, department, autotest_code, device_type, manufacturer, model, serial_number, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $now = dguv_iso_now();
+    $stmtCreate->execute([
+      $assetUid,
+      $assetName,
+      $location,
+      $customer,
+      $customerCode,
+      $site,
+      $siteCode,
+      $department,
+      $autotestCode,
+      'Unbekannt',
+      '',
+      '',
+      '',
+      $notes,
+      (int)($_SESSION['uid'] ?? 0),
+      $now,
+      $now,
+    ]);
+    $createdCount++;
+  }
+
+  if ($records === []) {
+    $warnings[] = 'no_cse_records_detected';
+  }
+  if ($skippedCount > 0) {
+    $warnings[] = 'existing_assets_skipped';
+  }
+  if ($stagedCount > 0) {
+    $warnings[] = 'records_staged_invalid';
+  }
+
+  $importedCount = $createdCount + $updatedCount;
+  $stmtFinish = $db->prepare('UPDATE import_runs SET imported_count = ?, warning_count = ?, status = ? WHERE id = ?');
+  $stmtFinish->execute([$importedCount, $stagedCount + $skippedCount, 'done', $runId]);
+
+  dguv_audit($db, 'import_cse', 'import_run', (string)$runId, [
+    'source_name' => $sourceName,
+    'created_count' => $createdCount,
+    'updated_count' => $updatedCount,
+    'staged_count' => $stagedCount,
+    'skipped_count' => $skippedCount,
+    'upsert' => $upsert,
+  ]);
+
+  dguv_json_response([
+    'ok' => true,
+    'run_id' => $runId,
+    'created_count' => $createdCount,
+    'updated_count' => $updatedCount,
+    'staged_count' => $stagedCount,
+    'skipped_count' => $skippedCount,
+    'warnings' => $warnings,
+  ]);
 }
 
 if ($action === 'list_import_staging') {

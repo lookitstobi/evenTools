@@ -193,7 +193,9 @@
         <div class="field f3"><label>&nbsp;</label><button id="btn_next_uid">Nächste Nummer holen</button></div>
         <div class="field f6"><label>Name *</label><input id="asset_name"></div>
         <div class="field f4"><label>Kunde *</label><input id="asset_customer"></div>
+        <div class="field f4"><label>Kundencode</label><input id="asset_customer_code"></div>
         <div class="field f4"><label>Standort *</label><input id="asset_site"></div>
+        <div class="field f4"><label>Standortcode</label><input id="asset_site_code"></div>
         <div class="field f4"><label>Abteilung *</label><input id="asset_department"></div>
         <div class="field f6"><label>Autotest-Code *</label><input id="asset_autotest_code"></div>
         <div class="field f6"><label>Gerätetyp *</label><input id="asset_device_type"></div>
@@ -205,6 +207,18 @@
       <div class="btn-row mt-10">
         <button class="primary" id="btn_create_asset">Prüfling speichern</button>
         <button id="btn_create_asset_print">Speichern + Etikett drucken</button>
+      </div>
+    </section>
+
+    <section class="card col-6">
+      <h3>CSE-Import</h3>
+      <div class="grid">
+        <div class="field f12"><label>CSE-Datei</label><input id="cse_file" type="file" accept=".cse,.txt"></div>
+        <div class="field f6"><label>Source-Name</label><input id="cse_source_name" value="cse_import"></div>
+        <div class="field f6"><label><input id="cse_upsert" type="checkbox" checked> Bestehende Assets aktualisieren (Upsert)</label></div>
+      </div>
+      <div class="btn-row mt-10">
+        <button id="btn_import_cse">CSE importieren</button>
       </div>
     </section>
 
@@ -298,7 +312,11 @@
                   <th><input type="checkbox" id="select_all"></th>
                   <th>Inventar</th>
                   <th>Name</th>
-                  <th>Kunde / Standort / Abteilung</th>
+                  <th>Kunde</th>
+                  <th>Kundencode</th>
+                  <th>Standort</th>
+                  <th>Standortcode</th>
+                  <th>Abteilung</th>
                   <th>Autotest</th>
                   <th>Typ</th>
                   <th>Prüfdatum</th>
@@ -426,8 +444,16 @@
       options.headers['Content-Type'] = 'application/json';
       options.headers['X-CSRF-Token'] = csrf;
       options.body = JSON.stringify({ ...(payload || {}), csrf });
-    } else if (payload && payload.q) {
-      url += '&q=' + encodeURIComponent(payload.q);
+    } else if (payload) {
+      if (payload.q) {
+        url += '&q=' + encodeURIComponent(payload.q);
+      }
+      if (payload.customer) {
+        url += '&customer=' + encodeURIComponent(payload.customer);
+      }
+      if (payload.customer_code) {
+        url += '&customer_code=' + encodeURIComponent(payload.customer_code);
+      }
     }
 
     const response = await fetch(url, options);
@@ -631,7 +657,7 @@
     const visibleAssets = getVisibleAssets();
 
     if (visibleAssets.length === 0) {
-      assetRowsEl.innerHTML = '<tr><td colspan="9" class="muted">Keine Datensätze.</td></tr>';
+      assetRowsEl.innerHTML = '<tr><td colspan="13" class="muted">Keine Datensätze.</td></tr>';
       renderQuickAssetList([]);
       return;
     }
@@ -644,7 +670,11 @@
         <td><input type="checkbox" data-id="${row.id}"></td>
         <td class="mono">${escapeHtml(row.asset_uid || '')}</td>
         <td>${escapeHtml(row.asset_name || '')}</td>
-        <td>${escapeHtml([row.customer || '', row.site || '', row.department || ''].filter(Boolean).join(' / ') || row.location || '')}</td>
+        <td>${escapeHtml(row.customer || '')}</td>
+        <td>${escapeHtml(row.customer_code || '')}</td>
+        <td>${escapeHtml(row.site || '')}</td>
+        <td>${escapeHtml(row.site_code || '')}</td>
+        <td>${escapeHtml(row.department || '')}</td>
         <td>${escapeHtml(row.autotest_code || '')}</td>
         <td>${escapeHtml(row.device_type || '')}</td>
         <td>${escapeHtml(row.inspection_date || '')}</td>
@@ -793,7 +823,10 @@
   }
 
   async function fillNextUid() {
-    const data = await api('next_asset_uid');
+    const data = await api('next_asset_uid', {
+      customer: document.getElementById('asset_customer').value.trim(),
+      customer_code: document.getElementById('asset_customer_code').value.trim(),
+    });
     document.getElementById('asset_uid').value = data.asset_uid || '';
   }
 
@@ -851,7 +884,9 @@
         asset_uid: document.getElementById('asset_uid').value,
         asset_name: document.getElementById('asset_name').value,
         customer: document.getElementById('asset_customer').value,
+        customer_code: document.getElementById('asset_customer_code').value,
         site: document.getElementById('asset_site').value,
+        site_code: document.getElementById('asset_site_code').value,
         department: document.getElementById('asset_department').value,
         autotest_code: document.getElementById('asset_autotest_code').value,
         device_type: document.getElementById('asset_device_type').value,
@@ -1046,6 +1081,55 @@
       flash('Zwischenlager-Eintrag zugeordnet.', 'ok');
     } catch (error) {
       flash('Fehler bei der Zwischenlager-Zuordnung: ' + error.message, 'bad');
+    }
+  });
+
+  document.getElementById('btn_import_cse').addEventListener('click', async () => {
+    const fileInput = document.getElementById('cse_file');
+    const sourceName = document.getElementById('cse_source_name').value.trim() || 'cse_import';
+    const upsert = document.getElementById('cse_upsert').checked;
+
+    if (!fileInput.files || !fileInput.files[0]) {
+      flash('Bitte eine CSE-Datei auswählen.', 'warn');
+      return;
+    }
+
+    let cseText = '';
+    try {
+      cseText = await fileInput.files[0].text();
+    } catch (error) {
+      flash('Datei konnte nicht gelesen werden.', 'bad');
+      return;
+    }
+
+    if (!cseText) {
+      flash('Die ausgewählte Datei ist leer.', 'warn');
+      return;
+    }
+
+    try {
+      const result = await api('import_cse', {
+        source_name: sourceName,
+        cse_text: cseText,
+        upsert,
+      }, 'POST');
+
+      const warningText = Array.isArray(result.warnings) && result.warnings.length
+        ? (' Warnungen: ' + result.warnings.join(', '))
+        : '';
+      flash(
+        'CSE-Import abgeschlossen. Neu: ' + Number(result.created_count || 0)
+          + ', aktualisiert: ' + Number(result.updated_count || 0)
+          + ', staged: ' + Number(result.staged_count || 0)
+          + ', übersprungen: ' + Number(result.skipped_count || 0)
+          + '.' + warningText,
+        'ok'
+      );
+
+      await loadAssets(document.getElementById('search').value.trim());
+      await loadStaging();
+    } catch (error) {
+      flash('Fehler beim CSE-Import: ' + error.message, 'bad');
     }
   });
 

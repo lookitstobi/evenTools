@@ -37,7 +37,9 @@ function dguv_init_schema(PDO $db): void {
   )');
 
   dguv_add_column_if_missing($db, 'assets', 'customer', 'TEXT NOT NULL DEFAULT ""');
+  dguv_add_column_if_missing($db, 'assets', 'customer_code', 'TEXT NOT NULL DEFAULT ""');
   dguv_add_column_if_missing($db, 'assets', 'site', 'TEXT NOT NULL DEFAULT ""');
+  dguv_add_column_if_missing($db, 'assets', 'site_code', 'TEXT NOT NULL DEFAULT ""');
   dguv_add_column_if_missing($db, 'assets', 'department', 'TEXT NOT NULL DEFAULT ""');
   dguv_add_column_if_missing($db, 'assets', 'autotest_code', 'TEXT NOT NULL DEFAULT ""');
 
