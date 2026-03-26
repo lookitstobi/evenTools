@@ -90,7 +90,7 @@
     const query = options.query || null;
     const body = options.body || null;
 
-    const url = new URL('patchmatrix_api.php', document.baseURI || window.location.href);
+    const url = new URL('/patchmatrix_api.php', window.location.origin);
     url.searchParams.set('action', action);
 
     if (query && typeof query === 'object') {
