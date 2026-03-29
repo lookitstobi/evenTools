@@ -101,7 +101,6 @@ page_start('Dashboard');
       <div class="dashboard-tools-head">
         <div>
           <div class="h1">Deine Tools</div>
-          <div class="small">Klick ein Tool an – Rechte werden serverseitig geprüft.</div>
         </div>
         <?php if ($can_switch_pdf_mode): ?>
           <form method="post" class="pdf-mode-compact" id="pdfModeCompactForm">
