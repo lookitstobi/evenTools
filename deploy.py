@@ -12,14 +12,26 @@ from __future__ import annotations
 import fnmatch
 import os
 import posixpath
+import re
 import stat
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, Optional
 
 import paramiko
 
 PROJECT_ROOT = Path(__file__).parent.resolve()
+
+
+def int_env(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
 
 HOST = os.getenv("STRATO_HOST")
 USER = os.getenv("STRATO_USER")
@@ -30,6 +42,8 @@ REMOTE_BACKUP_PATH = os.getenv("STRATO_BACKUP_PATH")
 BACKUP_ENABLED = os.getenv("DEPLOY_BACKUP_ENABLED", "1") == "1"
 IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS", "").lower() == "true"
 STRICT_DATA_PATH = os.getenv("DEPLOY_STRICT_DATA_PATH", "1") == "1"
+BACKUP_INTERVAL_SECONDS = int_env("DEPLOY_BACKUP_INTERVAL_SECONDS", 21600)
+DEPLOY_COMMIT_MESSAGE = os.getenv("DEPLOY_COMMIT_MESSAGE", "")
 
 if not all([HOST, USER, PASSWORD, REMOTE_BASE]):
     env_file = PROJECT_ROOT / ".env.local"
@@ -117,6 +131,66 @@ PROTECTED_REMOTE_PATTERNS = {
 }
 
 BACKUP_DB_FILES = ["users.sqlite", "dguv.sqlite", "cuesheet.sqlite"]
+BACKUP_DIR_PREFIX = "deploy_"
+
+
+def list_remote_entries_map(sftp: paramiko.SFTPClient, remote_dir: str) -> Dict[str, paramiko.SFTPAttributes]:
+    try:
+        return {entry.filename: entry for entry in sftp.listdir_attr(remote_dir)}
+    except OSError:
+        return {}
+
+
+def commit_requests_forced_backup(message: str) -> bool:
+    if not message:
+        return False
+    first_line = message.splitlines()[0].strip()
+    return first_line.upper().startswith("#BACKUP")
+
+
+def parse_backup_timestamp(dirname: str) -> Optional[datetime]:
+    match = re.fullmatch(r"deploy_(\d{8}T\d{6}Z)", dirname)
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def get_last_deploy_backup_timestamp(sftp: paramiko.SFTPClient, backup_base: str) -> Optional[datetime]:
+    newest: Optional[datetime] = None
+    for entry in list_remote_entries_map(sftp, backup_base).values():
+        if not stat.S_ISDIR(entry.st_mode):
+            continue
+        ts = parse_backup_timestamp(entry.filename)
+        if ts is None:
+            continue
+        if newest is None or ts > newest:
+            newest = ts
+    return newest
+
+
+def should_run_backup(sftp: paramiko.SFTPClient, backup_base: str) -> bool:
+    if commit_requests_forced_backup(DEPLOY_COMMIT_MESSAGE):
+        print("ℹ️ Backup erzwungen durch Commit-Message (#BACKUP)")
+        return True
+
+    if BACKUP_INTERVAL_SECONDS <= 0:
+        return True
+
+    ensure_remote_dir(sftp, backup_base)
+    last_backup = get_last_deploy_backup_timestamp(sftp, backup_base)
+    if last_backup is None:
+        return True
+
+    elapsed_seconds = (datetime.now(timezone.utc) - last_backup).total_seconds()
+    if elapsed_seconds < BACKUP_INTERVAL_SECONDS:
+        remaining = int(BACKUP_INTERVAL_SECONDS - elapsed_seconds)
+        print(f"ℹ️ Letztes Backup vor weniger als {BACKUP_INTERVAL_SECONDS // 3600}h, überspringe Backup (noch ~{remaining // 60} min)")
+        return False
+
+    return True
 
 
 def normalize_remote(path: str) -> str:
@@ -238,6 +312,7 @@ def sync_directory(
     remote_base: str,
 ) -> None:
     ensure_remote_dir(sftp, remote_dir)
+    remote_entries = list_remote_entries_map(sftp, remote_dir)
 
     local_dirs = set()
     local_files = set()
@@ -254,9 +329,18 @@ def sync_directory(
             sync_directory(sftp, item, remote_item, remote_base)
         elif item.is_file():
             local_files.add(item.name)
-            upload_file_if_needed(sftp, item, remote_item, relative_display)
+            remote_entry = remote_entries.get(item.name)
+            should_upload = True
+            if remote_entry and stat.S_ISREG(remote_entry.st_mode):
+                local_stat = item.stat()
+                if int(remote_entry.st_size) == int(local_stat.st_size) and int(remote_entry.st_mtime) >= int(local_stat.st_mtime):
+                    should_upload = False
+            if should_upload:
+                ensure_remote_dir(sftp, posixpath.dirname(remote_item))
+                sftp.put(str(item), remote_item)
+                print(f"📤 {relative_display}")
 
-    for entry in sftp.listdir_attr(remote_dir):
+    for entry in remote_entries.values():
         name = entry.filename
         remote_item = remote_join(remote_dir, name)
         rel_from_base = remote_rel(remote_base, remote_item)
@@ -280,6 +364,7 @@ def sync_directory(
 
 def sync_root_files(sftp: paramiko.SFTPClient, remote_base: str) -> None:
     ensure_remote_dir(sftp, remote_base)
+    remote_entries = list_remote_entries_map(sftp, remote_base)
 
     deployed_files = set()
     for file_name in sorted(ROOT_FILES):
@@ -288,9 +373,18 @@ def sync_root_files(sftp: paramiko.SFTPClient, remote_base: str) -> None:
             continue
         deployed_files.add(file_name)
         remote_file = remote_join(remote_base, file_name)
-        upload_file_if_needed(sftp, local_file, remote_file, file_name)
+        remote_entry = remote_entries.get(file_name)
+        should_upload = True
+        if remote_entry and stat.S_ISREG(remote_entry.st_mode):
+            local_stat = local_file.stat()
+            if int(remote_entry.st_size) == int(local_stat.st_size) and int(remote_entry.st_mtime) >= int(local_stat.st_mtime):
+                should_upload = False
+        if should_upload:
+            ensure_remote_dir(sftp, posixpath.dirname(remote_file))
+            sftp.put(str(local_file), remote_file)
+            print(f"📤 {file_name}")
 
-    for entry in sftp.listdir_attr(remote_base):
+    for entry in remote_entries.values():
         if not stat.S_ISREG(entry.st_mode):
             continue
 
@@ -332,6 +426,10 @@ def backup_runtime_data(sftp: paramiko.SFTPClient) -> None:
 
     data_base = normalize_remote(REMOTE_DATA_PATH)
     backup_base = normalize_remote(REMOTE_BACKUP_PATH) if REMOTE_BACKUP_PATH else remote_join(data_base, "backups")
+
+    if not should_run_backup(sftp, backup_base):
+        return
+
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_backup_dir = remote_join(backup_base, f"deploy_{timestamp}")
 

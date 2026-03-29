@@ -5,6 +5,16 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '.github/workflows/firewall-guard.yml'
+      - 'scripts/firewall_guard.php'
+      - '*.php'
+      - 'app/**'
+      - 'assets/**'
+
+concurrency:
+  group: firewall-guard-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   firewall-guard:
@@ -15,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2

@@ -52,7 +52,6 @@ php download_vendor.php
 Dieses Skript lädt Chart.js, jsPDF und pdf-lib lokal in `app/tools/nti_tool/vendor/` herunter.
 Ohne diese Dateien ist die PDF-Export-Funktion im NTI-Tool nicht verfügbar.
 
-
 ```bash
 APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php app/migrate.php
 ```
@@ -68,9 +67,13 @@ ls -lah /home/www/HTML_Tools/toolsapp/data/*.sqlite
 1. Push nach `main`.
 2. Firewall-Guard muss grün sein (`.github/workflows/firewall-guard.yml`).
 3. GitHub Action führt `deploy.py` aus.
-4. Optionales Backup nach `data/backups/deploy_<timestamp>/`.
-5. Code-Sync nach `STRATO_PATH`.
-6. Optional bei Schemaänderungen: Migration ausführen.
+4. Backup-Rhythmus:
+   - Standard: maximal ein Backup alle 6 Stunden (`DEPLOY_BACKUP_INTERVAL_SECONDS=21600`).
+   - Wenn seit dem letzten Deploy-Backup mehr als 6 Stunden vergangen sind, wird beim nächsten Deploy automatisch ein Backup erstellt.
+   - Override: Wenn die **erste Zeile** der Commit-Message mit `#BACKUP` beginnt, wird Backup immer erzwungen.
+5. Optionales Backup nach `data/backups/deploy_<timestamp>/`.
+6. Code-Sync nach `STRATO_PATH`.
+7. Optional bei Schemaänderungen: Migration ausführen.
 
 ## Verifikation nach Deploy (Smoke Test)
 
