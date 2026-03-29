@@ -8,6 +8,13 @@ const state = {
   selectedIds: [],
   allowedToolKeys: [],
   fieldCatalog: {},
+  bindingCatalogToolKey: '',
+  bindingCatalogToolManual: false,
+  bindingCatalogToolLastTemplate: '',
+  undoStack: [],
+  redoStack: [],
+  clipboard: null,
+  gridVisible: true,
 };
 
 const stageEl = document.getElementById('stage');
@@ -39,21 +46,21 @@ const propStrokeColorEl = document.getElementById('propStrokeColor');
 const propFillColorEl = document.getElementById('propFillColor');
 const propStrokeWidthEl = document.getElementById('propStrokeWidth');
 const propImageSrcEl = document.getElementById('propImageSrc');
-const addElementTypeEl = document.getElementById('addElementType');
 const selectionInfoEl = document.getElementById('selectionInfo');
+const selectionToolbarEl = document.getElementById('selectionToolbar');
 const rulerXEl = document.getElementById('rulerX');
 const rulerYEl = document.getElementById('rulerY');
 const messageEl = document.getElementById('message');
 const btnZoomOut = document.getElementById('btnZoomOut');
 const btnZoomReset = document.getElementById('btnZoomReset');
 const btnZoomIn = document.getElementById('btnZoomIn');
+const btnFitPage = document.getElementById('btnFitPage');
+const btnFitWidth = document.getElementById('btnFitWidth');
+const btnToggleGrid = document.getElementById('btnToggleGrid');
 const helpDialogEl = document.getElementById('helpDialog');
 const assignDialogEl = document.getElementById('assignDialog');
 const assignDialogBodyEl = document.getElementById('assignDialogBody');
-const assignPanelEl = document.getElementById('assignPanel');
 const propsPanelEl = document.getElementById('propsPanel');
-const btnToggleAssign = document.getElementById('btnToggleAssign');
-const btnToggleProps = document.getElementById('btnToggleProps');
 const stageContextMenuEl = document.getElementById('stageContextMenu');
 const ctxAddToggleEl = document.getElementById('ctxAddToggle');
 const ctxAddSubEl = document.getElementById('ctxAddSub');
@@ -77,9 +84,21 @@ const btnPreview = document.getElementById('btnPreview');
 const btnHelp = document.getElementById('btnHelp');
 const btnDelete = document.getElementById('btnDelete');
 const importFileInputEl = document.getElementById('importFileInput');
-const btnAddElement = document.getElementById('btnAddElement');
 const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+const btnDuplicateSelected = document.getElementById('btnDuplicateSelected');
+const btnDuplicateTemplate = document.getElementById('btnDuplicateTemplate');
+const btnGroupSelection = document.getElementById('btnGroupSelection');
+const btnUngroupSelection = document.getElementById('btnUngroupSelection');
 const btnAssign = document.getElementById('btnAssign');
+const layerListEl = document.getElementById('layerList');
+const layerCountInfoEl = document.getElementById('layerCountInfo');
+const templateVersionInfoEl = document.getElementById('templateVersionInfo');
+const bindingListEl = document.getElementById('bindingList');
+const bindingSearchInputEl = document.getElementById('bindingSearchInput');
+const bindingToolFilterSelectEl = document.getElementById('bindingToolFilterSelect');
+const repoImageSelectEl = document.getElementById('repoImageSelect');
+const btnApplyRepoImageEl = document.getElementById('btnApplyRepoImage');
+const imageUploadInputEl = document.getElementById('imageUploadInput');
 
 const PAGE_WIDTH_MM = 210;
 const PAGE_HEIGHT_MM = 297;
@@ -203,25 +222,515 @@ function updateImageAspectCache(el) {
   img.src = src;
 }
 
-function isPanelOpen(panelEl) {
-  return !!panelEl && !panelEl.classList.contains('is-collapsed');
-}
-
-function setPanelState(panelEl, toggleBtn, shouldOpen) {
-  if (!panelEl || !toggleBtn) return;
-  panelEl.classList.toggle('is-collapsed', !shouldOpen);
-  toggleBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-}
-
-function togglePanel(panelEl, toggleBtn) {
-  setPanelState(panelEl, toggleBtn, !isPanelOpen(panelEl));
-}
-
 function showMessage(text, isError = false) {
   messageEl.textContent = text;
   messageEl.classList.toggle('error', isError);
   messageEl.classList.add('show');
   window.setTimeout(() => messageEl.classList.remove('show'), 2600);
+}
+
+/* ── Undo / Redo ──────────────────────────────────────────── */
+function snapshotElements() {
+  if (!state.current?.payload?.elements) return [];
+  return JSON.parse(JSON.stringify(state.current.payload.elements));
+}
+
+function pushUndo() {
+  state.undoStack.push(snapshotElements());
+  if (state.undoStack.length > 60) state.undoStack.shift();
+  state.redoStack = [];
+}
+
+let undoDebounceTimer = null;
+let lastUndoWasPropertyChange = false;
+let lastUndoShortcutAt = 0;
+let lastRedoShortcutAt = 0;
+
+function resetUndoDebounceState() {
+  if (undoDebounceTimer) {
+    clearTimeout(undoDebounceTimer);
+    undoDebounceTimer = null;
+  }
+  lastUndoWasPropertyChange = false;
+}
+
+function pushUndoDebounced(isPropertyChange = true) {
+  if (!undoDebounceTimer || !isPropertyChange || !lastUndoWasPropertyChange) {
+    pushUndo();
+  }
+  lastUndoWasPropertyChange = isPropertyChange;
+  if (undoDebounceTimer) {
+    clearTimeout(undoDebounceTimer);
+  }
+  undoDebounceTimer = setTimeout(() => {
+    undoDebounceTimer = null;
+    lastUndoWasPropertyChange = false;
+  }, 600);
+}
+
+function undoAction() {
+  resetUndoDebounceState();
+  if (state.undoStack.length === 0) return;
+  if (state.current?.payload) {
+    state.redoStack.push(snapshotElements());
+    state.current.payload.elements = state.undoStack.pop();
+    renderStage();
+    renderLayerList();
+    updatePropertyInputs();
+    updateSelectionToolbar();
+    showMessage('Rückgängig');
+  }
+}
+
+function redoAction() {
+  resetUndoDebounceState();
+  if (state.redoStack.length === 0) return;
+  if (state.current?.payload) {
+    state.undoStack.push(snapshotElements());
+    state.current.payload.elements = state.redoStack.pop();
+    renderStage();
+    renderLayerList();
+    updatePropertyInputs();
+    updateSelectionToolbar();
+    showMessage('Wiederherstellen');
+  }
+}
+
+/* ── Layer list ───────────────────────────────────────────── */
+const LAYER_ICONS = { text: 'T', line: '―', rect: '☐', rect_fill: '▪', image: '🖼' };
+
+function renderLayerList() {
+  if (!layerListEl) return;
+  const elements = getCurrentElements();
+  layerListEl.innerHTML = '';
+
+  if (layerCountInfoEl) {
+    layerCountInfoEl.textContent = String(elements.length);
+  }
+
+  [...elements].reverse().forEach((el) => {
+    const item = document.createElement('div');
+    item.className = 'layer-item' + (isSelected(el.id) ? ' is-selected' : '');
+    item.dataset.id = el.id;
+
+    const icon = document.createElement('span');
+    icon.className = 'layer-icon';
+    icon.textContent = LAYER_ICONS[el.type] || '?';
+
+    const groupBadge = document.createElement('span');
+    groupBadge.className = 'layer-group-badge';
+    groupBadge.textContent = el.group_id ? 'G' : '';
+    groupBadge.title = el.group_id ? `Gruppe ${el.group_id}` : '';
+      if (el.group_id) {
+        groupBadge.style.backgroundColor = getGroupColor(el.group_id);
+        groupBadge.style.color = '#fff';
+        groupBadge.style.borderRadius = '3px';
+        groupBadge.style.padding = '2px 4px';
+        groupBadge.style.fontSize = '11px';
+        groupBadge.style.fontWeight = 'bold';
+      }
+
+    const label = document.createElement('span');
+    label.className = 'layer-label';
+    const name = el.bind ? `{{${el.bind}}}` : (el.text || el.id);
+    label.textContent = name;
+    label.title = name;
+
+    item.appendChild(icon);
+    item.appendChild(groupBadge);
+    item.appendChild(label);
+
+    item.addEventListener('click', (ev) => {
+      const id = item.dataset.id;
+      if (ev.shiftKey) {
+        if (isSelected(id)) {
+          setSelectedIds(state.selectedIds.filter(v => v !== id));
+        } else {
+          setSelectedIds(expandSelectionWithGroupIds([...state.selectedIds, id]));
+        }
+      } else {
+        setSelectedIds(expandSelectionWithGroupIds([id]));
+      }
+      renderStage();
+      renderLayerList();
+      updatePropertyInputs();
+      updateSelectionToolbar();
+    });
+
+    layerListEl.appendChild(item);
+  });
+}
+
+/* ── Binding catalog ──────────────────────────────────────── */
+function catalogItemsForTool(toolKey) {
+  const rawItems = Array.isArray(state.fieldCatalog[toolKey]) ? state.fieldCatalog[toolKey] : [];
+  const normalized = rawItems
+    .map((item) => {
+      const key = String(item?.key || '').trim();
+      if (key === '') return null;
+      const label = String(item?.label || key).trim() || key;
+      const group = String(item?.group || 'Allgemein').trim() || 'Allgemein';
+      return { key, label, group };
+    })
+    .filter(Boolean);
+
+  normalized.sort((a, b) => {
+    const groupCmp = a.group.localeCompare(b.group, 'de', { sensitivity: 'base' });
+    if (groupCmp !== 0) return groupCmp;
+    const labelCmp = a.label.localeCompare(b.label, 'de', { sensitivity: 'base' });
+    if (labelCmp !== 0) return labelCmp;
+    return a.key.localeCompare(b.key, 'de', { sensitivity: 'base' });
+  });
+
+  return normalized;
+}
+
+function getBindingCatalogToolKey() {
+  const fallback = state.current?.tool_key || state.allowedToolKeys[0] || '';
+  if (state.bindingCatalogToolManual && state.bindingCatalogToolKey) {
+    return state.bindingCatalogToolKey;
+  }
+  return fallback;
+}
+
+function fillBindingToolFilterSelect() {
+  if (!bindingToolFilterSelectEl) return;
+  const currentTool = state.current?.tool_key || state.allowedToolKeys[0] || '';
+
+  bindingToolFilterSelectEl.innerHTML = '';
+  state.allowedToolKeys.forEach((key) => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key;
+    if (key === currentTool) {
+      opt.textContent = `${key} (aktuelle Vorlage)`;
+    }
+    bindingToolFilterSelectEl.appendChild(opt);
+  });
+
+  if (!state.bindingCatalogToolManual || !state.bindingCatalogToolKey) {
+    state.bindingCatalogToolKey = currentTool;
+  }
+
+  if (state.bindingCatalogToolKey && !state.allowedToolKeys.includes(state.bindingCatalogToolKey)) {
+    state.bindingCatalogToolKey = currentTool;
+    state.bindingCatalogToolManual = false;
+  }
+
+  if (state.bindingCatalogToolKey) {
+    bindingToolFilterSelectEl.value = state.bindingCatalogToolKey;
+  }
+}
+
+function renderBindingList(filter = '') {
+  if (!bindingListEl) return;
+  const toolKey = getBindingCatalogToolKey();
+  const list = catalogItemsForTool(toolKey);
+  const selectedBindings = new Set(selectedElements().map((el) => (el.bind || '').trim()).filter(Boolean));
+  const query = filter.trim().toLowerCase();
+
+  bindingListEl.innerHTML = '';
+  const filtered = query
+    ? list.filter(item => item.key.toLowerCase().includes(query) || (item.label || '').toLowerCase().includes(query))
+    : list;
+
+  const groups = new Map();
+  filtered.forEach((item) => {
+    const group = item.group || 'Allgemein';
+    if (!groups.has(group)) {
+      groups.set(group, []);
+    }
+    groups.get(group).push(item);
+  });
+
+  Array.from(groups.keys())
+    .sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }))
+    .forEach((groupName) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'binding-group';
+
+      const title = document.createElement('div');
+      title.className = 'binding-group-title';
+      title.textContent = groupName;
+      wrap.appendChild(title);
+
+      groups.get(groupName).forEach((item) => {
+        const el = document.createElement('div');
+        el.className = 'binding-item';
+        if (selectedBindings.has(item.key)) {
+          el.classList.add('is-selected-binding');
+        }
+
+        const key = document.createElement('span');
+        key.className = 'binding-key';
+        key.textContent = item.key;
+
+        const lbl = document.createElement('span');
+        lbl.className = 'binding-label-text';
+        lbl.textContent = item.label || '';
+
+        el.appendChild(key);
+        el.appendChild(lbl);
+
+        el.addEventListener('click', () => {
+          const items = selectedElements();
+          if (items.length === 0) {
+            showMessage('Zuerst ein Element auswählen.', true);
+            return;
+          }
+          pushUndo();
+          items.forEach(sel => { sel.bind = item.key; });
+          renderStage();
+          renderLayerList();
+          updatePropertyInputs();
+          showMessage(`Binding «${item.key}» gesetzt.`);
+        });
+
+        wrap.appendChild(el);
+      });
+
+      bindingListEl.appendChild(wrap);
+    });
+}
+
+/* ── Selection toolbar show/hide + count update ──────────── */
+function updateSelectionToolbar() {
+  if (!selectionToolbarEl) return;
+  const count = state.selectedIds.length;
+  selectionToolbarEl.classList.toggle('is-disabled', count === 0);
+  selectionToolbarEl.querySelectorAll('button').forEach((btn) => {
+    btn.disabled = count === 0;
+  });
+  if (selectionInfoEl) {
+    if (count === 0) {
+      selectionInfoEl.textContent = 'Keine Auswahl';
+    } else if (count === 1) {
+      const el = selectedElement();
+      selectionInfoEl.textContent = el ? `${el.id} @ ${el.x.toFixed(1)} / ${el.y.toFixed(1)} mm` : '1 Element';
+    } else {
+      selectionInfoEl.textContent = `${count} Elemente ausgewählt`;
+    }
+  }
+  renderBindingList(bindingSearchInputEl ? bindingSearchInputEl.value : '');
+}
+
+/* ── Align & distribute ───────────────────────────────────── */
+function alignSelection(type) {
+  const items = selectedElements();
+  if (items.length === 0) return;
+  pushUndo();
+
+  const groupMap = new Map();
+  items.forEach(el => {
+    if (el.group_id) {
+      if (!groupMap.has(el.group_id)) groupMap.set(el.group_id, []);
+      groupMap.get(el.group_id).push(el);
+    }
+  });
+  
+  if (groupMap.size > 0) {
+    groupMap.forEach((groupElems) => {
+      const minX = Math.min(...groupElems.map(e => Number(e.x)));
+      const minY = Math.min(...groupElems.map(e => Number(e.y)));
+      const maxX = Math.max(...groupElems.map(e => Number(e.x) + Number(e.w)));
+      const maxY = Math.max(...groupElems.map(e => Number(e.y) + Number(e.h)));
+      const gw = maxX - minX;
+      const gh = maxY - minY;
+      
+      let newX = minX, newY = minY;
+      if (type === 'left') newX = 0;
+      else if (type === 'right') newX = PAGE_WIDTH_MM - gw;
+      else if (type === 'hcenter') newX = (PAGE_WIDTH_MM - gw) / 2;
+      else if (type === 'top') newY = 0;
+      else if (type === 'bottom') newY = PAGE_HEIGHT_MM - gh;
+      else if (type === 'vcenter') newY = (PAGE_HEIGHT_MM - gh) / 2;
+      
+      const ox = newX - minX, oy = newY - minY;
+      groupElems.forEach(el => {
+        el.x = Number((el.x + ox).toFixed(1));
+        el.y = Number((el.y + oy).toFixed(1));
+      });
+    });
+  }
+  
+  const ungrouped = items.filter(el => !el.group_id);
+
+  if (type === 'page-left')    { items.forEach(el => { el.x = 0; }); }
+  else if (type === 'page-right')  { items.forEach(el => { el.x = PAGE_WIDTH_MM - el.w; }); }
+  else if (type === 'page-hcenter') { items.forEach(el => { el.x = (PAGE_WIDTH_MM - el.w) / 2; }); }
+  else if (type === 'page-top')    { items.forEach(el => { el.y = 0; }); }
+  else if (type === 'page-bottom') { items.forEach(el => { el.y = PAGE_HEIGHT_MM - el.h; }); }
+  else if (type === 'page-vcenter') { items.forEach(el => { el.y = (PAGE_HEIGHT_MM - el.h) / 2; }); }
+  else {
+    // Align relative to bounding box of selection
+    const b = selectedBoundsMm();
+    if (!b) return;
+    if      (type === 'left')    { ungrouped.forEach(el => { el.x = b.x; }); }
+    else if (type === 'right')   { ungrouped.forEach(el => { el.x = b.x + b.w - el.w; }); }
+    else if (type === 'hcenter') { ungrouped.forEach(el => { el.x = b.x + (b.w - el.w) / 2; }); }
+    else if (type === 'top')     { ungrouped.forEach(el => { el.y = b.y; }); }
+    else if (type === 'bottom')  { ungrouped.forEach(el => { el.y = b.y + b.h - el.h; }); }
+    else if (type === 'vcenter') { ungrouped.forEach(el => { el.y = b.y + (b.h - el.h) / 2; }); }
+  }
+
+  items.forEach(el => {
+    el.x = Number(Math.max(0, el.x).toFixed(1));
+    el.y = Number(Math.max(0, el.y).toFixed(1));
+  });
+
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+}
+
+const GROUP_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#eab308'];
+function getGroupColor(groupId) {
+  if (!groupId) return null;
+  const hash = [...groupId].reduce((h, c) => h + c.charCodeAt(0), 0);
+  return GROUP_COLORS[hash % GROUP_COLORS.length];
+}
+
+function distributeSelection(axis) {
+  const items = selectedElements();
+  if (items.length < 3) {
+    showMessage('Mindestens 3 Elemente für Verteilen.', true);
+    return;
+  }
+  pushUndo();
+
+  if (axis === 'horizontal') {
+    const sorted = [...items].sort((a, b) => a.x - b.x);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const totalW = sorted.reduce((sum, el) => sum + el.w, 0);
+    const gap = (last.x + last.w - first.x - totalW) / (sorted.length - 1);
+    let cx = first.x;
+    sorted.forEach(el => {
+      el.x = Number(cx.toFixed(1));
+      cx += el.w + gap;
+    });
+  } else {
+    const sorted = [...items].sort((a, b) => a.y - b.y);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const totalH = sorted.reduce((sum, el) => sum + el.h, 0);
+    const gap = (last.y + last.h - first.y - totalH) / (sorted.length - 1);
+    let cy = first.y;
+    sorted.forEach(el => {
+      el.y = Number(cy.toFixed(1));
+      cy += el.h + gap;
+    });
+  }
+
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+}
+
+/* ── Duplicate selected elements ─────────────────────────── */
+function duplicateSelected() {
+  const items = selectedElements();
+  if (items.length === 0) {
+    showMessage('Keine Auswahl zum Duplizieren.', true);
+    return;
+  }
+  pushUndo();
+  const step = getGridStepMm();
+  const newIds = [];
+  items.forEach(el => {
+    const copy = { ...el, id: `el_${Math.random().toString(16).slice(2, 10)}` };
+    copy.x = Number(Math.min(PAGE_WIDTH_MM - copy.w, copy.x + step).toFixed(1));
+    copy.y = Number(Math.min(PAGE_HEIGHT_MM - copy.h, copy.y + step).toFixed(1));
+    copy.group_id = '';
+    getCurrentElements().push(copy);
+    newIds.push(copy.id);
+  });
+  setSelectedIds(newIds);
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  updateSelectionToolbar();
+  showMessage('Elemente dupliziert.');
+}
+
+/* ── Copy / Paste ─────────────────────────────────────────── */
+function copySelected() {
+  const items = selectedElements();
+  if (items.length === 0) return;
+  state.clipboard = items.map(el => ({ ...el }));
+  showMessage(`${items.length} Element(e) kopiert.`);
+}
+
+function pasteClipboard() {
+  if (!state.clipboard || state.clipboard.length === 0) return;
+  pushUndo();
+  const step = getGridStepMm();
+  const newIds = [];
+  state.clipboard.forEach(el => {
+    const copy = { ...el, id: `el_${Math.random().toString(16).slice(2, 10)}` };
+    copy.x = Number(Math.min(PAGE_WIDTH_MM - copy.w, copy.x + step * 2).toFixed(1));
+    copy.y = Number(Math.min(PAGE_HEIGHT_MM - copy.h, copy.y + step * 2).toFixed(1));
+    copy.group_id = '';
+    getCurrentElements().push(copy);
+    newIds.push(copy.id);
+  });
+  setSelectedIds(newIds);
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  updateSelectionToolbar();
+  showMessage('Eingefügt.');
+}
+
+/* ── Zoom: fit page / fit width ───────────────────────────── */
+function fitPage() {
+  if (!stageViewportEl) return;
+  const vW = stageViewportEl.clientWidth;
+  const vH = stageViewportEl.clientHeight;
+  const zW = (vW - 32) / viewState.baseWidthPx;
+  const zH = (vH - 32) / viewState.baseHeightPx;
+  setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.min(zW, zH))));
+}
+
+function fitWidth() {
+  if (!stageViewportEl) return;
+  const vW = stageViewportEl.clientWidth;
+  const z = (vW - 32) / viewState.baseWidthPx;
+  setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)));
+}
+
+/* ── Toggle grid ──────────────────────────────────────────── */
+function toggleGrid() {
+  state.gridVisible = !state.gridVisible;
+  stageEl.classList.toggle('stage-grid-on', state.gridVisible);
+  if (btnToggleGrid) {
+    btnToggleGrid.setAttribute('aria-pressed', String(state.gridVisible));
+  }
+}
+
+/* ── Template version info ────────────────────────────────── */
+function updateTemplateVersionInfo() {
+  if (!templateVersionInfoEl) return;
+  if (!state.current) {
+    templateVersionInfoEl.textContent = 'Neu';
+    return;
+  }
+  const v = state.current.version || 0;
+  templateVersionInfoEl.textContent = v > 0 ? `v${v}` : 'Neu';
+}
+
+/* ── Duplicate current template ───────────────────────────── */
+async function duplicateTemplate() {
+  if (!state.current || !state.current.id) {
+    showMessage('Keine gespeicherte Vorlage zum Duplizieren.', true);
+    return;
+  }
+  const result = await api('duplicate', { id: state.current.id }, 'POST');
+  if (!result.ok) throw new Error(result.error || 'duplicate_failed');
+  await loadTemplateList();
+  await openTemplate(String(result.id));
+  fillTemplateSelect();
+  showMessage('Vorlage dupliziert.');
 }
 
 function applyZoom() {
@@ -412,7 +921,7 @@ function fillBindingSelect(toolKey) {
   empty.textContent = '-';
   propBindEl.appendChild(empty);
 
-  const list = state.fieldCatalog[toolKey] || [];
+  const list = catalogItemsForTool(toolKey);
   list.forEach(item => {
     const opt = document.createElement('option');
     opt.value = item.key;
@@ -425,7 +934,7 @@ function renderStage() {
   stageEl.innerHTML = '';
 
   if (!state.current || !state.current.payload) {
-    selectionInfoEl.textContent = 'Keine Auswahl';
+    updateSelectionToolbar();
     return;
   }
 
@@ -456,7 +965,11 @@ function renderStage() {
     div.style.fontFamily = 'Helvetica, Arial, sans-serif';
     div.style.textAlign = el.align || 'left';
     div.style.color = el.text_color || '#272727';
-    div.style.borderColor = el.stroke_color || '#747474';
+    if (el.group_id) {
+      div.style.borderColor = getGroupColor(el.group_id);
+    } else {
+      div.style.borderColor = el.stroke_color || '#747474';
+    }
     div.style.borderWidth = `${el.stroke_width || 1}px`;
     div.style.background = (el.type === 'rect_fill') ? (el.fill_color || '#14a76c') : 'rgba(255, 255, 255, 0.65)';
 
@@ -538,13 +1051,15 @@ function renderStage() {
       stageEl.appendChild(box);
     }
   }
+  stageEl.classList.toggle('draw-mode-active', drawToolType !== '');
 }
 
 function updatePropertyInputs() {
   const items = selectedElements();
   const el = items[0] || null;
+  updateSelectionToolbar();
+
   if (!el || items.length === 0) {
-    selectionInfoEl.textContent = 'Keine Auswahl';
     propTextEl.value = '';
     propBindEl.value = '';
     propXEl.value = '';
@@ -569,16 +1084,26 @@ function updatePropertyInputs() {
   }
 
   if (items.length > 1) {
-    const bounds = selectedBoundsMm();
-    selectionInfoEl.textContent = `${items.length} Elemente ausgewählt${bounds ? ` @ ${bounds.x.toFixed(1)} / ${bounds.y.toFixed(1)} mm` : ''}`;
+    // Multi-selection: show common values, leave position/size empty
+    const mixedOrFirst = (getter) => {
+      const vals = items.map(getter);
+      return vals.every(v => v === vals[0]) ? String(vals[0]) : '';
+    };
     propXEl.value = '';
     propYEl.value = '';
     propWEl.value = '';
     propHEl.value = '';
+    propTextEl.value = mixedOrFirst(e => e.text);
+    propBindEl.value = mixedOrFirst(e => e.bind);
+    propFontSizeEl.value = mixedOrFirst(e => e.font_size);
+    propFontWeightEl.value = mixedOrFirst(e => e.font_weight) || 'normal';
+    propTextColorEl.value = mixedOrFirst(e => e.text_color) || '#272727';
+    propFillColorEl.value = mixedOrFirst(e => e.fill_color) || '#14a76c';
+    propStrokeColorEl.value = mixedOrFirst(e => e.stroke_color) || '#747474';
+    propStrokeWidthEl.value = mixedOrFirst(e => e.stroke_width) || '1';
     return;
   }
 
-  selectionInfoEl.textContent = `${el.id} @ ${el.x.toFixed(1)} / ${el.y.toFixed(1)} mm`;
   propTextEl.value = el.text || '';
   propBindEl.value = el.bind || '';
   propXEl.value = String(el.x);
@@ -604,41 +1129,45 @@ function updatePropertyInputs() {
 function applyPropsToSelection() {
   const items = selectedElements();
   if (items.length === 0) return;
+  pushUndoDebounced(true);
 
   items.forEach((el) => {
-    el.text = propTextEl.value;
-    el.bind = propBindEl.value;
+    if (propTextEl.value !== '' || items.length === 1) el.text = propTextEl.value;
+    if (propBindEl.value !== '' || items.length === 1) el.bind = propBindEl.value;
     if (items.length === 1) {
       el.x = Number(propXEl.value || 0);
       el.y = Number(propYEl.value || 0);
       el.w = Number(propWEl.value || 1);
       el.h = Number(propHEl.value || 1);
     }
-    el.font_size = Number(propFontSizeEl.value || 11);
-    el.font_weight = propFontWeightEl.value;
-    el.font_family_id = propFontFamilyIdEl.value || 'helvetica';
+    if (propFontSizeEl.value !== '') el.font_size = Number(propFontSizeEl.value || 11);
+    if (propFontWeightEl.value) el.font_weight = propFontWeightEl.value;
+    if (propFontFamilyIdEl.value) el.font_family_id = propFontFamilyIdEl.value || 'helvetica';
     el.line_height_factor = clampNumber(propLineHeightFactorEl.value || 1.2, 0.8, 2.0, 1.2);
     el.baseline_offset_mm = clampNumber(propBaselineOffsetMmEl.value || 0, -5, 5, 0);
     el.max_lines = Math.round(clampNumber(propMaxLinesEl.value || 0, 0, 200, 0));
     el.overflow_mode = ['clip', 'ellipsis'].includes(propOverflowModeEl.value) ? propOverflowModeEl.value : 'clip';
-    el.align = propAlignEl.value;
+    if (propAlignEl.value) el.align = propAlignEl.value;
     el.snap = !!propSnapEl.checked;
-    el.text_color = propTextColorEl.value || '#272727';
-    el.stroke_color = propStrokeColorEl.value || '#747474';
-    el.fill_color = propFillColorEl.value || '#14a76c';
-    el.stroke_width = Number(propStrokeWidthEl.value || 1);
-    el.image_src = propImageSrcEl.value || '';
+    if (propTextColorEl.value) el.text_color = propTextColorEl.value || '#272727';
+    if (propStrokeColorEl.value) el.stroke_color = propStrokeColorEl.value || '#747474';
+    if (propFillColorEl.value) el.fill_color = propFillColorEl.value || '#14a76c';
+    if (propStrokeWidthEl.value !== '') el.stroke_width = Number(propStrokeWidthEl.value || 1);
+    if (items.length === 1) el.image_src = propImageSrcEl.value || '';
     if (el.type === 'image') {
       updateImageAspectCache(el);
     }
   });
 
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
 }
 
 let dragCtx = null;
 let marqueeCtx = null;
+let drawToolType = '';
+let drawCtx = null;
 
 function uniqueStrings(values) {
   return Array.from(new Set((values || []).filter(v => typeof v === 'string' && v !== '')));
@@ -655,6 +1184,15 @@ function selectedElement() {
 
 function setSelectedIds(ids) {
   state.selectedIds = uniqueStrings(ids);
+}
+
+function clearSelection() {
+  if (state.selectedIds.length === 0) return;
+  setSelectedIds([]);
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  updateSelectionToolbar();
 }
 
 function isSelected(id) {
@@ -710,11 +1248,11 @@ function createGroupFromSelection() {
     showMessage('Mindestens 2 Elemente auswählen.', true);
     return;
   }
+  pushUndo();
   const gid = `grp_${Math.random().toString(16).slice(2, 10)}`;
-  items.forEach((el) => {
-    el.group_id = gid;
-  });
+  items.forEach((el) => { el.group_id = gid; });
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
   showMessage('Gruppe erstellt.');
 }
@@ -725,10 +1263,10 @@ function ungroupSelection() {
     showMessage('Keine Auswahl für Gruppierung.', true);
     return;
   }
-  items.forEach((el) => {
-    el.group_id = '';
-  });
+  pushUndo();
+  items.forEach((el) => { el.group_id = ''; });
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
   showMessage('Gruppierung aufgehoben.');
 }
@@ -755,11 +1293,13 @@ function onElementPointerDown(ev) {
 
   const selectedItems = selectedElements();
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
 
   if (selectedItems.length > 1) {
     dragCtx = {
       mode: 'drag-multi',
+      undoPushed: false,
       startPointerX: ev.clientX,
       startPointerY: ev.clientY,
       items: selectedItems.map((item) => ({
@@ -774,6 +1314,7 @@ function onElementPointerDown(ev) {
     const stageRect = stageEl.getBoundingClientRect();
     dragCtx = {
       mode: 'drag',
+      undoPushed: false,
       id,
       startPointerX: ev.clientX,
       startPointerY: ev.clientY,
@@ -799,6 +1340,7 @@ function onSelectionBoxPointerDown(ev) {
 
   dragCtx = {
     mode: 'drag-multi',
+    undoPushed: false,
     startPointerX: ev.clientX,
     startPointerY: ev.clientY,
     items: items.map((item) => ({
@@ -825,6 +1367,7 @@ function onSelectionResizeHandlePointerDown(ev) {
 
   dragCtx = {
     mode: 'resize-group',
+    undoPushed: false,
     startPointerX: ev.clientX,
     startPointerY: ev.clientY,
     handle: ev.currentTarget.dataset.handle || 'se',
@@ -844,7 +1387,32 @@ function onSelectionResizeHandlePointerDown(ev) {
 
 function onStagePointerDown(ev) {
   if (ev.button !== 0) return;
+  if (ev.target.closest('.element, .selection-box, .resize-handle')) return;
   if (ev.target !== stageEl) return;
+
+  if (drawToolType !== '') {
+    ev.preventDefault();
+    const start = clientPointToStageMm(ev.clientX, ev.clientY);
+    const preview = document.createElement('div');
+    preview.className = `draw-preview draw-preview-${drawToolType}`;
+    preview.style.left = `${start.x * MM_TO_PX}px`;
+    preview.style.top = `${start.y * MM_TO_PX}px`;
+    preview.style.width = '1px';
+    preview.style.height = '1px';
+    stageEl.appendChild(preview);
+
+    drawCtx = {
+      type: drawToolType,
+      start,
+      latest: start,
+      previewEl: preview,
+    };
+
+    window.addEventListener('pointermove', onDrawPointerMove);
+    window.addEventListener('pointerup', onDrawPointerUp, { once: true });
+    return;
+  }
+
   ev.preventDefault();
 
   marqueeCtx = {
@@ -865,6 +1433,60 @@ function onStagePointerDown(ev) {
 
   window.addEventListener('pointermove', onStageMarqueeMove);
   window.addEventListener('pointerup', onStageMarqueeUp, { once: true });
+}
+
+function onDrawPointerMove(ev) {
+  if (!drawCtx || !drawCtx.previewEl) return;
+  const point = clientPointToStageMm(ev.clientX, ev.clientY);
+  drawCtx.latest = point;
+
+  const left = Math.min(drawCtx.start.x, point.x);
+  const top = Math.min(drawCtx.start.y, point.y);
+  const width = Math.max(0.3, Math.abs(point.x - drawCtx.start.x));
+  const height = Math.max(0.3, Math.abs(point.y - drawCtx.start.y));
+
+  drawCtx.previewEl.style.left = `${left * MM_TO_PX}px`;
+  drawCtx.previewEl.style.top = `${top * MM_TO_PX}px`;
+  drawCtx.previewEl.style.width = `${width * MM_TO_PX}px`;
+  drawCtx.previewEl.style.height = `${height * MM_TO_PX}px`;
+}
+
+function onDrawPointerUp() {
+  window.removeEventListener('pointermove', onDrawPointerMove);
+  if (!drawCtx) return;
+
+  const step = getGridStepMm();
+  const start = drawCtx.start;
+  const end = drawCtx.latest || start;
+  const left = Math.min(start.x, end.x);
+  const top = Math.min(start.y, end.y);
+  const rawW = Math.abs(end.x - start.x);
+  const rawH = Math.abs(end.y - start.y);
+  const width = Math.max(step, rawW);
+  const height = Math.max(drawCtx.type === 'line' ? Math.max(0.6, step * 0.5) : step, rawH);
+
+  if (drawCtx.previewEl && drawCtx.previewEl.parentNode) {
+    drawCtx.previewEl.parentNode.removeChild(drawCtx.previewEl);
+  }
+
+  addElement(drawCtx.type, {
+    x: Math.max(0, Math.min(PAGE_WIDTH_MM - width, left)),
+    y: Math.max(0, Math.min(PAGE_HEIGHT_MM - height, top)),
+    w: width,
+    h: height,
+  });
+
+  drawCtx = null;
+}
+
+function onCanvasBackgroundPointerDown(ev) {
+  if (ev.button !== 0) return;
+  if (ev.shiftKey) return;
+  if (viewState.panActive) return;
+  const target = ev.target;
+  if (!(target instanceof Element)) return;
+  if (target.closest('.element, .selection-box, .resize-handle, .ruler')) return;
+  clearSelection();
 }
 
 function onStageMarqueeMove(ev) {
@@ -905,6 +1527,8 @@ function onStageMarqueeUp(ev) {
   }
   renderStage();
   updatePropertyInputs();
+
+  renderLayerList();
 
   if (marqueeCtx.overlayEl && marqueeCtx.overlayEl.parentNode) {
     marqueeCtx.overlayEl.parentNode.removeChild(marqueeCtx.overlayEl);
@@ -1007,7 +1631,7 @@ function fillContextBindingMenu() {
 
   const el = selectedElement();
   const currentToolKey = state.current?.tool_key || state.allowedToolKeys[0] || '';
-  const list = state.fieldCatalog[currentToolKey] || [];
+  const list = catalogItemsForTool(currentToolKey);
 
   const emptyBtn = document.createElement('button');
   emptyBtn.type = 'button';
@@ -1105,6 +1729,7 @@ function onElementContextMenu(ev) {
       setSelectedIds(expandSelectionWithGroupIds([id]));
     }
     renderStage();
+    renderLayerList();
     updatePropertyInputs();
   }
   openContextMenu(ev.clientX, ev.clientY);
@@ -1113,9 +1738,7 @@ function onElementContextMenu(ev) {
 function onStageContextMenu(ev) {
   ev.preventDefault();
   if (ev.target === stageEl && !ev.shiftKey) {
-    setSelectedIds([]);
-    renderStage();
-    updatePropertyInputs();
+    clearSelection();
   }
   openContextMenu(ev.clientX, ev.clientY);
 }
@@ -1136,6 +1759,7 @@ function onResizeHandlePointerDown(ev) {
 
   dragCtx = {
     mode: 'resize',
+    undoPushed: false,
     id,
     startPointerX: ev.clientX,
     startPointerY: ev.clientY,
@@ -1158,6 +1782,143 @@ function getGridStepMm() {
     return 5;
   }
   return px / MM_TO_PX;
+}
+
+function setDrawToolMode(type = '') {
+  drawToolType = type || '';
+  document.querySelectorAll('.tool-palette-btn[data-add-type]').forEach((btn) => {
+    const btnType = btn.getAttribute('data-add-type') || '';
+    const active = drawToolType !== '' && btnType === drawToolType;
+    btn.classList.toggle('is-tool-active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  if (stageEl) {
+    stageEl.classList.toggle('draw-mode-active', drawToolType !== '');
+  }
+}
+
+function clientPointToStageMm(clientX, clientY) {
+  const rect = stageEl.getBoundingClientRect();
+  const logicalX = (clientX - rect.left) / viewState.zoom / MM_TO_PX;
+  const logicalY = (clientY - rect.top) / viewState.zoom / MM_TO_PX;
+  return {
+    x: Math.max(0, Math.min(PAGE_WIDTH_MM, logicalX)),
+    y: Math.max(0, Math.min(PAGE_HEIGHT_MM, logicalY)),
+  };
+}
+
+function selectedImageElements() {
+  return selectedElements().filter((el) => el.type === 'image');
+}
+
+async function convertImageSourceToJpegDataUrl(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = 'async';
+
+    img.onload = () => {
+      try {
+        const srcW = Number(img.naturalWidth || 0);
+        const srcH = Number(img.naturalHeight || 0);
+        if (srcW <= 0 || srcH <= 0) {
+          resolve(null);
+          return;
+        }
+
+        const maxEdge = 2200;
+        const scale = Math.min(1, maxEdge / Math.max(srcW, srcH));
+        const outW = Math.max(1, Math.round(srcW * scale));
+        const outH = Math.max(1, Math.round(srcH * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+
+        // JPEG has no alpha channel, so we render on white background.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outW, outH);
+        ctx.drawImage(img, 0, 0, outW, outH);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image/jpeg;base64,')) {
+          resolve(dataUrl);
+          return;
+        }
+      } catch (_) {
+        // Fall through to null.
+      }
+      resolve(null);
+    };
+
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function normalizeImageSourceForPdf(src) {
+  const clean = String(src || '').trim();
+  if (clean === '') return '';
+  if (/^data:image\/(jpeg|jpg);base64,/i.test(clean)) {
+    return clean;
+  }
+
+  const converted = await convertImageSourceToJpegDataUrl(clean);
+  return converted || clean;
+}
+
+async function applyImageSourceToSelection(imageSrc, sourceLabel = 'Bildquelle') {
+  const src = String(imageSrc || '').trim();
+  if (src === '') return;
+  const items = selectedImageElements();
+  if (items.length === 0) {
+    showMessage('Bitte zuerst ein Bildelement auswählen.', true);
+    return;
+  }
+
+  const normalizedSrc = await normalizeImageSourceForPdf(src);
+  pushUndo();
+  items.forEach((el) => {
+    el.image_src = normalizedSrc;
+    updateImageAspectCache(el);
+  });
+  propImageSrcEl.value = normalizedSrc;
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  if (normalizedSrc !== src) {
+    showMessage(`${sourceLabel} übernommen (PDF-kompatibel konvertiert).`);
+  } else {
+    showMessage(`${sourceLabel} übernommen.`);
+  }
+}
+
+async function loadRepoImages() {
+  if (!repoImageSelectEl) return;
+  const result = await api('list_repo_images');
+  if (!result.ok) {
+    throw new Error(result.error || 'list_repo_images_failed');
+  }
+
+  const images = Array.isArray(result.images) ? result.images : [];
+  repoImageSelectEl.innerHTML = '';
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = '- Bild auswaehlen -';
+  repoImageSelectEl.appendChild(empty);
+
+  images.forEach((img) => {
+    const opt = document.createElement('option');
+    opt.value = String(img.url || '');
+    const label = String(img.path || img.name || 'Bild');
+    opt.textContent = label;
+    opt.title = label;
+    repoImageSelectEl.appendChild(opt);
+  });
 }
 
 function renderRulers() {
@@ -1212,8 +1973,13 @@ function onPointerMove(ev) {
   const dxPx = ev.clientX - dragCtx.startPointerX;
   const dyPx = ev.clientY - dragCtx.startPointerY;
 
-  const dxMm = dxPx / MM_TO_PX;
-  const dyMm = dyPx / MM_TO_PX;
+  if (!dragCtx.undoPushed && (Math.abs(dxPx) > 0 || Math.abs(dyPx) > 0)) {
+    pushUndo();
+    dragCtx.undoPushed = true;
+  }
+
+  const dxMm = dxPx / MM_TO_PX / viewState.zoom;
+  const dyMm = dyPx / MM_TO_PX / viewState.zoom;
   const snapDefault = !!(el?.snap);
   const snapActive = ev.shiftKey ? !snapDefault : snapDefault;
 
@@ -1224,17 +1990,29 @@ function onPointerMove(ev) {
   };
 
   if (dragCtx.mode === 'drag-multi') {
+    const minStartX = Math.min(...dragCtx.items.map((item) => item.startX));
+    const minStartY = Math.min(...dragCtx.items.map((item) => item.startY));
+    const maxEndX = Math.max(...dragCtx.items.map((item) => item.startX + Math.max(1, item.startW || 1)));
+    const maxEndY = Math.max(...dragCtx.items.map((item) => item.startY + Math.max(1, item.startH || 1)));
+    const groupW = maxEndX - minStartX;
+    const groupH = maxEndY - minStartY;
+
+    let nextGroupX = Math.max(0, Math.min(PAGE_WIDTH_MM - groupW, minStartX + dxMm));
+    let nextGroupY = Math.max(0, Math.min(PAGE_HEIGHT_MM - groupH, minStartY + dyMm));
+    nextGroupX = snapToGrid(nextGroupX);
+    nextGroupY = snapToGrid(nextGroupY);
+
+    const offsetX = nextGroupX - minStartX;
+    const offsetY = nextGroupY - minStartY;
+
     dragCtx.items.forEach((item) => {
       const target = elements.find((elx) => elx.id === item.id);
       if (!target) return;
-      let nextX = Math.max(0, Math.min(PAGE_WIDTH_MM - Number(target.w || item.startW || 1), item.startX + dxMm));
-      let nextY = Math.max(0, Math.min(PAGE_HEIGHT_MM - Number(target.h || item.startH || 1), item.startY + dyMm));
-      nextX = snapToGrid(nextX);
-      nextY = snapToGrid(nextY);
-      target.x = Number(nextX.toFixed(1));
-      target.y = Number(nextY.toFixed(1));
+      target.x = Number((item.startX + offsetX).toFixed(1));
+      target.y = Number((item.startY + offsetY).toFixed(1));
     });
     renderStage();
+    renderLayerList();
     updatePropertyInputs();
     return;
   }
@@ -1428,10 +2206,26 @@ function onPointerMove(ev) {
 
     nextW = Math.max(minW, nextW);
     nextH = Math.max(minH, nextH);
-    nextX = snapToGrid(nextX);
-    nextY = snapToGrid(nextY);
-    nextW = Math.max(minW, snapToGrid(nextW));
-    nextH = Math.max(minH, snapToGrid(nextH));
+
+    const handle = String(dragCtx.handle || 'se');
+    const snapXPos = ['w', 'nw', 'sw'].includes(handle);
+    const snapYPos = ['n', 'nw', 'ne'].includes(handle);
+    const snapW = ['e', 'w', 'ne', 'nw', 'se', 'sw'].includes(handle);
+    const snapH = ['n', 's', 'ne', 'nw', 'se', 'sw'].includes(handle);
+
+    if (snapXPos) {
+      nextX = snapToGrid(nextX);
+    }
+    if (snapYPos) {
+      nextY = snapToGrid(nextY);
+    }
+    if (snapW) {
+      nextW = Math.max(minW, snapToGrid(nextW));
+    }
+    if (snapH) {
+      nextH = Math.max(minH, snapToGrid(nextH));
+    }
+
     nextX = Math.max(0, Math.min(PAGE_WIDTH_MM - nextW, nextX));
     nextY = Math.max(0, Math.min(PAGE_HEIGHT_MM - nextH, nextY));
 
@@ -1462,6 +2256,7 @@ function deleteSelectedElement() {
     showMessage('Kein Element ausgewählt.', true);
     return;
   }
+  pushUndo();
 
   const elements = getCurrentElements();
   const selectedSet = new Set(state.selectedIds);
@@ -1473,9 +2268,11 @@ function deleteSelectedElement() {
   }
 
   state.current.payload.elements = kept;
-  setSelectedIds(kept[0] ? [kept[0].id] : []);
+  setSelectedIds([]);
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
+  updateSelectionToolbar();
   const deleted = before - kept.length;
   showMessage(deleted > 1 ? `${deleted} Elemente gelöscht.` : 'Element gelöscht.');
 }
@@ -1496,12 +2293,26 @@ function refreshCurrentHeader() {
   if (assignCurrentDisplayEl) {
     assignCurrentDisplayEl.textContent = currentToolKey || '–';
   }
-  // Auswahl im Assign-Dropdown auf aktuelle Zuordnung setzen
   if (toolKeySelectEl) {
     toolKeySelectEl.value = currentToolKey;
   }
+
+  const previousTemplateTool = state.bindingCatalogToolLastTemplate;
+  if (
+    !state.bindingCatalogToolManual
+    || !state.bindingCatalogToolKey
+    || (previousTemplateTool !== '' && state.bindingCatalogToolKey === previousTemplateTool)
+  ) {
+    state.bindingCatalogToolKey = currentToolKey;
+    state.bindingCatalogToolManual = false;
+  }
+  state.bindingCatalogToolLastTemplate = currentToolKey;
+
+  fillBindingToolFilterSelect();
   updateAssignButtonState();
   fillBindingSelect(currentToolKey);
+  updateTemplateVersionInfo();
+  renderBindingList(bindingSearchInputEl ? bindingSearchInputEl.value : '');
 }
 
 async function loadTemplateList() {
@@ -1525,9 +2336,13 @@ async function openTemplate(id) {
       payload: createDefaultPayload(firstTool),
     };
     setSelectedIds(state.current.payload.elements[0] ? [state.current.payload.elements[0].id] : []);
+    state.undoStack = [];
+    state.redoStack = [];
     refreshCurrentHeader();
     renderStage();
+    renderLayerList();
     updatePropertyInputs();
+    updateSelectionToolbar();
     return;
   }
 
@@ -1539,9 +2354,13 @@ async function openTemplate(id) {
   state.current = result.item;
   state.current.payload = normalizePayloadForEditor(state.current.payload, state.current.tool_key);
   setSelectedIds(state.current?.payload?.elements?.[0] ? [state.current.payload.elements[0].id] : []);
+  state.undoStack = [];
+  state.redoStack = [];
   refreshCurrentHeader();
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
+  updateSelectionToolbar();
 }
 
 // ── Assign-Panel Logik ──────────────────────────────────────────────────────
@@ -1580,7 +2399,7 @@ async function confirmAssign() {
   if (!state.current) return;
 
   const newKey = toolKeySelectEl.value;
-  const allowedBindings = (state.fieldCatalog[newKey] || []).map(f => f.key);
+  const allowedBindings = catalogItemsForTool(newKey).map(f => f.key);
 
   // Bindings bereinigen: nicht mehr verfügbare Felder leeren
   const elements = getCurrentElements();
@@ -1797,21 +2616,24 @@ async function deleteCurrent() {
   await openTemplate('');
 }
 
-function addElement(elementTypeOverride = null) {
+function addElement(elementTypeOverride = null, boundsOverride = null) {
   if (!state.current || !state.current.payload) return;
 
-  const elementType = elementTypeOverride || (addElementTypeEl ? addElementTypeEl.value : 'text');
+  const elementType = elementTypeOverride || 'text';
   const elements = getCurrentElements();
+  pushUndo();
   const step = getGridStepMm();
-  const startX = 4 * step;
-  const startY = (6 + (elements.length * 2)) * step;
+  const startX = boundsOverride ? Number(boundsOverride.x || 0) : (4 * step);
+  const startY = boundsOverride ? Number(boundsOverride.y || 0) : ((6 + (elements.length * 2)) * step);
+  const startW = boundsOverride ? Math.max(step, Number(boundsOverride.w || step)) : (20 * step);
+  const startH = boundsOverride ? Math.max(step, Number(boundsOverride.h || step)) : (2 * step);
   const base = {
     id: `el_${Math.random().toString(16).slice(2, 10)}`,
     type: elementType,
     x: startX,
     y: startY,
-    w: 20 * step,
-    h: 2 * step,
+    w: startW,
+    h: startH,
     text: 'Neues Element',
     bind: '',
     snap: false,
@@ -1833,27 +2655,26 @@ function addElement(elementTypeOverride = null) {
 
   let next = base;
   if (elementType === 'text') {
-    next = { ...base, text: 'Neues Textfeld', w: 24 * step, h: 2 * step };
+    next = { ...base, text: 'Neues Textfeld', w: boundsOverride ? startW : 24 * step, h: boundsOverride ? startH : 2 * step };
   } else if (elementType === 'line') {
-    next = { ...base, text: '', w: 24 * step, h: 1 * step };
+    next = { ...base, text: '', w: boundsOverride ? startW : 24 * step, h: boundsOverride ? Math.max(0.6, startH) : 1 * step };
   } else if (elementType === 'rect') {
-    next = { ...base, text: '', w: 22 * step, h: 6 * step, fill_color: 'transparent' };
+    next = { ...base, text: '', w: boundsOverride ? startW : 22 * step, h: boundsOverride ? startH : 6 * step, fill_color: 'transparent' };
   } else if (elementType === 'rect_fill') {
-    next = { ...base, text: '', w: 22 * step, h: 6 * step, fill_color: '#98e3c3' };
+    next = { ...base, text: '', w: boundsOverride ? startW : 22 * step, h: boundsOverride ? startH : 6 * step, fill_color: '#98e3c3' };
   } else if (elementType === 'image') {
-    next = { ...base, text: '', w: 14 * step, h: 9 * step, image_src: '' };
+    next = { ...base, text: '', w: boundsOverride ? startW : 14 * step, h: boundsOverride ? startH : 9 * step, image_src: '' };
   }
 
   elements.push(next);
   setSelectedIds([next.id]);
   renderStage();
+  renderLayerList();
   updatePropertyInputs();
+  updateSelectionToolbar();
 }
 
 function addElementByType(elementType) {
-  if (addElementTypeEl) {
-    addElementTypeEl.value = elementType;
-  }
   addElement(elementType);
 }
 
@@ -1875,17 +2696,128 @@ function wireEvents() {
   if (btnZoomReset) {
     btnZoomReset.addEventListener('click', () => setZoom(1));
   }
-
-  if (btnToggleAssign) {
-    btnToggleAssign.addEventListener('click', () => togglePanel(assignPanelEl, btnToggleAssign));
+  if (btnFitPage) {
+    btnFitPage.addEventListener('click', fitPage);
+  }
+  if (btnFitWidth) {
+    btnFitWidth.addEventListener('click', fitWidth);
+  }
+  if (btnToggleGrid) {
+    btnToggleGrid.addEventListener('click', toggleGrid);
   }
 
-  if (btnToggleProps) {
-    btnToggleProps.addEventListener('click', () => togglePanel(propsPanelEl, btnToggleProps));
+  // ── Tool palette ──
+  document.querySelectorAll('.tool-palette-btn[data-add-type]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      const type = btn.getAttribute('data-add-type') || 'text';
+      if (ev.altKey) {
+        addElementByType(type);
+        return;
+      }
+      if (drawToolType === type) {
+        setDrawToolMode('');
+      } else {
+        setDrawToolMode(type);
+        showMessage(`Zeichenmodus: ${type}. Auf der Seite aufziehen.`);
+      }
+    });
+  });
+
+  // ── Align actions ──
+  document.querySelectorAll('.align-action[data-align]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      alignSelection(btn.getAttribute('data-align'));
+    });
+  });
+
+  // ── Distribute actions ──
+  document.querySelectorAll('.distribute-action[data-distribute]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      distributeSelection(btn.getAttribute('data-distribute'));
+    });
+  });
+
+  // ── Element sidebar actions ──
+  if (btnDuplicateSelected) {
+    btnDuplicateSelected.addEventListener('click', duplicateSelected);
+  }
+  if (btnGroupSelection) {
+    btnGroupSelection.addEventListener('click', createGroupFromSelection);
+  }
+  if (btnUngroupSelection) {
+    btnUngroupSelection.addEventListener('click', ungroupSelection);
+  }
+
+  // ── Duplicate template ──
+  if (btnDuplicateTemplate) {
+    btnDuplicateTemplate.addEventListener('click', async () => {
+      try {
+        await duplicateTemplate();
+      } catch (err) {
+        showMessage(`Duplizieren fehlgeschlagen: ${err.message}`, true);
+      }
+    });
+  }
+
+  // ── Binding search ──
+  if (bindingSearchInputEl) {
+    bindingSearchInputEl.addEventListener('input', () => {
+      renderBindingList(bindingSearchInputEl.value);
+    });
+  }
+
+  if (bindingToolFilterSelectEl) {
+    bindingToolFilterSelectEl.addEventListener('change', () => {
+      state.bindingCatalogToolManual = true;
+      state.bindingCatalogToolKey = bindingToolFilterSelectEl.value || (state.current?.tool_key || state.allowedToolKeys[0] || '');
+      renderBindingList(bindingSearchInputEl ? bindingSearchInputEl.value : '');
+    });
+  }
+
+  if (btnApplyRepoImageEl && repoImageSelectEl) {
+    btnApplyRepoImageEl.addEventListener('click', async () => {
+      const src = repoImageSelectEl.value || '';
+      if (!src) {
+        showMessage('Bitte ein Repository-Bild auswaehlen.', true);
+        return;
+      }
+      await applyImageSourceToSelection(src, 'Repository-Bild');
+    });
+  }
+
+  if (imageUploadInputEl) {
+    imageUploadInputEl.addEventListener('change', () => {
+      const file = imageUploadInputEl.files && imageUploadInputEl.files[0];
+      if (!file) return;
+      if (!String(file.type || '').startsWith('image/')) {
+        showMessage('Bitte eine Bilddatei auswaehlen.', true);
+        imageUploadInputEl.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = String(reader.result || '');
+        if (src === '') {
+          showMessage('Bild konnte nicht gelesen werden.', true);
+          return;
+        }
+        applyImageSourceToSelection(src, 'Lokales Bild').catch(() => {
+          showMessage('Bild konnte nicht übernommen werden.', true);
+        });
+      };
+      reader.onerror = () => {
+        showMessage('Upload fehlgeschlagen.', true);
+      };
+      reader.readAsDataURL(file);
+      imageUploadInputEl.value = '';
+    });
   }
 
   stageEl.addEventListener('contextmenu', onStageContextMenu);
   stageEl.addEventListener('pointerdown', onStagePointerDown);
+  if (stageCanvasEl) {
+     stageViewportEl.addEventListener('pointerdown', onCanvasBackgroundPointerDown, true);
+  }
 
   if (stageContextMenuEl) {
     stageContextMenuEl.addEventListener('contextmenu', (ev) => ev.preventDefault());
@@ -2105,24 +3037,58 @@ function wireEvents() {
   }
 
   window.addEventListener('keydown', (ev) => {
+    if (ev.repeat && (ev.ctrlKey || ev.metaKey)) {
+      return;
+    }
     if (ev.key === 'Escape') {
       closeContextMenu();
-      if (assignPanelEl && btnToggleAssign) {
-        setPanelState(assignPanelEl, btnToggleAssign, false);
+      setDrawToolMode('');
+      if (drawCtx?.previewEl && drawCtx.previewEl.parentNode) {
+        drawCtx.previewEl.parentNode.removeChild(drawCtx.previewEl);
       }
+      drawCtx = null;
     }
     const tag = (document.activeElement?.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') {
       return;
     }
-    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'g') {
+    const ctrl = ev.ctrlKey || ev.metaKey;
+    if (ctrl && ev.key.toLowerCase() === 'z') {
+      const now = Date.now();
+      if (now - lastUndoShortcutAt < 160) return;
+      lastUndoShortcutAt = now;
       ev.preventDefault();
-      createGroupFromSelection();
+      ev.stopPropagation();
+      undoAction();
       return;
     }
-    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'u') {
+    if (ctrl && (ev.key.toLowerCase() === 'y' || (ev.shiftKey && ev.key.toLowerCase() === 'z'))) {
+      const now = Date.now();
+      if (now - lastRedoShortcutAt < 160) return;
+      lastRedoShortcutAt = now;
       ev.preventDefault();
-      ungroupSelection();
+      ev.stopPropagation();
+      redoAction();
+      return;
+    }
+    if (ctrl && ev.key.toLowerCase() === 'd') {
+      ev.preventDefault();
+      duplicateSelected();
+      return;
+    }
+    if (ctrl && ev.key.toLowerCase() === 'c') {
+      ev.preventDefault();
+      copySelected();
+      return;
+    }
+    if (ctrl && ev.key.toLowerCase() === 'v') {
+      ev.preventDefault();
+      pasteClipboard();
+      return;
+    }
+    if (ctrl && ev.key.toLowerCase() === 'g') {
+      ev.preventDefault();
+      if (ev.shiftKey) ungroupSelection(); else createGroupFromSelection();
       return;
     }
     if (ev.key === 'Delete' || ev.key === 'Backspace') {
@@ -2130,12 +3096,26 @@ function wireEvents() {
         ev.preventDefault();
         deleteSelectedElement();
       }
+      return;
+    }
+    // Arrow key nudge
+    const nudge = ev.shiftKey ? getGridStepMm() * 2 : getGridStepMm() * 0.5;
+    if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(ev.key)) {
+      const items = selectedElements();
+      if (items.length === 0) return;
+      ev.preventDefault();
+      pushUndo();
+      items.forEach(el => {
+        if (ev.key === 'ArrowLeft')  el.x = Number(Math.max(0, el.x - nudge).toFixed(1));
+        if (ev.key === 'ArrowRight') el.x = Number(Math.min(PAGE_WIDTH_MM - el.w, el.x + nudge).toFixed(1));
+        if (ev.key === 'ArrowUp')    el.y = Number(Math.max(0, el.y - nudge).toFixed(1));
+        if (ev.key === 'ArrowDown')  el.y = Number(Math.min(PAGE_HEIGHT_MM - el.h, el.y + nudge).toFixed(1));
+      });
+      renderStage();
+      renderLayerList();
+      updatePropertyInputs();
     }
   });
-
-  if (btnAddElement) {
-    btnAddElement.addEventListener('click', addElement);
-  }
 
   [
     propTextEl,
@@ -2189,8 +3169,15 @@ async function init() {
     fillToolSelect();
     fillBindingSelect(state.allowedToolKeys[0] || 'nti_tool');
     updateAssignButtonState();
+    setDrawToolMode('');
     initViewportMetrics();
     renderRulers();
+
+    try {
+      await loadRepoImages();
+    } catch (err) {
+      showMessage(`Bildliste konnte nicht geladen werden: ${err.message}`, true);
+    }
 
     await loadTemplateList();
     await openTemplate('');

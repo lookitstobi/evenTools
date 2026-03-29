@@ -153,49 +153,49 @@ function pdf_template_allowed_tool_keys(): array {
 function pdf_template_field_catalog(): array {
   $catalog = [
     'nti_tool' => [
-      ['key' => 'project_name', 'label' => 'Projektname'],
-      ['key' => 'measurement_date', 'label' => 'Messdatum'],
-      ['key' => 'operator_name', 'label' => 'Operator'],
-      ['key' => 'result_laeq', 'label' => 'Ergebnis LAeq'],
-      ['key' => 'result_laeq_g30', 'label' => 'Ergebnis LAeq,30min'],
-      ['key' => 'result_peak', 'label' => 'Ergebnis Peak'],
-      ['key' => 'customer', 'label' => 'Kunde'],
-      ['key' => 'location', 'label' => 'Location'],
-      ['key' => 'environment', 'label' => 'Umgebung'],
-      ['key' => 'measurement_position', 'label' => 'Messposition'],
-      ['key' => 'loudest_position', 'label' => 'Lauteste Position'],
-      ['key' => 'organiser', 'label' => 'Organisator'],
-      ['key' => 'description', 'label' => 'Beschreibung'],
-      ['key' => 'report_date', 'label' => 'Berichtdatum'],
-      ['key' => 'report_name', 'label' => 'Berichtname'],
-      ['key' => 'device_model', 'label' => 'Messgerät'],
-      ['key' => 'device_sn', 'label' => 'Messgerät S/N'],
-      ['key' => 'calibrator_model', 'label' => 'Kalibrator'],
-      ['key' => 'calibrator_sn', 'label' => 'Kalibrator S/N'],
-      ['key' => 'firmware', 'label' => 'Firmware'],
-      ['key' => 'log_interval', 'label' => 'Log-Intervall'],
-      ['key' => 'kset_date', 'label' => 'k-Werte gesetzt'],
-      ['key' => 'correction_k1', 'label' => 'Korrekturwert k1'],
-      ['key' => 'correction_k2', 'label' => 'Korrekturwert k2'],
-      ['key' => 'pa_setup', 'label' => 'Anlagen-Setup'],
+      ['key' => 'project_name', 'label' => 'Projektname', 'group' => 'Projekt'],
+      ['key' => 'measurement_date', 'label' => 'Messdatum', 'group' => 'Messung'],
+      ['key' => 'operator_name', 'label' => 'Operator', 'group' => 'Beteiligte'],
+      ['key' => 'result_laeq', 'label' => 'Ergebnis LAeq', 'group' => 'Ergebnisse'],
+      ['key' => 'result_laeq_g30', 'label' => 'Ergebnis LAeq,30min', 'group' => 'Ergebnisse'],
+      ['key' => 'result_peak', 'label' => 'Ergebnis Peak', 'group' => 'Ergebnisse'],
+      ['key' => 'customer', 'label' => 'Kunde', 'group' => 'Beteiligte'],
+      ['key' => 'location', 'label' => 'Location', 'group' => 'Projekt'],
+      ['key' => 'environment', 'label' => 'Umgebung', 'group' => 'Projekt'],
+      ['key' => 'measurement_position', 'label' => 'Messposition', 'group' => 'Messung'],
+      ['key' => 'loudest_position', 'label' => 'Lauteste Position', 'group' => 'Messung'],
+      ['key' => 'organiser', 'label' => 'Organisator', 'group' => 'Beteiligte'],
+      ['key' => 'description', 'label' => 'Beschreibung', 'group' => 'Projekt'],
+      ['key' => 'report_date', 'label' => 'Berichtdatum', 'group' => 'Bericht'],
+      ['key' => 'report_name', 'label' => 'Berichtname', 'group' => 'Bericht'],
+      ['key' => 'device_model', 'label' => 'Messgerät', 'group' => 'Gerät'],
+      ['key' => 'device_sn', 'label' => 'Messgerät S/N', 'group' => 'Gerät'],
+      ['key' => 'calibrator_model', 'label' => 'Kalibrator', 'group' => 'Gerät'],
+      ['key' => 'calibrator_sn', 'label' => 'Kalibrator S/N', 'group' => 'Gerät'],
+      ['key' => 'firmware', 'label' => 'Firmware', 'group' => 'Gerät'],
+      ['key' => 'log_interval', 'label' => 'Log-Intervall', 'group' => 'Messung'],
+      ['key' => 'kset_date', 'label' => 'k-Werte gesetzt', 'group' => 'Korrektur'],
+      ['key' => 'correction_k1', 'label' => 'Korrekturwert k1', 'group' => 'Korrektur'],
+      ['key' => 'correction_k2', 'label' => 'Korrekturwert k2', 'group' => 'Korrektur'],
+      ['key' => 'pa_setup', 'label' => 'Anlagen-Setup', 'group' => 'Anlage'],
     ],
     'dguv_v3' => [
-      ['key' => 'asset_uid', 'label' => 'Inventarnummer'],
-      ['key' => 'asset_name', 'label' => 'Name'],
-      ['key' => 'location', 'label' => 'Standort'],
-      ['key' => 'inspection_date', 'label' => 'Prüfdatum'],
-      ['key' => 'next_due_date', 'label' => 'Nächste Prüfung'],
-      ['key' => 'inspection_result', 'label' => 'Ergebnis'],
+      ['key' => 'asset_uid', 'label' => 'Inventarnummer', 'group' => 'Objekt'],
+      ['key' => 'asset_name', 'label' => 'Name', 'group' => 'Objekt'],
+      ['key' => 'location', 'label' => 'Standort', 'group' => 'Objekt'],
+      ['key' => 'inspection_date', 'label' => 'Prüfdatum', 'group' => 'Prüfung'],
+      ['key' => 'next_due_date', 'label' => 'Nächste Prüfung', 'group' => 'Prüfung'],
+      ['key' => 'inspection_result', 'label' => 'Ergebnis', 'group' => 'Prüfung'],
     ],
     'cuesheet' => [
-      ['key' => 'title', 'label' => 'Titel'],
-      ['key' => 'owner_username', 'label' => 'Eigentümer'],
-      ['key' => 'updated_at', 'label' => 'Letztes Update'],
+      ['key' => 'title', 'label' => 'Titel', 'group' => 'Metadaten'],
+      ['key' => 'owner_username', 'label' => 'Eigentümer', 'group' => 'Metadaten'],
+      ['key' => 'updated_at', 'label' => 'Letztes Update', 'group' => 'Metadaten'],
     ],
     'patchmatrix' => [
-      ['key' => 'title', 'label' => 'Titel'],
-      ['key' => 'created_by', 'label' => 'Erstellt von'],
-      ['key' => 'updated_at', 'label' => 'Letztes Update'],
+      ['key' => 'title', 'label' => 'Titel', 'group' => 'Metadaten'],
+      ['key' => 'created_by', 'label' => 'Erstellt von', 'group' => 'Metadaten'],
+      ['key' => 'updated_at', 'label' => 'Letztes Update', 'group' => 'Metadaten'],
     ],
   ];
 
@@ -203,6 +203,26 @@ function pdf_template_field_catalog(): array {
     if (!array_key_exists($toolKey, $catalog)) {
       $catalog[$toolKey] = [];
     }
+
+    $items = $catalog[$toolKey];
+    usort($items, static function (array $a, array $b): int {
+      $groupA = (string)($a['group'] ?? 'Allgemein');
+      $groupB = (string)($b['group'] ?? 'Allgemein');
+      $groupCmp = strcasecmp($groupA, $groupB);
+      if ($groupCmp !== 0) {
+        return $groupCmp;
+      }
+
+      $labelA = (string)($a['label'] ?? $a['key'] ?? '');
+      $labelB = (string)($b['label'] ?? $b['key'] ?? '');
+      $labelCmp = strcasecmp($labelA, $labelB);
+      if ($labelCmp !== 0) {
+        return $labelCmp;
+      }
+
+      return strcasecmp((string)($a['key'] ?? ''), (string)($b['key'] ?? ''));
+    });
+    $catalog[$toolKey] = $items;
   }
 
   return $catalog;
@@ -1201,6 +1221,11 @@ function pdf_template_decode_jpeg_data_url(string $src): ?array {
 }
 
 function pdf_template_load_local_image_bytes(string $src): ?string {
+  $toolserveBytes = pdf_template_load_toolserve_image_bytes($src);
+  if ($toolserveBytes !== null) {
+    return $toolserveBytes;
+  }
+
   if ($src === '' || $src[0] !== '/') {
     return null;
   }
@@ -1244,6 +1269,57 @@ function pdf_template_load_local_image_bytes(string $src): ?string {
   }
 
   return null;
+}
+
+function pdf_template_load_toolserve_image_bytes(string $src): ?string {
+  $parts = parse_url($src);
+  if (!is_array($parts)) {
+    return null;
+  }
+
+  $path = (string)($parts['path'] ?? '');
+  if ($path !== '/toolserve.php') {
+    return null;
+  }
+
+  $query = [];
+  parse_str((string)($parts['query'] ?? ''), $query);
+
+  $toolName = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($query['name'] ?? ''));
+  $file = str_replace("\0", '', (string)($query['file'] ?? ''));
+  $file = ltrim(str_replace('\\', '/', $file), '/');
+
+  if ($toolName === '' || $file === '' || str_contains($file, '..')) {
+    return null;
+  }
+
+  $config = require __DIR__ . '/config.php';
+  $toolsDir = (string)($config['tools_dir'] ?? '');
+  $toolsBase = realpath($toolsDir);
+  if ($toolsBase === false) {
+    return null;
+  }
+
+  $toolBase = realpath($toolsBase . DIRECTORY_SEPARATOR . $toolName);
+  if ($toolBase === false) {
+    return null;
+  }
+
+  $target = realpath($toolBase . DIRECTORY_SEPARATOR . $file);
+  if ($target === false) {
+    return null;
+  }
+
+  if ($target !== $toolBase && strncmp($target, $toolBase . DIRECTORY_SEPARATOR, strlen($toolBase . DIRECTORY_SEPARATOR)) !== 0) {
+    return null;
+  }
+
+  $bytes = @file_get_contents($target);
+  if ($bytes === false || $bytes === '') {
+    return null;
+  }
+
+  return $bytes;
 }
 
 function pdf_template_convert_image_bytes_to_jpeg(string $raw): ?array {

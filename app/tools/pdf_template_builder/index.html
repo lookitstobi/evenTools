@@ -7,222 +7,360 @@
   <link rel="stylesheet" href="/assets/app.css">
   <link rel="stylesheet" href="/toolserve.php?name=pdf_template_builder&amp;file=style.css">
 </head>
-<body>
-  <header class="header">
-    <h1>PDF Template Builder</h1>
-    <div class="header-controls">
-      <button id="btnNew" class="btn">Neu</button>
-      <button id="btnSave" class="btn btn-primary">Speichern</button>
-      <button id="btnExport" class="btn">Export JSON</button>
-      <button id="btnImport" class="btn">Import JSON</button>
-      <button id="btnPreview" class="btn">PDF Vorschau</button>
-      <button id="btnHelp" class="btn">Hilfe</button>
-      <button id="btnDelete" class="btn btn-danger">Vorlage löschen</button>
-    </div>
-  </header>
-  <input id="importFileInput" type="file" accept="application/json,.json" hidden>
-
-  <section class="top-panels">
-
-    <!-- Panel 1: Vorlage laden -->
-    <section class="card panel-load compact-load">
-      <div class="compact-row">
-        <label>
-          Vorlage
-          <select id="templateSelect"></select>
-        </label>
-        <label>
-          Titel
-          <input id="titleInput" type="text" placeholder="Titel der Vorlage">
-        </label>
-        <label>
-          Status
-          <select id="statusSelect">
-            <option value="draft">Entwurf</option>
-            <option value="published">Veröffentlicht</option>
-          </select>
-        </label>
+<body class="builder-body">
+  <div class="builder-app">
+    <header class="header builder-header">
+      <div class="header-brand">
+        <h1>PDF Template Builder</h1>
+        <p class="header-subtitle">Vorlagen laden, aufbauen, ausrichten und einem Tool zuweisen.</p>
       </div>
-    </section>
-
-  </section>
-
-  <main class="layout">
-    <section class="stage-wrap card">
-      <div class="stage-meta">
-        <span>A4 Vorschau (1 mm = 3 px)</span>
-        <div class="stage-meta-right">
-          <span id="selectionInfo">Keine Auswahl</span>
-          <div class="zoom-controls">
-            <button id="btnZoomOut" class="btn" type="button" title="Verkleinern">-</button>
-            <button id="btnZoomReset" class="btn" type="button" title="Zoom zurücksetzen">100%</button>
-            <button id="btnZoomIn" class="btn" type="button" title="Vergrößern">+</button>
+      <div class="header-groups">
+        <div class="header-group">
+          <span class="header-group-label">Datei</span>
+          <div class="header-controls">
+            <button id="btnNew" class="btn" type="button">Neu</button>
+            <button id="btnDuplicateTemplate" class="btn" type="button">Duplizieren</button>
+            <button id="btnSave" class="btn btn-primary" type="button">Speichern</button>
+            <button id="btnImport" class="btn" type="button">Import</button>
+            <button id="btnExport" class="btn" type="button">Export</button>
+          </div>
+        </div>
+        <div class="header-group">
+          <span class="header-group-label">Pruefen</span>
+          <div class="header-controls">
+            <button id="btnPreview" class="btn" type="button">PDF Vorschau</button>
+            <button id="btnHelp" class="btn" type="button">Hilfe</button>
+            <button id="btnDelete" class="btn btn-danger" type="button">Vorlage loeschen</button>
           </div>
         </div>
       </div>
-      <div id="stageViewport" class="stage-viewport">
-        <div id="stageSurface" class="stage-surface">
-          <div id="stageCanvas" class="stage-canvas">
-            <div id="rulerX" class="ruler ruler-x"></div>
-            <div id="rulerY" class="ruler ruler-y"></div>
-            <div id="stage" class="stage"></div>
+    </header>
+
+    <input id="importFileInput" type="file" accept="application/json,.json" hidden>
+
+    <main class="builder-shell">
+      <aside class="sidebar sidebar-left card">
+        <section class="panel-section">
+          <div class="panel-section-head">
+            <h2>Vorlage</h2>
+            <span id="templateVersionInfo" class="meta-chip">Neu</span>
+          </div>
+          <div class="panel-stack">
+            <label>
+              Vorlage laden
+              <select id="templateSelect"></select>
+            </label>
+            <label>
+              Titel
+              <input id="titleInput" type="text" placeholder="Titel der Vorlage">
+            </label>
+            <div class="compact-grid compact-grid-2">
+              <label>
+                Status
+                <select id="statusSelect">
+                  <option value="draft">Entwurf</option>
+                  <option value="published">Veroeffentlicht</option>
+                </select>
+              </label>
+              <label>
+                Tool
+                <select id="toolKeySelect"></select>
+              </label>
+            </div>
+            <div class="template-summary">
+              <div>
+                <span class="summary-label">Aktuelle Zuordnung</span>
+                <span id="assignCurrentDisplay" class="summary-value">-</span>
+              </div>
+              <button id="btnAssign" class="btn btn-primary" type="button" disabled>Tool uebernehmen</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <div class="panel-section-head">
+            <h2>Elemente</h2>
+            <span class="meta-chip" id="layerCountInfo">0</span>
+          </div>
+          <div class="tool-palette">
+            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="text" title="Text" aria-label="Text hinzufuegen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v2h-6v10h-2V8H5V6z"/></svg>
+            </button>
+            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="line" title="Linie" aria-label="Linie hinzufuegen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l16-12 1.2 1.6L5.2 19.6 4 18z"/></svg>
+            </button>
+            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="rect" title="Rahmen" aria-label="Rahmen hinzufuegen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5zm2 2v10h12V7H6z"/></svg>
+            </button>
+            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="rect_fill" title="Flaeche" aria-label="Flaeche hinzufuegen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5z"/></svg>
+            </button>
+            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="image" title="Bild" aria-label="Bild hinzufuegen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5zm2 2v10h12V7H6zm2.5 8l2.7-3.4 2.1 2.5 1.6-2 2.1 2.9H8.5zM9 10a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+            </button>
+          </div>
+          <div class="element-actions compact-grid compact-grid-2">
+            <button id="btnDuplicateSelected" class="btn" type="button">Element duplizieren</button>
+            <button id="btnDeleteSelected" class="btn btn-danger" type="button">Auswahl loeschen</button>
+            <button id="btnGroupSelection" class="btn" type="button">Gruppieren</button>
+            <button id="btnUngroupSelection" class="btn" type="button">Gruppe loesen</button>
+          </div>
+          <div class="layer-list-wrap">
+            <div id="layerList" class="layer-list"></div>
+          </div>
+        </section>
+
+        <section class="panel-section panel-section-grow">
+          <div class="panel-section-head">
+            <h2>Bindings</h2>
+            <span class="meta-chip">Katalog</span>
+          </div>
+          <div class="panel-stack panel-stack-tight">
+            <label>
+              Tool-Filter
+              <select id="bindingToolFilterSelect"></select>
+            </label>
+            <label>
+              Feld suchen
+              <input id="bindingSearchInput" type="search" placeholder="z. B. project_name">
+            </label>
+            <div id="bindingList" class="binding-list"></div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <div class="workspace-toolbar card">
+          <div class="workspace-toolbar-left">
+            <div class="toolbar-group">
+              <span class="toolbar-label">Ansicht</span>
+              <div class="toolbar-actions">
+                  <button id="btnFitPage" class="btn btn-icon-only" type="button" title="Ganze Seite" aria-label="Auf ganze Seite zoomen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>
+                  </button>
+                  <button id="btnFitWidth" class="btn btn-icon-only" type="button" title="An Breite anpassen" aria-label="Auf Seitenbreite zoomen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h18v2H3v-2zm4-5l-4 6 4 6 1.2-1.6L5.3 13H11v-2H5.3l2.9-3.4L7 6zm10 0l-1.2 1.6 2.9 3.4H13v2h5.7l-2.9 3.4L17 18l4-6-4-6z"/></svg>
+                  </button>
+                  <button id="btnZoomOut" class="btn btn-icon-only" type="button" title="Verkleinern" aria-label="Verkleinern">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v2H5z"/></svg>
+                  </button>
+                  <button id="btnZoomReset" class="btn" type="button" title="Zoom zuruecksetzen">100%</button>
+                  <button id="btnZoomIn" class="btn btn-icon-only" type="button" title="Vergroessern" aria-label="Vergroessern">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z"/></svg>
+                  </button>
+                  <button id="btnToggleGrid" class="btn btn-icon-only" type="button" aria-pressed="true" title="Raster" aria-label="Raster ein oder ausblenden">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4V4zm2 2v3h3V6H6zm5 0v3h2V6h-2zm4 0v3h3V6h-3zM6 11v2h3v-2H6zm5 0v2h2v-2h-2zm4 0v2h3v-2h-3zM6 15v3h3v-3H6zm5 0v3h2v-3h-2zm4 0v3h3v-3h-3z"/></svg>
+                  </button>
+              </div>
+            </div>
+          </div>
+          <div class="workspace-toolbar-right">
+            <span id="selectionInfo">Keine Auswahl</span>
           </div>
         </div>
-      </div>
-    </section>
-  </main>
 
-  <section id="assignPanel" class="panel-assign card flyout-panel is-collapsed">
-    <div class="panel-title">Tool-Zuordnung</div>
-    <div class="panel-body">
-      <div class="assign-current">
-        <span class="assign-label">Aktuell zugeordnet:</span>
-        <span id="assignCurrentDisplay" class="assign-value">–</span>
-      </div>
-      <label>
-        Neues Tool
-        <select id="toolKeySelect"></select>
-      </label>
-    </div>
-    <div class="panel-footer">
-      <p class="assign-hint">Die Zuordnung bestimmt verfügbare Bindings. Änderungen bitte bestätigen.</p>
-      <button id="btnAssign" class="btn btn-assign" type="button" disabled>
-        Zuordnung übernehmen
-      </button>
-    </div>
-  </section>
+        <div id="selectionToolbar" class="selection-toolbar card is-disabled">
+          <div class="toolbar-group">
+            <span class="toolbar-label">Ausrichten</span>
+            <div class="toolbar-actions">
+              <button class="btn align-action" type="button" data-align="left">Links</button>
+              <button class="btn align-action" type="button" data-align="hcenter">Horizontal Mitte</button>
+              <button class="btn align-action" type="button" data-align="right">Rechts</button>
+              <button class="btn align-action" type="button" data-align="top">Oben</button>
+              <button class="btn align-action" type="button" data-align="vcenter">Vertikal Mitte</button>
+              <button class="btn align-action" type="button" data-align="bottom">Unten</button>
+            </div>
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">Seite</span>
+            <div class="toolbar-actions">
+              <button class="btn align-action" type="button" data-align="page-left">An Seite links</button>
+              <button class="btn align-action" type="button" data-align="page-hcenter">An Seite mittig</button>
+              <button class="btn align-action" type="button" data-align="page-right">An Seite rechts</button>
+              <button class="btn align-action" type="button" data-align="page-top">An Seite oben</button>
+              <button class="btn align-action" type="button" data-align="page-vcenter">An Seite mittig vertikal</button>
+              <button class="btn align-action" type="button" data-align="page-bottom">An Seite unten</button>
+            </div>
+          </div>
+          <div class="toolbar-group">
+            <span class="toolbar-label">Verteilen</span>
+            <div class="toolbar-actions">
+              <button class="btn distribute-action" type="button" data-distribute="horizontal">Horizontal verteilen</button>
+              <button class="btn distribute-action" type="button" data-distribute="vertical">Vertikal verteilen</button>
+            </div>
+          </div>
+        </div>
 
-  <aside id="propsPanel" class="props card flyout-panel">
-    <div class="props-head">
-      <h2>Eigenschaften</h2>
-      <button id="btnDeleteSelected" class="btn btn-danger" type="button">Löschen</button>
-    </div>
-    <div class="grid props-grid">
-      <label>
-        Text
-        <textarea id="propText" rows="3"></textarea>
-      </label>
-      <label>
-        Binding
-        <select id="propBind"></select>
-      </label>
-      <div class="prop-row">
-        <label>
-          X (mm)
-          <input id="propX" type="number" step="0.5">
-        </label>
-        <label>
-          Y (mm)
-          <input id="propY" type="number" step="0.5">
-        </label>
-      </div>
-      <div class="prop-row">
-        <label>
-          Breite (mm)
-          <input id="propW" type="number" step="0.5">
-        </label>
-        <label>
-          Höhe (mm)
-          <input id="propH" type="number" step="0.5">
-        </label>
-      </div>
-      <div class="prop-row">
-        <label>
-          Schrift (pt)
-          <input id="propFontSize" type="number" step="0.5" min="6" max="40">
-        </label>
-        <label>
-          Gewicht
-          <select id="propFontWeight">
-            <option value="normal">normal</option>
-            <option value="bold">bold</option>
-          </select>
-        </label>
-      </div>
-      <div class="prop-row">
-        <label>
-          Font-Familie
-          <select id="propFontFamilyId">
-            <option value="helvetica">helvetica</option>
-          </select>
-        </label>
-        <label>
-          Zeilenfaktor
-          <input id="propLineHeightFactor" type="number" step="0.05" min="0.8" max="2.0">
-        </label>
-      </div>
-      <div class="prop-row">
-        <label>
-          Baseline Offset (mm)
-          <input id="propBaselineOffsetMm" type="number" step="0.1" min="-5" max="5">
-        </label>
-        <label>
-          Max. Zeilen (0=auto)
-          <input id="propMaxLines" type="number" step="1" min="0" max="200">
-        </label>
-      </div>
-      <div class="prop-row">
-        <label>
-          Overflow
-          <select id="propOverflowMode">
-            <option value="clip">clip</option>
-            <option value="ellipsis">ellipsis</option>
-          </select>
-        </label>
-      </div>
-      <div class="prop-row">
-        <label>
-          Ausrichtung
-          <select id="propAlign">
-            <option value="left">left</option>
-            <option value="center">center</option>
-            <option value="right">right</option>
-          </select>
-        </label>
-        <label>
-          Linienstärke
-          <input id="propStrokeWidth" type="number" step="0.2" min="0.2" max="10">
-        </label>
-      </div>
-      <label class="prop-check">
-        <span>Am Raster einrasten</span>
-        <input id="propSnap" type="checkbox">
-      </label>
-      <label>
-        Textfarbe
-        <input id="propTextColor" type="color" value="#272727">
-      </label>
-      <label>
-        Linienfarbe
-        <input id="propStrokeColor" type="color" value="#747474">
-      </label>
-      <label>
-        Füllfarbe
-        <input id="propFillColor" type="color" value="#14a76c">
-      </label>
-      <label>
-        Bildquelle (Data-URL JPEG oder URL)
-        <textarea id="propImageSrc" rows="3" placeholder="data:image/jpeg;base64,..."></textarea>
-      </label>
-    </div>
-  </aside>
+        <section class="stage-wrap card">
+          <div class="stage-meta">
+            <span>A4 Vorschau mit Lineal und Raster</span>
+            <div class="stage-meta-right">
+              <span>Shift beim Ziehen schaltet Snap temporaer um.</span>
+            </div>
+          </div>
+          <div id="stageViewport" class="stage-viewport">
+            <div id="stageSurface" class="stage-surface">
+              <div id="stageCanvas" class="stage-canvas">
+                <div id="rulerX" class="ruler ruler-x"></div>
+                <div id="rulerY" class="ruler ruler-y"></div>
+                <div id="stage" class="stage stage-grid-on"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
 
-  <div class="floating-actions">
-    <button id="btnToggleAssign" class="btn" type="button" aria-expanded="false">Tool-Zuordnung</button>
+      <aside id="propsPanel" class="sidebar sidebar-right card props-panel">
+        <section class="panel-section panel-section-grow">
+          <div class="panel-section-head">
+            <h2>Eigenschaften</h2>
+            <span class="meta-chip">Inspector</span>
+          </div>
+          <div class="selection-hint">Einzelauswahl zeigt Detailwerte. Bei Mehrfachauswahl wirken geaenderte Felder auf alle gewaelten Elemente.</div>
+          <div class="props-grid">
+            <label>
+              Text
+              <textarea id="propText" rows="3"></textarea>
+            </label>
+            <label>
+              Binding
+              <select id="propBind"></select>
+            </label>
+            <div class="prop-row">
+              <label>
+                X (mm)
+                <input id="propX" type="number" step="0.5">
+              </label>
+              <label>
+                Y (mm)
+                <input id="propY" type="number" step="0.5">
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Breite (mm)
+                <input id="propW" type="number" step="0.5">
+              </label>
+              <label>
+                Hoehe (mm)
+                <input id="propH" type="number" step="0.5">
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Schrift (pt)
+                <input id="propFontSize" type="number" step="0.5" min="6" max="40">
+              </label>
+              <label>
+                Gewicht
+                <select id="propFontWeight">
+                  <option value="normal">normal</option>
+                  <option value="bold">bold</option>
+                </select>
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Font-Familie
+                <select id="propFontFamilyId">
+                  <option value="helvetica">helvetica</option>
+                </select>
+              </label>
+              <label>
+                Ausrichtung
+                <select id="propAlign">
+                  <option value="left">left</option>
+                  <option value="center">center</option>
+                  <option value="right">right</option>
+                </select>
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Zeilenfaktor
+                <input id="propLineHeightFactor" type="number" step="0.05" min="0.8" max="2.0">
+              </label>
+              <label>
+                Baseline Offset (mm)
+                <input id="propBaselineOffsetMm" type="number" step="0.1" min="-5" max="5">
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Max. Zeilen (0=auto)
+                <input id="propMaxLines" type="number" step="1" min="0" max="200">
+              </label>
+              <label>
+                Overflow
+                <select id="propOverflowMode">
+                  <option value="clip">clip</option>
+                  <option value="ellipsis">ellipsis</option>
+                </select>
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Linienstaerke
+                <input id="propStrokeWidth" type="number" step="0.2" min="0.2" max="10">
+              </label>
+              <label class="prop-check">
+                <span>Am Raster einrasten</span>
+                <input id="propSnap" type="checkbox">
+              </label>
+            </div>
+            <div class="prop-row">
+              <label>
+                Textfarbe
+                <input id="propTextColor" type="color" value="#272727">
+              </label>
+              <label>
+                Linienfarbe
+                <input id="propStrokeColor" type="color" value="#747474">
+              </label>
+            </div>
+            <label>
+              Fuellfarbe
+              <input id="propFillColor" type="color" value="#14a76c">
+            </label>
+            <div class="image-source-tools">
+              <label>
+                Bild aus Repository
+                <div class="image-source-row">
+                  <select id="repoImageSelect">
+                    <option value="">- Bild auswaehlen -</option>
+                  </select>
+                  <button id="btnApplyRepoImage" class="btn" type="button">Uebernehmen</button>
+                </div>
+              </label>
+              <label>
+                Lokales Bild hochladen
+                <div class="image-source-row">
+                  <input id="imageUploadInput" type="file" accept="image/*">
+                </div>
+              </label>
+            </div>
+            <label>
+              Bildquelle (Data-URL JPEG oder URL)
+              <textarea id="propImageSrc" rows="3" placeholder="data:image/jpeg;base64,..."></textarea>
+            </label>
+          </div>
+        </section>
+      </aside>
+    </main>
   </div>
 
   <div id="stageContextMenu" class="ctx-menu" hidden>
-    <button id="ctxAddToggle" class="ctx-item ctx-expand" type="button">Hinzufügen</button>
+    <button id="ctxAddToggle" class="ctx-item ctx-expand" type="button">Hinzufuegen</button>
     <div id="ctxAddSub" class="ctx-submenu">
       <button class="ctx-item" type="button" data-add-type="text">Textfeld</button>
       <button class="ctx-item" type="button" data-add-type="line">Linie</button>
       <button class="ctx-item" type="button" data-add-type="rect">Rechteck (Linie)</button>
-      <button class="ctx-item" type="button" data-add-type="rect_fill">Rechteck (gefüllt)</button>
+      <button class="ctx-item" type="button" data-add-type="rect_fill">Rechteck (gefuellt)</button>
       <button class="ctx-item" type="button" data-add-type="image">Bild</button>
     </div>
     <button id="ctxDelete" class="ctx-item" type="button">Entfernen</button>
     <button id="ctxGroup" class="ctx-item" type="button">Gruppieren</button>
-    <button id="ctxUngroup" class="ctx-item" type="button">Gruppe lösen</button>
+    <button id="ctxUngroup" class="ctx-item" type="button">Gruppe loesen</button>
     <button id="ctxBindToggle" class="ctx-item ctx-expand" type="button">Binding</button>
     <div id="ctxBindSub" class="ctx-submenu"></div>
     <button id="ctxToolToggle" class="ctx-item ctx-expand" type="button">Tool-Zuordnung</button>
@@ -233,30 +371,28 @@
     </label>
   </div>
 
-  <!-- Bestätigungs-Dialog: Tool-Zuordnung -->
   <dialog id="assignDialog" class="confirm-dialog">
-    <h3>Tool-Zuordnung ändern</h3>
+    <h3>Tool-Zuordnung aendern</h3>
     <p id="assignDialogBody"></p>
     <div class="dialog-warn">
       Bestehende Bindings in Elementen, die im neuen Tool nicht existieren, werden auf leer gesetzt.
     </div>
     <div class="dialog-actions">
       <button id="btnAssignCancel" class="btn" type="button">Abbrechen</button>
-      <button id="btnAssignConfirm" class="btn btn-primary" type="button">Zuordnung bestätigen</button>
+      <button id="btnAssignConfirm" class="btn btn-primary" type="button">Zuordnung bestaetigen</button>
     </div>
   </dialog>
 
   <dialog id="helpDialog" class="help-dialog">
     <h3>So nutzt du den PDF Template Builder</h3>
     <ol>
-      <li>Lade oben eine bestehende Vorlage oder starte mit <em>Neu</em> eine leere.</li>
-      <li>Per Rechtsklick auf der Vorschau öffnest du das Aktionsmenü mit <em>Hinzufügen</em>, <em>Entfernen</em>, <em>Binding</em> und <em>Raster Lock</em>.</li>
-      <li>Wähle ein Element an und bearbeite rechts seine Eigenschaften.</li>
-      <li>Raster-Snap wird bei Bedarf pro Element über <em>Am Raster einrasten</em> aktiviert.</li>
-      <li>Die Tool-Zuordnung bestimmt die verfügbaren Datenfelder (Bindings).</li>
-      <li>Mit <em>Export JSON</em> und <em>Import JSON</em> kannst du Vorlagen portabel sichern und übernehmen.</li>
-      <li>Mit <em>Speichern</em> wird Titel, Status und Inhalt gespeichert – unabhängig von der Zuordnung.</li>
-      <li>Mit <em>PDF Vorschau</em> siehst du das serverseitig gerenderte Ergebnis mit Beispieldaten.</li>
+      <li>Lade links eine bestehende Vorlage oder starte mit <em>Neu</em> eine leere.</li>
+      <li>Fuege Elemente ueber die Werkzeugbuttons hinzu und waehle sie direkt auf der Seite oder in der Ebenenliste aus.</li>
+      <li>Nutze die Mehrfachauswahl-Toolbar fuer Ausrichten, Verteilen und Seitenausrichtung.</li>
+      <li>Im Inspector rechts bearbeitest du Einzel- oder Sammelwerte fuer die aktuelle Auswahl.</li>
+      <li>Die Tool-Zuordnung bestimmt die verfuegbaren Datenfelder und wird im Vorlagenbereich bestaetigt.</li>
+      <li>Mit <em>Export</em> und <em>Import</em> kannst du Vorlagen portabel sichern und uebernehmen.</li>
+      <li>Mit <em>PDF Vorschau</em> pruefst du jederzeit das serverseitig gerenderte Ergebnis.</li>
     </ol>
     <div class="help-actions">
       <button id="btnHelpClose" class="btn btn-primary" type="button">Verstanden</button>

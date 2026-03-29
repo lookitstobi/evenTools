@@ -48,6 +48,50 @@ if ($method === 'POST' && !$isRuntimeAction) {
 $db = pdf_template_db();
 pdf_template_ensure_starter_templates($db, pdf_template_current_uid(), pdf_template_current_username());
 
+function pdf_template_encode_path_for_url(string $relativePath): string {
+  $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $relativePath)), static fn($v) => $v !== ''));
+  return implode('/', array_map('rawurlencode', $parts));
+}
+
+function pdf_template_collect_repo_images(string $baseDir, string $baseUrlPrefix): array {
+  $images = [];
+  if (!is_dir($baseDir)) {
+    return $images;
+  }
+
+  $it = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS)
+  );
+
+  foreach ($it as $file) {
+    if (!$file instanceof SplFileInfo || !$file->isFile()) {
+      continue;
+    }
+    $ext = strtolower((string)$file->getExtension());
+    if (!in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'], true)) {
+      continue;
+    }
+
+    $fullPath = $file->getPathname();
+    $relative = ltrim(str_replace('\\', '/', substr($fullPath, strlen($baseDir))), '/');
+    if ($relative === '') {
+      continue;
+    }
+    $url = rtrim($baseUrlPrefix, '/') . '/' . pdf_template_encode_path_for_url($relative);
+    $images[] = [
+      'name' => $file->getBasename('.' . $file->getExtension()),
+      'path' => $relative,
+      'url' => $url,
+    ];
+  }
+
+  usort($images, static function (array $a, array $b): int {
+    return strcmp($a['path'], $b['path']);
+  });
+
+  return $images;
+}
+
 if ($action === 'bootstrap') {
   pdf_template_json_response([
     'ok' => true,
@@ -59,6 +103,26 @@ if ($action === 'bootstrap') {
       'username' => pdf_template_current_username(),
       'is_admin' => !empty($_SESSION['is_admin']),
     ],
+  ]);
+}
+
+if ($action === 'list_repo_images') {
+  $assetsImages = pdf_template_collect_repo_images(__DIR__ . '/assets', '/assets');
+  $toolImagesBase = __DIR__ . '/app/tools/pdf_template_builder/images';
+  $toolImages = [];
+  if (is_dir($toolImagesBase)) {
+    foreach (pdf_template_collect_repo_images($toolImagesBase, '/toolserve.php?name=pdf_template_builder&file=images') as $img) {
+      $toolImages[] = [
+        'name' => $img['name'],
+        'path' => 'images/' . $img['path'],
+        'url' => $img['url'],
+      ];
+    }
+  }
+
+  pdf_template_json_response([
+    'ok' => true,
+    'images' => array_merge($assetsImages, $toolImages),
   ]);
 }
 
