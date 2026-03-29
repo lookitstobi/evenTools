@@ -13,7 +13,7 @@ if (!$name || !in_array($name, $allowed, true)) {
   exit;
 }
 
-if ($name === 'pdf_template_builder') {
+if ($name === 'pdf_template_builder' && empty($config['pdf_template_builder_enabled'])) {
   http_response_code(503);
   page_start('PDF-Editor in Bearbeitung');
   echo '<div class="card">';

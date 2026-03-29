@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "tolerance_mm": 0.5,
+  "preflight_script": "php scripts/pdf_golden_master_check.php --db-check",
+  "notes": "Reference cases for strict WYSIWYG QA. Compare stage vs rendered PDF for positions, wraps, and alignment.",
+  "cases": [
+    {
+      "id": "gm-nti-longtext",
+      "tool_key": "nti_tool",
+      "template_title": "GoldenMaster Nti Longtext",
+      "focus": ["wrap", "line_height", "ellipsis", "baseline"],
+      "checks": [
+        "No line overlap in text boxes",
+        "Wrapped lines match editor preview",
+        "Ellipsis only when max_lines limit is reached"
+      ]
+    },
+    {
+      "id": "gm-nti-alignment",
+      "tool_key": "nti_tool",
+      "template_title": "GoldenMaster Nti Alignment",
+      "focus": ["left_center_right", "box_width", "font_size"],
+      "checks": [
+        "Right aligned text ends at same x-position",
+        "Center aligned text remains centered after rendering"
+      ]
+    },
+    {
+      "id": "gm-dguv-umlaut",
+      "tool_key": "dguv_v3",
+      "template_title": "GoldenMaster Dguv Umlaut",
+      "focus": ["umlauts", "special_chars", "bindings"],
+      "checks": [
+        "German umlauts render consistently",
+        "Binding values are substituted in all text elements"
+      ]
+    },
+    {
+      "id": "gm-cuesheet-multiline",
+      "tool_key": "cuesheet",
+      "template_title": "GoldenMaster Cuesheet Multiline",
+      "focus": ["multi_line", "max_lines", "overflow"],
+      "checks": [
+        "max_lines=0 uses available box height",
+        "max_lines>0 clips/ellipsis according to overflow_mode"
+      ]
+    },
+    {
+      "id": "gm-patchmatrix-image-mix",
+      "tool_key": "patchmatrix",
+      "template_title": "GoldenMaster Patchmatrix ImageMix",
+      "focus": ["image_box", "text_next_to_image", "spacing"],
+      "checks": [
+        "Image stays centered in its box",
+        "Neighboring text keeps expected offset"
+      ]
+    }
+  ]
+}

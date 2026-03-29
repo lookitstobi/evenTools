@@ -27,6 +27,11 @@ const propWEl = document.getElementById('propW');
 const propHEl = document.getElementById('propH');
 const propFontSizeEl = document.getElementById('propFontSize');
 const propFontWeightEl = document.getElementById('propFontWeight');
+const propFontFamilyIdEl = document.getElementById('propFontFamilyId');
+const propLineHeightFactorEl = document.getElementById('propLineHeightFactor');
+const propBaselineOffsetMmEl = document.getElementById('propBaselineOffsetMm');
+const propMaxLinesEl = document.getElementById('propMaxLines');
+const propOverflowModeEl = document.getElementById('propOverflowMode');
 const propAlignEl = document.getElementById('propAlign');
 const propSnapEl = document.getElementById('propSnap');
 const propTextColorEl = document.getElementById('propTextColor');
@@ -66,9 +71,12 @@ const btnAssignConfirm = document.getElementById('btnAssignConfirm');
 
 const btnNew = document.getElementById('btnNew');
 const btnSave = document.getElementById('btnSave');
+const btnExport = document.getElementById('btnExport');
+const btnImport = document.getElementById('btnImport');
 const btnPreview = document.getElementById('btnPreview');
 const btnHelp = document.getElementById('btnHelp');
 const btnDelete = document.getElementById('btnDelete');
+const importFileInputEl = document.getElementById('importFileInput');
 const btnAddElement = document.getElementById('btnAddElement');
 const btnDeleteSelected = document.getElementById('btnDeleteSelected');
 const btnAssign = document.getElementById('btnAssign');
@@ -92,6 +100,69 @@ const viewState = {
 };
 
 const imageAspectCache = new Map();
+
+function clampNumber(value, min, max, fallback) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  if (num < min) return min;
+  if (num > max) return max;
+  return num;
+}
+
+function normalizeElementForEditor(raw) {
+  const el = raw && typeof raw === 'object' ? raw : {};
+  const type = ['text', 'line', 'rect', 'rect_fill', 'image'].includes(el.type) ? el.type : 'text';
+  const minHeight = type === 'line' ? 0.6 : 1;
+  const align = ['left', 'center', 'right'].includes(el.align) ? el.align : 'left';
+  const overflowMode = ['clip', 'ellipsis'].includes(el.overflow_mode) ? el.overflow_mode : 'clip';
+  const fontFamilyId = (el.font_family_id === 'helvetica') ? 'helvetica' : 'helvetica';
+
+  return {
+    id: String(el.id || `el_${Math.random().toString(16).slice(2, 10)}`),
+    type,
+    x: clampNumber(el.x, 0, PAGE_WIDTH_MM, 0),
+    y: clampNumber(el.y, 0, PAGE_HEIGHT_MM, 0),
+    w: clampNumber(el.w, 1, PAGE_WIDTH_MM, 50),
+    h: clampNumber(el.h, minHeight, PAGE_HEIGHT_MM, type === 'line' ? 1 : 6),
+    text: String(el.text || ''),
+    bind: String(el.bind || ''),
+    snap: !!el.snap,
+    font_size: clampNumber(el.font_size, 6, 40, 11),
+    font_weight: (el.font_weight === 'bold') ? 'bold' : 'normal',
+    align,
+    stroke_color: String(el.stroke_color || '#747474'),
+    fill_color: String(el.fill_color || '#14a76c'),
+    text_color: String(el.text_color || '#272727'),
+    stroke_width: clampNumber(el.stroke_width, 0.2, 10, 1),
+    image_src: String(el.image_src || ''),
+    group_id: String(el.group_id || ''),
+    line_height_factor: clampNumber(el.line_height_factor, 0.8, 2.0, 1.2),
+    baseline_offset_mm: clampNumber(el.baseline_offset_mm, -5, 5, 0),
+    overflow_mode: overflowMode,
+    max_lines: Math.round(clampNumber(el.max_lines, 0, 200, 0)),
+    font_family_id: fontFamilyId,
+  };
+}
+
+function normalizePayloadForEditor(payload, fallbackToolKey) {
+  const src = payload && typeof payload === 'object' ? payload : {};
+  const page = src.page && typeof src.page === 'object' ? src.page : {};
+  const toolKey = String(src.tool_key || fallbackToolKey || 'nti_tool');
+  const elementsRaw = Array.isArray(src.elements) ? src.elements : [];
+
+  return {
+    schema_version: 2,
+    tool_key: toolKey,
+    page: {
+      format: 'a4',
+      orientation: page.orientation === 'landscape' ? 'landscape' : 'portrait',
+      unit: 'mm',
+      width: clampNumber(page.width, 1, 210, 210),
+      height: clampNumber(page.height, 1, 297, 297),
+    },
+    elements: elementsRaw.map((el) => normalizeElementForEditor(el)),
+  };
+}
 
 function elementImageAspect(el) {
   if (!el || (el.type || '') !== 'image') {
@@ -260,8 +331,8 @@ async function api(action, payload = null, method = 'GET', query = {}) {
 
 function createDefaultPayload(toolKey) {
   const step = getGridStepMm();
-  return {
-    schema_version: 1,
+  return normalizePayloadForEditor({
+    schema_version: 2,
     tool_key: toolKey,
     page: {
       format: 'a4',
@@ -284,10 +355,15 @@ function createDefaultPayload(toolKey) {
         font_size: 13,
         font_weight: 'bold',
         align: 'left',
+        line_height_factor: 1.2,
+        baseline_offset_mm: 0,
+        overflow_mode: 'clip',
+        max_lines: 0,
+        font_family_id: 'helvetica',
         group_id: '',
       },
     ],
-  };
+  }, toolKey);
 }
 
 function getCurrentElements() {
@@ -369,9 +445,15 @@ function renderStage() {
     div.style.width = `${el.w * MM_TO_PX}px`;
     div.style.height = `${el.h * MM_TO_PX}px`;
     const fontPx = Math.max(1, (el.font_size || 11) * PT_TO_STAGE_PX);
+    const lineHeightFactor = clampNumber(el.line_height_factor, 0.8, 2.0, 1.2);
+    const baselineOffsetPx = clampNumber(el.baseline_offset_mm, -5, 5, 0) * MM_TO_PX;
+    const maxLines = Math.round(clampNumber(el.max_lines, 0, 200, 0));
+    const overflowMode = ['clip', 'ellipsis'].includes(el.overflow_mode) ? el.overflow_mode : 'clip';
     div.style.fontSize = `${fontPx}px`;
-    div.style.lineHeight = `${Math.max(fontPx * 1.08, Math.min(el.h * MM_TO_PX, fontPx * 1.22))}px`;
+    div.style.lineHeight = `${Math.max(fontPx * 0.95, fontPx * lineHeightFactor)}px`;
+    div.style.paddingTop = `${baselineOffsetPx}px`;
     div.style.fontWeight = el.font_weight || 'normal';
+    div.style.fontFamily = 'Helvetica, Arial, sans-serif';
     div.style.textAlign = el.align || 'left';
     div.style.color = el.text_color || '#272727';
     div.style.borderColor = el.stroke_color || '#747474';
@@ -406,6 +488,16 @@ function renderStage() {
     } else {
       const label = el.bind ? `{{${el.bind}}}` : el.text;
       div.textContent = label || '(leer)';
+      div.style.overflow = 'hidden';
+      if (maxLines > 0) {
+        div.style.display = '-webkit-box';
+        div.style.webkitBoxOrient = 'vertical';
+        div.style.webkitLineClamp = String(maxLines);
+      } else {
+        div.style.display = 'block';
+        div.style.webkitLineClamp = '';
+      }
+      div.style.textOverflow = overflowMode === 'ellipsis' ? 'ellipsis' : 'clip';
     }
 
     if (!hasMultiSelection && isSelected(el.id)) {
@@ -461,6 +553,11 @@ function updatePropertyInputs() {
     propHEl.value = '';
     propFontSizeEl.value = '';
     propFontWeightEl.value = 'normal';
+    propFontFamilyIdEl.value = 'helvetica';
+    propLineHeightFactorEl.value = '1.2';
+    propBaselineOffsetMmEl.value = '0';
+    propMaxLinesEl.value = '0';
+    propOverflowModeEl.value = 'clip';
     propAlignEl.value = 'left';
     propSnapEl.checked = false;
     propTextColorEl.value = '#272727';
@@ -490,6 +587,11 @@ function updatePropertyInputs() {
   propHEl.value = String(el.h);
   propFontSizeEl.value = String(el.font_size || 11);
   propFontWeightEl.value = el.font_weight || 'normal';
+  propFontFamilyIdEl.value = el.font_family_id || 'helvetica';
+  propLineHeightFactorEl.value = String(el.line_height_factor ?? 1.2);
+  propBaselineOffsetMmEl.value = String(el.baseline_offset_mm ?? 0);
+  propMaxLinesEl.value = String(el.max_lines ?? 0);
+  propOverflowModeEl.value = el.overflow_mode || 'clip';
   propAlignEl.value = el.align || 'left';
   propSnapEl.checked = !!el.snap;
   propTextColorEl.value = el.text_color || '#272727';
@@ -514,6 +616,11 @@ function applyPropsToSelection() {
     }
     el.font_size = Number(propFontSizeEl.value || 11);
     el.font_weight = propFontWeightEl.value;
+    el.font_family_id = propFontFamilyIdEl.value || 'helvetica';
+    el.line_height_factor = clampNumber(propLineHeightFactorEl.value || 1.2, 0.8, 2.0, 1.2);
+    el.baseline_offset_mm = clampNumber(propBaselineOffsetMmEl.value || 0, -5, 5, 0);
+    el.max_lines = Math.round(clampNumber(propMaxLinesEl.value || 0, 0, 200, 0));
+    el.overflow_mode = ['clip', 'ellipsis'].includes(propOverflowModeEl.value) ? propOverflowModeEl.value : 'clip';
     el.align = propAlignEl.value;
     el.snap = !!propSnapEl.checked;
     el.text_color = propTextColorEl.value || '#272727';
@@ -1430,6 +1537,7 @@ async function openTemplate(id) {
   }
 
   state.current = result.item;
+  state.current.payload = normalizePayloadForEditor(state.current.payload, state.current.tool_key);
   setSelectedIds(state.current?.payload?.elements?.[0] ? [state.current.payload.elements[0].id] : []);
   refreshCurrentHeader();
   renderStage();
@@ -1509,13 +1617,15 @@ function collectCurrentPayload() {
   // tool_key kommt aus state.current – wird NUR durch explizite Zuordnung geändert
   const toolKey = state.current.tool_key || state.allowedToolKeys[0] || 'nti_tool';
   const payload = state.current.payload || createDefaultPayload(toolKey);
-  payload.tool_key = toolKey;
+  state.current.payload = normalizePayloadForEditor(payload, toolKey);
+  const normalizedPayload = state.current.payload;
+  normalizedPayload.tool_key = toolKey;
 
   return {
     title: titleInputEl.value.trim() || 'PDF-Vorlage',
     tool_key: toolKey,
     status: statusSelectEl.value,
-    payload,
+    payload: normalizedPayload,
   };
 }
 
@@ -1556,6 +1666,71 @@ async function saveCurrent() {
   await loadTemplateList();
   fillTemplateSelect();
   templateSelectEl.value = String(state.current.id);
+}
+
+function downloadJsonFile(fileName, contentObj) {
+  const pretty = JSON.stringify(contentObj, null, 2);
+  const blob = new Blob([pretty], { type: 'application/json;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = blobUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+function sanitizeFileStem(input, fallback = 'pdf-template') {
+  const stem = String(input || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  return stem || fallback;
+}
+
+async function exportCurrentTemplate() {
+  if (!state.current || state.current.id <= 0) {
+    showMessage('Bitte zuerst eine gespeicherte Vorlage waehlen.', true);
+    return;
+  }
+
+  const result = await api('export', null, 'GET', { id: state.current.id });
+  if (!result.ok || !result.template) {
+    throw new Error(result.error || 'export_failed');
+  }
+
+  const stem = sanitizeFileStem(result.template.title || state.current.title || 'pdf-template');
+  downloadJsonFile(`${stem}.json`, result.template);
+  showMessage('JSON Export erstellt.');
+}
+
+function parseImportJson(text) {
+  const parsed = JSON.parse(text);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('invalid_import_file');
+  }
+  if (!parsed.payload || typeof parsed.payload !== 'object') {
+    throw new Error('missing_payload');
+  }
+  return parsed;
+}
+
+async function importTemplateFromFile(file) {
+  if (!file) return;
+  const text = await file.text();
+  const template = parseImportJson(text);
+  const result = await api('import_json', {
+    mode: 'create',
+    template,
+  }, 'POST');
+
+  if (!result.ok) {
+    throw new Error(result.error || 'import_failed');
+  }
+
+  await loadTemplateList();
+  await openTemplate(String(result.id));
+  fillTemplateSelect();
+  templateSelectEl.value = String(result.id);
+  showMessage('Vorlage erfolgreich importiert.');
 }
 
 async function previewCurrent() {
@@ -1642,6 +1817,11 @@ function addElement(elementTypeOverride = null) {
     snap: false,
     font_size: 11,
     font_weight: 'normal',
+    font_family_id: 'helvetica',
+    line_height_factor: 1.2,
+    baseline_offset_mm: 0,
+    overflow_mode: 'clip',
+    max_lines: 0,
     align: 'left',
     text_color: '#272727',
     stroke_color: '#747474',
@@ -1808,6 +1988,35 @@ function wireEvents() {
     }
   });
 
+  if (btnExport) {
+    btnExport.addEventListener('click', async () => {
+      try {
+        await exportCurrentTemplate();
+      } catch (err) {
+        showMessage(`Export fehlgeschlagen: ${err.message}`, true);
+      }
+    });
+  }
+
+  if (btnImport && importFileInputEl) {
+    btnImport.addEventListener('click', () => {
+      importFileInputEl.value = '';
+      importFileInputEl.click();
+    });
+
+    importFileInputEl.addEventListener('change', async () => {
+      const file = importFileInputEl.files && importFileInputEl.files[0] ? importFileInputEl.files[0] : null;
+      if (!file) return;
+      try {
+        await importTemplateFromFile(file);
+      } catch (err) {
+        showMessage(`Import fehlgeschlagen: ${err.message}`, true);
+      } finally {
+        importFileInputEl.value = '';
+      }
+    });
+  }
+
   btnPreview.addEventListener('click', async () => {
     try {
       await previewCurrent();
@@ -1937,6 +2146,11 @@ function wireEvents() {
     propHEl,
     propFontSizeEl,
     propFontWeightEl,
+    propFontFamilyIdEl,
+    propLineHeightFactorEl,
+    propBaselineOffsetMmEl,
+    propMaxLinesEl,
+    propOverflowModeEl,
     propAlignEl,
     propSnapEl,
     propTextColorEl,

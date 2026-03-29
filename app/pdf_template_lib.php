@@ -224,7 +224,7 @@ function pdf_template_normalize_status(string $status): string {
 
 function pdf_template_default_payload(string $toolKey): array {
   return [
-    'schema_version' => 1,
+    'schema_version' => 2,
     'tool_key' => $toolKey,
     'page' => [
       'format' => 'a4',
@@ -246,6 +246,11 @@ function pdf_template_default_payload(string $toolKey): array {
         'font_size' => 13,
         'font_weight' => 'bold',
         'align' => 'left',
+        'line_height_factor' => 1.2,
+        'baseline_offset_mm' => 0,
+        'overflow_mode' => 'clip',
+        'max_lines' => 0,
+        'font_family_id' => 'helvetica',
       ],
     ],
   ];
@@ -253,7 +258,7 @@ function pdf_template_default_payload(string $toolKey): array {
 
 function pdf_template_starter_payload(string $toolKey): array {
   $base = [
-    'schema_version' => 1,
+    'schema_version' => 2,
     'tool_key' => $toolKey,
     'page' => [
       'format' => 'a4',
@@ -703,6 +708,31 @@ function pdf_template_normalize_payload(array $payload, string $toolKey): array 
       $groupId = '';
     }
 
+    $lineHeightFactor = (float)($element['line_height_factor'] ?? 1.2);
+    if ($lineHeightFactor < 0.8 || $lineHeightFactor > 2.0) {
+      $lineHeightFactor = 1.2;
+    }
+
+    $baselineOffsetMm = (float)($element['baseline_offset_mm'] ?? 0.0);
+    if ($baselineOffsetMm < -5.0 || $baselineOffsetMm > 5.0) {
+      $baselineOffsetMm = 0.0;
+    }
+
+    $overflowMode = trim((string)($element['overflow_mode'] ?? 'clip'));
+    if (!in_array($overflowMode, ['clip', 'ellipsis'], true)) {
+      $overflowMode = 'clip';
+    }
+
+    $maxLines = (int)($element['max_lines'] ?? 0);
+    if ($maxLines < 0 || $maxLines > 200) {
+      $maxLines = 0;
+    }
+
+    $fontFamilyId = trim((string)($element['font_family_id'] ?? 'helvetica'));
+    if (!in_array($fontFamilyId, ['helvetica'], true)) {
+      $fontFamilyId = 'helvetica';
+    }
+
     $normalizedElements[] = [
       'id' => $id,
       'type' => $type,
@@ -724,6 +754,11 @@ function pdf_template_normalize_payload(array $payload, string $toolKey): array 
       'stroke_width' => (float)($element['stroke_width'] ?? 1),
       'image_src' => $imageSrc,
       'group_id' => $groupId,
+      'line_height_factor' => $lineHeightFactor,
+      'baseline_offset_mm' => $baselineOffsetMm,
+      'overflow_mode' => $overflowMode,
+      'max_lines' => $maxLines,
+      'font_family_id' => $fontFamilyId,
     ];
   }
 
@@ -782,6 +817,11 @@ function pdf_template_validate_payload(array $payload, string $toolKey): array {
     $textColor = trim((string)($el['text_color'] ?? '#1b1f23'));
     $imageSrc = trim((string)($el['image_src'] ?? ''));
     $groupId = trim((string)($el['group_id'] ?? ''));
+    $lineHeightFactor = (float)($el['line_height_factor'] ?? 1.2);
+    $baselineOffsetMm = (float)($el['baseline_offset_mm'] ?? 0.0);
+    $overflowMode = trim((string)($el['overflow_mode'] ?? 'clip'));
+    $maxLines = (int)($el['max_lines'] ?? 0);
+    $fontFamilyId = trim((string)($el['font_family_id'] ?? 'helvetica'));
 
     if (!in_array($type, ['text', 'line', 'rect', 'rect_fill', 'image'], true)) {
       $errors[] = 'type_not_supported:' . $idx;
@@ -822,6 +862,21 @@ function pdf_template_validate_payload(array $payload, string $toolKey): array {
     }
     if ($groupId !== '' && !preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $groupId)) {
       $errors[] = 'invalid_group_id:' . $idx;
+    }
+    if ($lineHeightFactor < 0.8 || $lineHeightFactor > 2.0) {
+      $errors[] = 'line_height_factor_out_of_bounds:' . $idx;
+    }
+    if ($baselineOffsetMm < -5.0 || $baselineOffsetMm > 5.0) {
+      $errors[] = 'baseline_offset_mm_out_of_bounds:' . $idx;
+    }
+    if (!in_array($overflowMode, ['clip', 'ellipsis'], true)) {
+      $errors[] = 'overflow_mode_not_supported:' . $idx;
+    }
+    if ($maxLines < 0 || $maxLines > 200) {
+      $errors[] = 'max_lines_out_of_bounds:' . $idx;
+    }
+    if (!in_array($fontFamilyId, ['helvetica'], true)) {
+      $errors[] = 'font_family_not_supported:' . $idx;
     }
   }
 
@@ -971,8 +1026,6 @@ function pdf_template_wrap_text(string $text, float $maxWidthPt, float $fontSize
   $text = str_replace(["\r\n", "\r"], "\n", $text);
   $baseLines = explode("\n", $text);
   $wrapped = [];
-  $charWidth = max(0.1, $fontSizePt * 0.5);
-  $maxChars = (int)max(1, floor($maxWidthPt / $charWidth));
 
   foreach ($baseLines as $line) {
     $line = trim((string)$line);
@@ -981,37 +1034,126 @@ function pdf_template_wrap_text(string $text, float $maxWidthPt, float $fontSize
       continue;
     }
 
-    if (mb_strlen($line) <= $maxChars) {
+    if (pdf_template_estimate_text_width_pt($line, $fontSizePt) <= $maxWidthPt) {
       $wrapped[] = $line;
       continue;
     }
 
-    $words = preg_split('/\s+/', $line) ?: [];
+    $tokens = preg_split('/(\s+)/u', $line, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
     $current = '';
-    foreach ($words as $word) {
-      $candidate = $current === '' ? $word : ($current . ' ' . $word);
-      if (mb_strlen($candidate) <= $maxChars) {
+    foreach ($tokens as $token) {
+      if ($token === '') {
+        continue;
+      }
+
+      $candidate = $current . $token;
+      if (pdf_template_estimate_text_width_pt($candidate, $fontSizePt) <= $maxWidthPt) {
         $current = $candidate;
         continue;
       }
 
-      if ($current !== '') {
-        $wrapped[] = $current;
+      if (trim($current) !== '') {
+        $wrapped[] = rtrim($current);
+        $current = ltrim($token);
+      } else {
+        $current = trim($token);
       }
 
-      while (mb_strlen($word) > $maxChars) {
-        $wrapped[] = mb_substr($word, 0, $maxChars);
-        $word = mb_substr($word, $maxChars);
+      if ($current === '') {
+        continue;
       }
-      $current = $word;
+
+      while ($current !== '' && pdf_template_estimate_text_width_pt($current, $fontSizePt) > $maxWidthPt) {
+        $part = '';
+        foreach (pdf_template_split_chars($current) as $char) {
+          $probe = $part . $char;
+          if (pdf_template_estimate_text_width_pt($probe, $fontSizePt) > $maxWidthPt) {
+            break;
+          }
+          $part = $probe;
+        }
+
+        if ($part === '') {
+          break;
+        }
+
+        $wrapped[] = rtrim($part);
+        $current = ltrim((string)mb_substr($current, mb_strlen($part)));
+      }
     }
 
-    if ($current !== '') {
-      $wrapped[] = $current;
+    if (trim($current) !== '') {
+      $wrapped[] = rtrim($current);
     }
   }
 
   return $wrapped;
+}
+
+function pdf_template_split_chars(string $text): array {
+  $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+  if (is_array($chars) && $chars !== []) {
+    return $chars;
+  }
+  return str_split($text);
+}
+
+function pdf_template_estimate_text_width_pt(string $text, float $fontSizePt): float {
+  $sum = 0.0;
+  foreach (pdf_template_split_chars($text) as $char) {
+    if (preg_match('/\s/u', $char)) {
+      $sum += 0.32;
+      continue;
+    }
+    if (preg_match('/[ilI1\.,:;\'"\|`]/u', $char)) {
+      $sum += 0.28;
+      continue;
+    }
+    if (preg_match('/[MW@%&QO0]/u', $char)) {
+      $sum += 0.78;
+      continue;
+    }
+    if (preg_match('/[A-Z]/u', $char)) {
+      $sum += 0.62;
+      continue;
+    }
+    $sum += 0.52;
+  }
+  return max(0.0, $sum * $fontSizePt);
+}
+
+function pdf_template_apply_ellipsis(string $line, float $maxWidthPt, float $fontSizePt): string {
+  $line = trim($line);
+  if ($line === '') {
+    return '';
+  }
+
+  if (pdf_template_estimate_text_width_pt($line, $fontSizePt) <= $maxWidthPt) {
+    return $line;
+  }
+
+  $ellipsis = '...';
+  $ellipsisWidth = pdf_template_estimate_text_width_pt($ellipsis, $fontSizePt);
+  if ($ellipsisWidth >= $maxWidthPt) {
+    return '';
+  }
+
+  $allowed = $maxWidthPt - $ellipsisWidth;
+  $out = '';
+  foreach (pdf_template_split_chars($line) as $char) {
+    $probe = $out . $char;
+    if (pdf_template_estimate_text_width_pt($probe, $fontSizePt) > $allowed) {
+      break;
+    }
+    $out = $probe;
+  }
+
+  $out = rtrim($out);
+  if ($out === '') {
+    return '';
+  }
+
+  return $out . $ellipsis;
 }
 
 function pdf_template_pdf_escape_text(string $text): string {
@@ -1274,6 +1416,22 @@ function pdf_template_render_pdf(array $payload, array $data, string $title = 'P
     $fontSize = (float)($element['font_size'] ?? 11);
     $fontSize = max(6.0, min(40.0, $fontSize));
     $align = (string)($element['align'] ?? 'left');
+    $lineHeightFactor = (float)($element['line_height_factor'] ?? 1.2);
+    if ($lineHeightFactor < 0.8 || $lineHeightFactor > 2.0) {
+      $lineHeightFactor = 1.2;
+    }
+    $baselineOffsetMm = (float)($element['baseline_offset_mm'] ?? 0.0);
+    if ($baselineOffsetMm < -5.0 || $baselineOffsetMm > 5.0) {
+      $baselineOffsetMm = 0.0;
+    }
+    $overflowMode = (string)($element['overflow_mode'] ?? 'clip');
+    if (!in_array($overflowMode, ['clip', 'ellipsis'], true)) {
+      $overflowMode = 'clip';
+    }
+    $configuredMaxLines = (int)($element['max_lines'] ?? 0);
+    if ($configuredMaxLines < 0 || $configuredMaxLines > 200) {
+      $configuredMaxLines = 0;
+    }
     $fontRef = ((string)($element['font_weight'] ?? 'normal')) === 'bold' ? 'F2' : 'F1';
     $strokeWidth = max(0.2, min(10.0, (float)($element['stroke_width'] ?? 1.0)));
     $strokeColor = (string)($element['stroke_color'] ?? '#1f2937');
@@ -1346,12 +1504,17 @@ function pdf_template_render_pdf(array $payload, array $data, string $title = 'P
       continue;
     }
 
-    $lineHeightPt = max(8.0, $fontSize * 1.2);
-    $maxLines = (int)max(1, floor(($hMm * $ptPerMm) / $lineHeightPt));
+    $lineHeightPt = max(6.0, $fontSize * $lineHeightFactor);
+    $maxLinesByBox = (int)max(1, floor(($hMm * $ptPerMm) / $lineHeightPt));
+    $maxLines = $configuredMaxLines > 0 ? min($maxLinesByBox, $configuredMaxLines) : $maxLinesByBox;
 
     $lines = pdf_template_wrap_text($text, $maxWidthPt, $fontSize);
     if (count($lines) > $maxLines) {
       $lines = array_slice($lines, 0, $maxLines);
+      if ($overflowMode === 'ellipsis' && $maxLines > 0) {
+        $lastIdx = $maxLines - 1;
+        $lines[$lastIdx] = pdf_template_apply_ellipsis((string)$lines[$lastIdx], $maxWidthPt, $fontSize);
+      }
     }
 
     foreach ($lines as $lineIdx => $line) {
@@ -1360,7 +1523,7 @@ function pdf_template_render_pdf(array $payload, array $data, string $title = 'P
         continue;
       }
 
-      $lineWidthPt = mb_strlen($rawLine) * $fontSize * 0.5;
+      $lineWidthPt = pdf_template_estimate_text_width_pt($rawLine, $fontSize);
       $lineX = $xPt;
       if ($align === 'center') {
         $lineX = $xPt + max(0.0, ($maxWidthPt - $lineWidthPt) / 2.0);
@@ -1371,7 +1534,7 @@ function pdf_template_render_pdf(array $payload, array $data, string $title = 'P
       // Browser-Text beginnt visuell nicht exakt bei 1.0em vom Box-Top,
       // daher nutzen wir eine Ascent-Naeherung fuer bessere Uebereinstimmung
       // mit der Builder-Vorschau.
-      $baseline = $yTopPt - ($lineIdx * $lineHeightPt) - ($fontSize * 0.82);
+      $baseline = $yTopPt - ($lineIdx * $lineHeightPt) - ($fontSize * 0.82) - ($baselineOffsetMm * $ptPerMm);
       if ($baseline < 0) {
         continue;
       }

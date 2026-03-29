@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
 require_login();
+$config = require __DIR__ . '/app/config.php';
 
 $tools = $_SESSION['tools'] ?? [];
 $is_admin = !empty($_SESSION['is_admin']);
@@ -82,7 +83,7 @@ $tool_meta = [
     'title' => 'pdfTools',
     'sub' => 'GUI fuer PDF-Vorlagen und Platzhalter',
     'logo' => '/assets/Logos/pdfTools.png',
-    'disabled' => true,
+    'disabled' => empty($config['pdf_template_builder_enabled']),
     'disabled_note' => 'Der Editor ist aktuell inaktiv und bleibt fuer laufende Arbeiten erhalten.'
   ],
   'timeTools' => [

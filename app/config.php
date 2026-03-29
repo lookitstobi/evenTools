@@ -40,5 +40,6 @@ return [
   'pdf_template_db_path' => $dataDir . '/pdf_templates.sqlite',
   'patchmatrix_db_path' => $dataDir . '/patchmatrix.sqlite',
   'data_dir' => $dataDir,
+  'pdf_template_builder_enabled' => getenv('PDF_TEMPLATE_BUILDER_ENABLED') !== '0',
   'dguv_agent_token' => getenv('DGUV_AGENT_TOKEN') ?: '',
 ];

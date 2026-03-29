@@ -13,11 +13,14 @@
     <div class="header-controls">
       <button id="btnNew" class="btn">Neu</button>
       <button id="btnSave" class="btn btn-primary">Speichern</button>
+      <button id="btnExport" class="btn">Export JSON</button>
+      <button id="btnImport" class="btn">Import JSON</button>
       <button id="btnPreview" class="btn">PDF Vorschau</button>
       <button id="btnHelp" class="btn">Hilfe</button>
       <button id="btnDelete" class="btn btn-danger">Vorlage löschen</button>
     </div>
   </header>
+  <input id="importFileInput" type="file" accept="application/json,.json" hidden>
 
   <section class="top-panels">
 
@@ -138,6 +141,37 @@
       </div>
       <div class="prop-row">
         <label>
+          Font-Familie
+          <select id="propFontFamilyId">
+            <option value="helvetica">helvetica</option>
+          </select>
+        </label>
+        <label>
+          Zeilenfaktor
+          <input id="propLineHeightFactor" type="number" step="0.05" min="0.8" max="2.0">
+        </label>
+      </div>
+      <div class="prop-row">
+        <label>
+          Baseline Offset (mm)
+          <input id="propBaselineOffsetMm" type="number" step="0.1" min="-5" max="5">
+        </label>
+        <label>
+          Max. Zeilen (0=auto)
+          <input id="propMaxLines" type="number" step="1" min="0" max="200">
+        </label>
+      </div>
+      <div class="prop-row">
+        <label>
+          Overflow
+          <select id="propOverflowMode">
+            <option value="clip">clip</option>
+            <option value="ellipsis">ellipsis</option>
+          </select>
+        </label>
+      </div>
+      <div class="prop-row">
+        <label>
           Ausrichtung
           <select id="propAlign">
             <option value="left">left</option>
@@ -220,6 +254,7 @@
       <li>Wähle ein Element an und bearbeite rechts seine Eigenschaften.</li>
       <li>Raster-Snap wird bei Bedarf pro Element über <em>Am Raster einrasten</em> aktiviert.</li>
       <li>Die Tool-Zuordnung bestimmt die verfügbaren Datenfelder (Bindings).</li>
+      <li>Mit <em>Export JSON</em> und <em>Import JSON</em> kannst du Vorlagen portabel sichern und übernehmen.</li>
       <li>Mit <em>Speichern</em> wird Titel, Status und Inhalt gespeichert – unabhängig von der Zuordnung.</li>
       <li>Mit <em>PDF Vorschau</em> siehst du das serverseitig gerenderte Ergebnis mit Beispieldaten.</li>
     </ol>

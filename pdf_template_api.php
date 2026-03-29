@@ -126,6 +126,195 @@ if ($action === 'get') {
   ]);
 }
 
+if ($action === 'export') {
+  $id = (int)($_GET['id'] ?? 0);
+  if ($id <= 0) {
+    pdf_template_json_response(['ok' => false, 'error' => 'missing_id'], 400);
+  }
+
+  $row = pdf_template_fetch_row($db, $id);
+  if (!$row) {
+    pdf_template_json_response(['ok' => false, 'error' => 'not_found'], 404);
+  }
+
+  $toolKey = trim((string)($row['tool_key'] ?? ''));
+  if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {
+    pdf_template_json_response(['ok' => false, 'error' => 'invalid_tool_key'], 400);
+  }
+
+  try {
+    $payload = json_decode((string)$row['payload_json'], true, 512, JSON_THROW_ON_ERROR);
+  } catch (Throwable $e) {
+    $payload = [];
+  }
+  if (!is_array($payload)) {
+    $payload = [];
+  }
+
+  $normalizedPayload = pdf_template_normalize_payload($payload, $toolKey);
+
+  pdf_template_json_response([
+    'ok' => true,
+    'template' => [
+      'export_version' => 1,
+      'exported_at' => pdf_template_iso_now(),
+      'title' => (string)$row['title'],
+      'tool_key' => $toolKey,
+      'status' => pdf_template_normalize_status((string)($row['status'] ?? 'draft')),
+      'payload' => $normalizedPayload,
+      'source' => [
+        'id' => (int)$row['id'],
+        'version' => (int)$row['version'],
+        'updated_at' => (string)$row['updated_at'],
+        'updated_by_username' => (string)$row['updated_by_username'],
+      ],
+    ],
+  ]);
+}
+
+if ($action === 'import_json' && $method === 'POST') {
+  $importTemplate = $input['template'] ?? null;
+  if (!is_array($importTemplate)) {
+    pdf_template_json_response(['ok' => false, 'error' => 'missing_template'], 400);
+  }
+
+  $toolKey = trim((string)($importTemplate['tool_key'] ?? ''));
+  if ($toolKey === '' && is_array($importTemplate['payload'] ?? null)) {
+    $toolKey = trim((string)(($importTemplate['payload']['tool_key'] ?? '')));
+  }
+  if ($toolKey === '') {
+    pdf_template_json_response(['ok' => false, 'error' => 'missing_tool_key'], 400);
+  }
+  if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {
+    pdf_template_json_response(['ok' => false, 'error' => 'invalid_tool_key'], 400);
+  }
+
+  $payloadInput = $importTemplate['payload'] ?? null;
+  if (!is_array($payloadInput)) {
+    pdf_template_json_response(['ok' => false, 'error' => 'missing_payload'], 400);
+  }
+
+  $payload = pdf_template_normalize_payload($payloadInput, $toolKey);
+  $errors = pdf_template_validate_payload($payload, $toolKey);
+  if ($errors !== []) {
+    pdf_template_json_response(['ok' => false, 'error' => 'invalid_payload', 'details' => $errors], 400);
+  }
+
+  $title = trim((string)($importTemplate['title'] ?? 'Importierte PDF-Vorlage'));
+  if ($title === '') {
+    $title = 'Importierte PDF-Vorlage';
+  }
+
+  $status = pdf_template_normalize_status((string)($importTemplate['status'] ?? 'draft'));
+  $mode = trim((string)($input['mode'] ?? 'create'));
+  if (!in_array($mode, ['create', 'update'], true)) {
+    $mode = 'create';
+  }
+
+  $now = pdf_template_iso_now();
+  $uid = pdf_template_current_uid();
+  $username = pdf_template_current_username();
+
+  if ($mode === 'update') {
+    $id = (int)($input['id'] ?? 0);
+    if ($id <= 0) {
+      pdf_template_json_response(['ok' => false, 'error' => 'missing_id'], 400);
+    }
+
+    $row = pdf_template_fetch_row($db, $id);
+    if (!$row) {
+      pdf_template_json_response(['ok' => false, 'error' => 'not_found'], 404);
+    }
+
+    $currentVersion = (int)($row['version'] ?? 1);
+    $requestedVersion = (int)($input['version'] ?? 0);
+    if ($requestedVersion > 0 && $requestedVersion !== $currentVersion) {
+      pdf_template_json_response([
+        'ok' => false,
+        'error' => 'version_conflict',
+        'current_version' => $currentVersion,
+        'updated_at' => (string)$row['updated_at'],
+        'updated_by_username' => (string)$row['updated_by_username'],
+      ], 409);
+    }
+
+    $newVersion = $currentVersion + 1;
+    $stmt = $db->prepare('UPDATE pdf_templates
+      SET title = ?, tool_key = ?, status = ?, payload_json = ?, version = ?, updated_at = ?, updated_by_user_id = ?, updated_by_username = ?
+      WHERE id = ?');
+    $stmt->execute([
+      $title,
+      $toolKey,
+      $status,
+      json_encode($payload, JSON_THROW_ON_ERROR),
+      $newVersion,
+      $now,
+      $uid,
+      $username,
+      $id,
+    ]);
+
+    $revStmt = $db->prepare('INSERT INTO pdf_template_revisions (template_id, version, title, tool_key, status, payload_json, updated_at, updated_by_user_id, updated_by_username)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $revStmt->execute([
+      $id,
+      $newVersion,
+      $title,
+      $toolKey,
+      $status,
+      json_encode($payload, JSON_THROW_ON_ERROR),
+      $now,
+      $uid,
+      $username,
+    ]);
+
+    pdf_template_json_response([
+      'ok' => true,
+      'id' => $id,
+      'version' => $newVersion,
+      'mode' => 'update',
+      'updated_at' => $now,
+    ]);
+  }
+
+  $stmt = $db->prepare('INSERT INTO pdf_templates (title, tool_key, status, payload_json, owner_user_id, owner_username, version, created_at, updated_at, updated_by_user_id, updated_by_username)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)');
+  $stmt->execute([
+    $title,
+    $toolKey,
+    $status,
+    json_encode($payload, JSON_THROW_ON_ERROR),
+    $uid,
+    $username,
+    $now,
+    $now,
+    $uid,
+    $username,
+  ]);
+
+  $id = (int)$db->lastInsertId();
+  $revStmt = $db->prepare('INSERT INTO pdf_template_revisions (template_id, version, title, tool_key, status, payload_json, updated_at, updated_by_user_id, updated_by_username)
+    VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?)');
+  $revStmt->execute([
+    $id,
+    $title,
+    $toolKey,
+    $status,
+    json_encode($payload, JSON_THROW_ON_ERROR),
+    $now,
+    $uid,
+    $username,
+  ]);
+
+  pdf_template_json_response([
+    'ok' => true,
+    'id' => $id,
+    'version' => 1,
+    'mode' => 'create',
+    'updated_at' => $now,
+  ]);
+}
+
 if ($action === 'create' && $method === 'POST') {
   $toolKey = trim((string)($input['tool_key'] ?? 'nti_tool'));
   if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {
