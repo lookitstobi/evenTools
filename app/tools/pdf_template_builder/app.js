@@ -814,13 +814,42 @@ function onViewportWheel(ev) {
   setZoom(viewState.zoom + delta, ev.clientX, ev.clientY);
 }
 
-async function api(action, payload = null, method = 'GET', query = {}) {
-  const url = new URL('/pdf_template_api.php', window.location.origin);
+function resolveApiBasePath() {
+  const scripts = Array.from(document.getElementsByTagName('script'));
+  const appScriptSrc = scripts
+    .map((script) => script.src)
+    .find((src) => typeof src === 'string' && src.includes('toolserve.php') && src.includes('file=app.js'));
+
+  if (appScriptSrc) {
+    const scriptUrl = new URL(appScriptSrc, window.location.href);
+    const fromToolserve = scriptUrl.pathname.replace(/\/toolserve\.php$/i, '');
+    if (fromToolserve) {
+      return fromToolserve;
+    }
+  }
+
+  const currentPath = window.location.pathname || '/';
+  if (/\/[^/]+\.[a-z0-9]+$/i.test(currentPath)) {
+    return currentPath.replace(/\/[^/]+$/, '') || '';
+  }
+  return currentPath.replace(/\/$/, '');
+}
+
+const API_BASE_PATH = resolveApiBasePath();
+
+function buildApiUrl(action, query = {}) {
+  const apiPath = `${API_BASE_PATH}/pdf_template_api.php`;
+  const url = new URL(apiPath, window.location.origin);
   url.searchParams.set('action', action);
   Object.entries(query).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
     url.searchParams.set(key, String(value));
   });
+  return url;
+}
+
+async function api(action, payload = null, method = 'GET', query = {}) {
+  const url = buildApiUrl(action, query);
 
   if (method === 'GET') {
     const res = await fetch(url.toString(), { credentials: 'same-origin' });
@@ -2564,8 +2593,7 @@ async function previewCurrent() {
     return;
   }
 
-  const url = new URL('/pdf_template_api.php', window.location.origin);
-  url.searchParams.set('action', 'render_preview');
+  const url = buildApiUrl('render_preview');
 
   const res = await fetch(url.toString(), {
     method: 'POST',
