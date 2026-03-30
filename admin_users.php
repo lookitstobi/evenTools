@@ -272,12 +272,8 @@ page_start('Admin · Benutzer');
               <button class="btn btn-danger um-delete-btn" type="button" data-uid="<?=$uid?>">Benutzer loschen</button>
               <div class="um-delete-confirm" id="um-del-<?=$uid?>">
                 <span class="um-delete-warn">Wirklich loschen? Diese Aktion ist unwiederruflich.</span>
-                <form method="post" class="form-display-contents">
-                  <input type="hidden" name="action" value="delete">
-                  <input type="hidden" name="csrf_token" value="<?=h(csrf_token())?>">
-                  <input type="hidden" name="delete_id" value="<?=$uid?>">
-                  <button class="btn btn-danger" type="submit">Ja, loschen</button>
-                </form>
+                <input type="hidden" name="delete_id" value="<?=$uid?>">
+                <button class="btn btn-danger" type="submit" name="action" value="delete" formnovalidate>Ja, loschen</button>
                 <button class="btn js-hide-delete" type="button" data-uid="<?=$uid?>">Abbrechen</button>
               </div>
             <?php else: ?>
