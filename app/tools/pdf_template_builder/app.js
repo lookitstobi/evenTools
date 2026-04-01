@@ -3635,6 +3635,13 @@ function wireEvents() {
     if (ev.repeat && (ev.ctrlKey || ev.metaKey)) {
       return;
     }
+    const ctrl = ev.ctrlKey || ev.metaKey;
+    if (ctrl && ev.key.toLowerCase() === 'd') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      duplicateSelected();
+      return;
+    }
     if (ev.key === 'Escape') {
       closeContextMenu();
       setDrawToolMode('');
@@ -3647,7 +3654,6 @@ function wireEvents() {
     if (tag === 'input' || tag === 'textarea' || tag === 'select') {
       return;
     }
-    const ctrl = ev.ctrlKey || ev.metaKey;
     if (ctrl && ev.key.toLowerCase() === 'z') {
       const now = Date.now();
       if (now - lastUndoShortcutAt < 160) return;
@@ -3664,11 +3670,6 @@ function wireEvents() {
       ev.preventDefault();
       ev.stopPropagation();
       redoAction();
-      return;
-    }
-    if (ctrl && ev.key.toLowerCase() === 'd') {
-      ev.preventDefault();
-      duplicateSelected();
       return;
     }
     if (ctrl && ev.key.toLowerCase() === 'c') {
