@@ -267,12 +267,56 @@ function migrate_patchmatrix_fixup_missing_ports(array $payload): array {
   return $payload;
 }
 
+/**
+ * Benennt den Tool-Key "nti_tool" in users.tools JSON und pdf_templates auf
+ * "pegelTool" um. Idempotent – kann beliebig oft ausgeführt werden.
+ */
+function migrate_rename_nti_tool_to_pegel_tool(array $config): void {
+  // 1. users.sqlite: tools-JSON-Spalte
+  $db = new PDO('sqlite:' . (string)$config['db_path']);
+  $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+  $stmt = $db->query('SELECT id, tools FROM users WHERE tools LIKE \'%"nti_tool"%\'');
+  $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+  foreach ($rows as $row) {
+    try {
+      $tools = json_decode((string)($row['tools'] ?? '[]'), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+      $tools = [];
+    }
+    if (!is_array($tools)) {
+      $tools = [];
+    }
+    $tools = array_map(static fn(string $t) => $t === 'nti_tool' ? 'pegelTool' : $t, $tools);
+    $upd = $db->prepare('UPDATE users SET tools = ? WHERE id = ?');
+    $upd->execute([json_encode(array_values($tools), JSON_THROW_ON_ERROR), (int)$row['id']]);
+  }
+
+  // 2. pdf_templates.sqlite: tool_key + title
+  $pdfDb = new PDO('sqlite:' . (string)$config['pdf_template_db_path']);
+  $pdfDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+  $pdfDb->exec('
+    UPDATE pdf_templates
+    SET tool_key = \'pegelTool\',
+        title    = REPLACE(title, \'nti_tool\', \'pegelTool\')
+    WHERE tool_key = \'nti_tool\'
+  ');
+  $pdfDb->exec('
+    UPDATE pdf_template_revisions
+    SET tool_key = \'pegelTool\',
+        title    = REPLACE(title, \'nti_tool\', \'pegelTool\')
+    WHERE tool_key = \'nti_tool\'
+  ');
+}
+
 try {
   migrate_users_db($config);
   migrate_cuesheet_db();
   migrate_dguv_db();
   migrate_pdf_template_db();
   migrate_grant_builder_to_admins($config);
+  migrate_rename_nti_tool_to_pegel_tool($config);
   migrate_patchmatrix_nexus_config($config);
 
   echo "OK: Migration abgeschlossen.\n";
