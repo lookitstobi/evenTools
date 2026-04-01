@@ -162,7 +162,7 @@ function normalizeElementForEditor(raw) {
     h: clampNumber(el.h, minHeight, 420, type === 'line' ? 1 : 6),
     text: String(el.text || ''),
     bind: String(el.bind || ''),
-    snap: !!el.snap,
+    snap: el.snap !== false,
     font_size: clampNumber(el.font_size, 6, 40, 11),
     font_weight: (el.font_weight === 'bold') ? 'bold' : 'normal',
     align,
@@ -1126,7 +1126,7 @@ function createDefaultPayload(toolKey) {
             h: 2 * step,
             text: 'Neue Vorlage',
             bind: '',
-            snap: false,
+            snap: true,
             font_size: 13,
             font_weight: 'bold',
             align: 'left',
@@ -1852,7 +1852,7 @@ function onStagePointerDown(ev) {
 
   if (drawToolType !== '') {
     ev.preventDefault();
-    const start = clientPointToStageMm(ev.clientX, ev.clientY);
+    const start = getStagePointForInteraction(ev, !ev.shiftKey);
     const preview = document.createElement('div');
     preview.className = `draw-preview draw-preview-${drawToolType}`;
     preview.style.left = `${start.x * MM_TO_PX}px`;
@@ -1897,7 +1897,7 @@ function onStagePointerDown(ev) {
 
 function onDrawPointerMove(ev) {
   if (!drawCtx || !drawCtx.previewEl) return;
-  const point = clientPointToStageMm(ev.clientX, ev.clientY);
+  const point = getStagePointForInteraction(ev, !ev.shiftKey);
   drawCtx.latest = point;
 
   const left = Math.min(drawCtx.start.x, point.x);
@@ -1911,13 +1911,13 @@ function onDrawPointerMove(ev) {
   drawCtx.previewEl.style.height = `${height * MM_TO_PX}px`;
 }
 
-function onDrawPointerUp() {
+function onDrawPointerUp(ev) {
   window.removeEventListener('pointermove', onDrawPointerMove);
   if (!drawCtx) return;
 
   const step = getGridStepMm();
   const start = drawCtx.start;
-  const end = drawCtx.latest || start;
+  const end = ev ? getStagePointForInteraction(ev, !ev.shiftKey) : (drawCtx.latest || start);
   const left = Math.min(start.x, end.x);
   const top = Math.min(start.y, end.y);
   const rawW = Math.abs(end.x - start.x);
@@ -2247,6 +2247,30 @@ function getGridStepMm() {
   return px / MM_TO_PX;
 }
 
+function snapValueToGridMm(valueMm) {
+  const stepMm = getGridStepMm();
+  return Math.round(valueMm / stepMm) * stepMm;
+}
+
+function clampStagePointMm(point) {
+  return {
+    x: Math.max(0, Math.min(getPageWidthMm(), Number(point?.x || 0))),
+    y: Math.max(0, Math.min(getPageHeightMm(), Number(point?.y || 0))),
+  };
+}
+
+function snapStagePointMm(point) {
+  return clampStagePointMm({
+    x: snapValueToGridMm(point.x),
+    y: snapValueToGridMm(point.y),
+  });
+}
+
+function getStagePointForInteraction(ev, snapActive) {
+  const point = clientPointToStageMm(ev.clientX, ev.clientY);
+  return snapActive ? snapStagePointMm(point) : point;
+}
+
 function setDrawToolMode(type = '') {
   drawToolType = type || '';
   document.querySelectorAll('.tool-palette-btn[data-add-type]').forEach((btn) => {
@@ -2443,13 +2467,14 @@ function onPointerMove(ev) {
 
   const dxMm = dxPx / MM_TO_PX / viewState.zoom;
   const dyMm = dyPx / MM_TO_PX / viewState.zoom;
-  const snapDefault = !!(el?.snap);
+  const snapDefault = dragCtx.mode === 'drag-multi' || dragCtx.mode === 'resize-group'
+    ? true
+    : (el?.snap !== false);
   const snapActive = ev.shiftKey ? !snapDefault : snapDefault;
 
   const snapToGrid = (valueMm) => {
     if (!snapActive) return valueMm;
-    const stepMm = getGridStepMm();
-    return Math.round(valueMm / stepMm) * stepMm;
+    return snapValueToGridMm(valueMm);
   };
 
   if (dragCtx.mode === 'drag-multi') {
@@ -2464,6 +2489,8 @@ function onPointerMove(ev) {
     let nextGroupY = Math.max(0, Math.min(getPageHeightMm() - groupH, minStartY + dyMm));
     nextGroupX = snapToGrid(nextGroupX);
     nextGroupY = snapToGrid(nextGroupY);
+    nextGroupX = Math.max(0, Math.min(getPageWidthMm() - groupW, nextGroupX));
+    nextGroupY = Math.max(0, Math.min(getPageHeightMm() - groupH, nextGroupY));
 
     const offsetX = nextGroupX - minStartX;
     const offsetY = nextGroupY - minStartY;
@@ -2518,6 +2545,29 @@ function onPointerMove(ev) {
 
     nextW = Math.max(1, nextW);
     nextH = Math.max(1, nextH);
+
+    const handle = String(dragCtx.handle || 'se');
+    const snapXPos = ['w', 'nw', 'sw'].includes(handle);
+    const snapYPos = ['n', 'nw', 'ne'].includes(handle);
+    const snapW = ['e', 'w', 'ne', 'nw', 'se', 'sw'].includes(handle);
+    const snapH = ['n', 's', 'ne', 'nw', 'se', 'sw'].includes(handle);
+
+    if (snapXPos) {
+      nextX = snapToGrid(nextX);
+    }
+    if (snapYPos) {
+      nextY = snapToGrid(nextY);
+    }
+    if (snapW) {
+      nextW = Math.max(1, snapToGrid(nextW));
+    }
+    if (snapH) {
+      nextH = Math.max(1, snapToGrid(nextH));
+    }
+
+    nextX = Math.max(0, Math.min(getPageWidthMm() - nextW, nextX));
+    nextY = Math.max(0, Math.min(getPageHeightMm() - nextH, nextY));
+
     const sx = nextW / b.w;
     const sy = nextH / b.h;
 
@@ -2706,6 +2756,8 @@ function onPointerMove(ev) {
   let nextY = Math.max(0, Math.min(getPageHeightMm(), dragCtx.startY + dyMm));
   nextX = snapToGrid(nextX);
   nextY = snapToGrid(nextY);
+  nextX = Math.max(0, Math.min(getPageWidthMm(), nextX));
+  nextY = Math.max(0, Math.min(getPageHeightMm(), nextY));
 
   el.x = Number(nextX.toFixed(1));
   el.y = Number(nextY.toFixed(1));
@@ -3135,7 +3187,7 @@ function addElement(elementTypeOverride = null, boundsOverride = null) {
     h: startH,
     text: 'Neues Element',
     bind: '',
-    snap: false,
+    snap: true,
     font_size: 11,
     font_weight: 'normal',
     font_family_id: 'helvetica',
