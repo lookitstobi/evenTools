@@ -205,7 +205,6 @@ function page_start(string $title, bool $show_nav = true): void {
 
     if ($is_authed) {
       echo "<a class=\"btn\" href=\"/index.php\">Home</a>";
-      echo "<a class=\"btn\" href=\"/color_inventory.php\">Farben</a>";
       echo "<span class=\"chip\">Angemeldet als <strong>{$user}</strong></span>";
       if ($is_admin) {
         echo "<a class=\"btn\" href=\"/admin_users.php\">Admin</a>";
