@@ -1792,7 +1792,18 @@ async function generateTemplatePDF(){
     correction_k2: getVal('k2').trim(),
   };
 
-  const url = new URL('/pdf_template_api.php', window.location.origin);
+  let apiPath = '/pdf_template_api.php';
+  const scriptSrc = Array.from(document.getElementsByTagName('script'))
+    .map((script) => script.src)
+    .find((src) => typeof src === 'string' && src.includes('toolserve.php') && src.includes('name=nti_tool'));
+  if (scriptSrc) {
+    const scriptUrl = new URL(scriptSrc, window.location.href);
+    if (/\/toolserve\.php$/i.test(scriptUrl.pathname)) {
+      apiPath = scriptUrl.pathname.replace(/\/toolserve\.php$/i, '/pdf_template_api.php');
+    }
+  }
+
+  const url = new URL(apiPath, window.location.origin);
   url.searchParams.set('action', 'render_tool');
 
   const res = await fetch(url.toString(), {

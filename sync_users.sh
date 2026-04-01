@@ -17,14 +17,34 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # Variablen sicher aus .env.local lesen (verhindert Shell-Expansion von Sonderzeichen wie $)
-_env_get() { grep -E "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2-; }
+# und liefert bei fehlendem Key eine leere Zeichenkette (wichtig wegen set -e).
+_env_get() {
+  grep -E "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true
+}
 STRATO_HOST="$(_env_get STRATO_HOST)"
 STRATO_USER="$(_env_get STRATO_USER)"
 STRATO_PASS="$(_env_get STRATO_PASS)"
 STRATO_PATH="$(_env_get STRATO_PATH)"
+APP_DATA_DIR_LOCAL="$(_env_get APP_DATA_DIR)"
 
-# Lokaler DB-Pfad (Codespace nutzt app/users.sqlite, da kein data/-Ordner angelegt)
-LOCAL_DB="$SCRIPT_DIR/app/users.sqlite"
+# Lokalen DB-Pfad aus app/config.php ermitteln, damit APP_DATA_DIR/Fallback-Logik konsistent ist.
+resolve_local_db_path() {
+  if [ -n "$APP_DATA_DIR_LOCAL" ]; then
+    APP_DATA_DIR="$APP_DATA_DIR_LOCAL" php -r '$c=require "app/config.php"; echo $c["db_path"];' 2>/dev/null
+    return
+  fi
+
+  php -r '$c=require "app/config.php"; echo $c["db_path"];' 2>/dev/null
+}
+
+LOCAL_DB="$(cd "$SCRIPT_DIR" && resolve_local_db_path)"
+if [ -z "$LOCAL_DB" ]; then
+  LOCAL_DB="$SCRIPT_DIR/app/users.sqlite"
+fi
+
+LOCAL_DB_DIR="$(dirname "$LOCAL_DB")"
+mkdir -p "$LOCAL_DB_DIR"
+
 # Remote-Pfad: SFTP-Root ist direkt das App-Verzeichnis (data/ liegt direkt darunter)
 REMOTE_DB="/data/users.sqlite"
 
@@ -66,6 +86,7 @@ CMD="${1:-}"
 case "$CMD" in
   pull)
     echo -e "${YELLOW}⬇  Lade users.sqlite vom Server...${NC}"
+    echo -e "   Lokales Ziel: $LOCAL_DB"
     BACKUP="$LOCAL_DB.bak_$(date +%Y%m%d_%H%M%S)"
     if [ -f "$LOCAL_DB" ]; then
       cp "$LOCAL_DB" "$BACKUP"
@@ -77,6 +98,7 @@ case "$CMD" in
 
   push)
     echo -e "${YELLOW}⬆  Lade users.sqlite auf den Server...${NC}"
+    echo -e "   Lokale Quelle: $LOCAL_DB"
     if [ ! -f "$LOCAL_DB" ]; then
       echo -e "${RED}❌ Lokale DB nicht gefunden: $LOCAL_DB${NC}"
       exit 1

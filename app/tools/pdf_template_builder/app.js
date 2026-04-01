@@ -814,7 +814,7 @@ function onViewportWheel(ev) {
   setZoom(viewState.zoom + delta, ev.clientX, ev.clientY);
 }
 
-function resolveApiBasePath() {
+function resolveApiPath() {
   const scripts = Array.from(document.getElementsByTagName('script'));
   const appScriptSrc = scripts
     .map((script) => script.src)
@@ -822,24 +822,33 @@ function resolveApiBasePath() {
 
   if (appScriptSrc) {
     const scriptUrl = new URL(appScriptSrc, window.location.href);
-    const fromToolserve = scriptUrl.pathname.replace(/\/toolserve\.php$/i, '');
-    if (fromToolserve) {
-      return fromToolserve;
+    if (/\/toolserve\.php$/i.test(scriptUrl.pathname)) {
+      return scriptUrl.pathname.replace(/\/toolserve\.php$/i, '/pdf_template_api.php');
     }
   }
 
   const currentPath = window.location.pathname || '/';
-  if (/\/[^/]+\.[a-z0-9]+$/i.test(currentPath)) {
-    return currentPath.replace(/\/[^/]+$/, '') || '';
+  if (/\/tool\.php$/i.test(currentPath)) {
+    return currentPath.replace(/\/tool\.php$/i, '/pdf_template_api.php');
   }
-  return currentPath.replace(/\/$/, '');
+
+  if (/\/toolserve\.php$/i.test(currentPath)) {
+    return currentPath.replace(/\/toolserve\.php$/i, '/pdf_template_api.php');
+  }
+
+  if (/\/[^/]+\.[a-z0-9]+$/i.test(currentPath)) {
+    const base = currentPath.replace(/\/[^/]+$/, '') || '';
+    return `${base}/pdf_template_api.php`;
+  }
+
+  const base = currentPath.replace(/\/$/, '');
+  return `${base}/pdf_template_api.php`;
 }
 
-const API_BASE_PATH = resolveApiBasePath();
+const API_PATH = resolveApiPath();
 
 function buildApiUrl(action, query = {}) {
-  const apiPath = `${API_BASE_PATH}/pdf_template_api.php`;
-  const url = new URL(apiPath, window.location.origin);
+  const url = new URL(API_PATH, window.location.origin);
   url.searchParams.set('action', action);
   Object.entries(query).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
@@ -851,20 +860,34 @@ function buildApiUrl(action, query = {}) {
 async function api(action, payload = null, method = 'GET', query = {}) {
   const url = buildApiUrl(action, query);
 
-  if (method === 'GET') {
-    const res = await fetch(url.toString(), { credentials: 'same-origin' });
-    return res.json();
+  const requestInit = method === 'GET'
+    ? { credentials: 'same-origin' }
+    : {
+        method,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload ? { ...payload, csrf: state.csrf } : { csrf: state.csrf }),
+      };
+
+  const res = await fetch(url.toString(), requestInit);
+
+  try {
+    const parsed = await res.json();
+    if (parsed && typeof parsed === 'object') {
+      if (!Object.prototype.hasOwnProperty.call(parsed, 'http_status')) {
+        parsed.http_status = res.status;
+      }
+      return parsed;
+    }
+  } catch (_) {
+    // Fallback handled below when response is not JSON.
   }
 
-  const body = payload ? { ...payload, csrf: state.csrf } : { csrf: state.csrf };
-  const res = await fetch(url.toString(), {
-    method,
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  return res.json();
+  return {
+    ok: res.ok,
+    error: res.ok ? null : `http_${res.status}`,
+    http_status: res.status,
+  };
 }
 
 function createDefaultPayload(toolKey) {
@@ -2347,6 +2370,9 @@ function refreshCurrentHeader() {
 async function loadTemplateList() {
   const result = await api('list');
   if (!result.ok) {
+    if (result.http_status === 403) {
+      throw new Error('Keine Berechtigung zum Laden der Vorlagen. Bitte Tool-Zuweisung oder Rolle prüfen.');
+    }
     throw new Error(result.error || 'list_failed');
   }
   state.list = Array.isArray(result.items) ? result.items : [];

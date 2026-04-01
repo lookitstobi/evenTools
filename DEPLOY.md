@@ -99,6 +99,17 @@ Im Browser:
 - Runtime-DB-Dateien nie ins Repo committen (`*.sqlite` ist ignoriert).
 - Für CLI-Kommandos gilt `.htaccess`-`SetEnv` nicht zuverlässig; bei Bedarf `APP_DATA_DIR=...` explizit voranstellen.
 
+## Preview-Sync der Nutzer (Live -> Codespace)
+
+- Wenn ein Nutzer auf der Live-Seite neu angelegt wurde und in der Preview fehlt, zuerst synchronisieren:
+
+```bash
+cd /workspaces/toolsapp
+./sync_users.sh pull
+```
+
+- Das Skript ermittelt den lokalen Zielpfad über `app/config.php` (inklusive `APP_DATA_DIR`-Logik) und legt vor dem Überschreiben automatisch ein Backup an.
+
 ## Häufige Fehlerbilder und Lösung
 
 ### 1) Doppelte Ordnerstruktur (`.../toolsapp/HTML_Tools/toolsapp`)

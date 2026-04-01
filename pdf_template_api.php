@@ -31,13 +31,20 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $input = $method === 'POST' ? pdf_template_read_json_input() : [];
 $action = (string)($_GET['action'] ?? $input['action'] ?? '');
 
-$runtimeActions = ['render_tool'];
-$isRuntimeAction = in_array($action, $runtimeActions, true);
+$adminOnlyActions = ['create', 'save', 'set_status', 'delete', 'duplicate', 'import_json'];
+$builderToolActions = ['bootstrap', 'list_repo_images', 'list', 'get', 'export', 'render_preview', 'render_final'];
+$isAdminOnlyAction = in_array($action, $adminOnlyActions, true);
+$isBuilderToolAction = in_array($action, $builderToolActions, true);
+$isRuntimeAction = $action === 'render_tool';
 
-if ($isRuntimeAction) {
+if ($isAdminOnlyAction) {
+  pdf_template_require_admin_tool_access();
+} elseif ($isBuilderToolAction) {
+  pdf_template_require_tool_access('pdf_template_builder');
+} elseif ($isRuntimeAction) {
   require_login();
 } else {
-  pdf_template_require_admin_tool_access();
+  require_login();
 }
 
 if ($method === 'POST' && !$isRuntimeAction) {
