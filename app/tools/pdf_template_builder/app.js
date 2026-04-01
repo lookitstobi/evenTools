@@ -5,6 +5,7 @@ const state = {
   csrf: '',
   list: [],
   current: null,
+  currentPageIndex: 0,
   selectedIds: [],
   allowedToolKeys: [],
   fieldCatalog: {},
@@ -45,6 +46,8 @@ const propTextColorEl = document.getElementById('propTextColor');
 const propStrokeColorEl = document.getElementById('propStrokeColor');
 const propFillColorEl = document.getElementById('propFillColor');
 const propStrokeWidthEl = document.getElementById('propStrokeWidth');
+const propChartVariantEl = document.getElementById('propChartVariant');
+const propChartShowLimitEl = document.getElementById('propChartShowLimit');
 const propImageSrcEl = document.getElementById('propImageSrc');
 const selectionInfoEl = document.getElementById('selectionInfo');
 const selectionToolbarEl = document.getElementById('selectionToolbar');
@@ -92,6 +95,14 @@ const btnUngroupSelection = document.getElementById('btnUngroupSelection');
 const btnAssign = document.getElementById('btnAssign');
 const layerListEl = document.getElementById('layerList');
 const layerCountInfoEl = document.getElementById('layerCountInfo');
+const pageListEl = document.getElementById('pageList');
+const pageCountInfoEl = document.getElementById('pageCountInfo');
+const btnPageAdd = document.getElementById('btnPageAdd');
+const btnPageDelete = document.getElementById('btnPageDelete');
+const btnPageMoveUp = document.getElementById('btnPageMoveUp');
+const btnPageMoveDown = document.getElementById('btnPageMoveDown');
+const stageMetaLabelEl = document.getElementById('stageMetaLabel');
+const stagePageIndicatorEl = document.getElementById('stagePageIndicator');
 const templateVersionInfoEl = document.getElementById('templateVersionInfo');
 const bindingListEl = document.getElementById('bindingList');
 const bindingSearchInputEl = document.getElementById('bindingSearchInput');
@@ -99,9 +110,15 @@ const bindingToolFilterSelectEl = document.getElementById('bindingToolFilterSele
 const repoImageSelectEl = document.getElementById('repoImageSelect');
 const btnApplyRepoImageEl = document.getElementById('btnApplyRepoImage');
 const imageUploadInputEl = document.getElementById('imageUploadInput');
+const propFontWeightToggleEls = Array.from(document.querySelectorAll('[data-font-weight]'));
+const propAlignToggleEls = Array.from(document.querySelectorAll('[data-align-value]'));
+const pdfTitleTemplateInputEl = document.getElementById('pdfTitleTemplateInput');
+const splitterLeftEl = document.getElementById('splitterLeft');
+const splitterRightEl = document.getElementById('splitterRight');
+const builderShellEl = document.querySelector('.builder-shell');
 
-const PAGE_WIDTH_MM = 210;
-const PAGE_HEIGHT_MM = 297;
+const DEFAULT_PAGE_WIDTH_MM = 210;
+const DEFAULT_PAGE_HEIGHT_MM = 297;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.4;
 const ZOOM_STEP = 0.1;
@@ -130,7 +147,7 @@ function clampNumber(value, min, max, fallback) {
 
 function normalizeElementForEditor(raw) {
   const el = raw && typeof raw === 'object' ? raw : {};
-  const type = ['text', 'line', 'rect', 'rect_fill', 'image'].includes(el.type) ? el.type : 'text';
+  const type = ['text', 'line', 'rect', 'rect_fill', 'image', 'chart'].includes(el.type) ? el.type : 'text';
   const minHeight = type === 'line' ? 0.6 : 1;
   const align = ['left', 'center', 'right'].includes(el.align) ? el.align : 'left';
   const overflowMode = ['clip', 'ellipsis'].includes(el.overflow_mode) ? el.overflow_mode : 'clip';
@@ -139,10 +156,10 @@ function normalizeElementForEditor(raw) {
   return {
     id: String(el.id || `el_${Math.random().toString(16).slice(2, 10)}`),
     type,
-    x: clampNumber(el.x, 0, PAGE_WIDTH_MM, 0),
-    y: clampNumber(el.y, 0, PAGE_HEIGHT_MM, 0),
-    w: clampNumber(el.w, 1, PAGE_WIDTH_MM, 50),
-    h: clampNumber(el.h, minHeight, PAGE_HEIGHT_MM, type === 'line' ? 1 : 6),
+    x: clampNumber(el.x, 0, 420, 0),
+    y: clampNumber(el.y, 0, 420, 0),
+    w: clampNumber(el.w, 1, 420, 50),
+    h: clampNumber(el.h, minHeight, 420, type === 'line' ? 1 : 6),
     text: String(el.text || ''),
     bind: String(el.bind || ''),
     snap: !!el.snap,
@@ -160,6 +177,19 @@ function normalizeElementForEditor(raw) {
     overflow_mode: overflowMode,
     max_lines: Math.round(clampNumber(el.max_lines, 0, 200, 0)),
     font_family_id: fontFamilyId,
+    chart_variant: el.chart_variant === 'line' ? 'line' : 'line',
+    chart_show_limit: Object.prototype.hasOwnProperty.call(el, 'chart_show_limit') ? !!el.chart_show_limit : true,
+  };
+}
+
+function normalizePageForEditor(rawPage, index) {
+  const page = rawPage && typeof rawPage === 'object' ? rawPage : {};
+  const elementsRaw = Array.isArray(page.elements) ? page.elements : [];
+
+  return {
+    id: String(page.id || `page_${index + 1}`),
+    name: String(page.name || `Seite ${index + 1}`),
+    elements: elementsRaw.map((el) => normalizeElementForEditor(el)),
   };
 }
 
@@ -168,19 +198,58 @@ function normalizePayloadForEditor(payload, fallbackToolKey) {
   const page = src.page && typeof src.page === 'object' ? src.page : {};
   const toolKey = String(src.tool_key || fallbackToolKey || 'nti_tool');
   const elementsRaw = Array.isArray(src.elements) ? src.elements : [];
+  const pagesRaw = Array.isArray(src.pages) ? src.pages : [];
+  const pages = (pagesRaw.length > 0 ? pagesRaw : [{ id: 'page_1', name: 'Seite 1', elements: elementsRaw }])
+    .map((pageEntry, index) => normalizePageForEditor(pageEntry, index));
 
   return {
-    schema_version: 2,
+    schema_version: 3,
     tool_key: toolKey,
+    pdf_title_template: String(src.pdf_title_template || ''),
     page: {
       format: 'a4',
       orientation: page.orientation === 'landscape' ? 'landscape' : 'portrait',
       unit: 'mm',
-      width: clampNumber(page.width, 1, 210, 210),
-      height: clampNumber(page.height, 1, 297, 297),
+      width: clampNumber(page.width, 1, 420, DEFAULT_PAGE_WIDTH_MM),
+      height: clampNumber(page.height, 1, 420, DEFAULT_PAGE_HEIGHT_MM),
     },
-    elements: elementsRaw.map((el) => normalizeElementForEditor(el)),
+    pages,
   };
+}
+
+function getPageSettings() {
+  const page = state.current?.payload?.page;
+  return {
+    width: clampNumber(page?.width, 1, 420, DEFAULT_PAGE_WIDTH_MM),
+    height: clampNumber(page?.height, 1, 420, DEFAULT_PAGE_HEIGHT_MM),
+    orientation: page?.orientation === 'landscape' ? 'landscape' : 'portrait',
+  };
+}
+
+function getPageWidthMm() {
+  return getPageSettings().width;
+}
+
+function getPageHeightMm() {
+  return getPageSettings().height;
+}
+
+function getPages() {
+  return Array.isArray(state.current?.payload?.pages) ? state.current.payload.pages : [];
+}
+
+function ensureValidCurrentPageIndex() {
+  const pages = getPages();
+  if (pages.length === 0) {
+    state.currentPageIndex = 0;
+    return;
+  }
+  state.currentPageIndex = Math.max(0, Math.min(state.currentPageIndex, pages.length - 1));
+}
+
+function getCurrentPage() {
+  ensureValidCurrentPageIndex();
+  return getPages()[state.currentPageIndex] || null;
 }
 
 function elementImageAspect(el) {
@@ -230,13 +299,15 @@ function showMessage(text, isError = false) {
 }
 
 /* ── Undo / Redo ──────────────────────────────────────────── */
-function snapshotElements() {
-  if (!state.current?.payload?.elements) return [];
-  return JSON.parse(JSON.stringify(state.current.payload.elements));
+function snapshotPayload() {
+  if (!state.current?.payload) return null;
+  return JSON.parse(JSON.stringify(state.current.payload));
 }
 
 function pushUndo() {
-  state.undoStack.push(snapshotElements());
+  const snapshot = snapshotPayload();
+  if (!snapshot) return;
+  state.undoStack.push(snapshot);
   if (state.undoStack.length > 60) state.undoStack.shift();
   state.redoStack = [];
 }
@@ -272,9 +343,14 @@ function undoAction() {
   resetUndoDebounceState();
   if (state.undoStack.length === 0) return;
   if (state.current?.payload) {
-    state.redoStack.push(snapshotElements());
-    state.current.payload.elements = state.undoStack.pop();
+    const redoSnapshot = snapshotPayload();
+    if (redoSnapshot) {
+      state.redoStack.push(redoSnapshot);
+    }
+    state.current.payload = state.undoStack.pop();
+    ensureValidCurrentPageIndex();
     renderStage();
+    renderPageList();
     renderLayerList();
     updatePropertyInputs();
     updateSelectionToolbar();
@@ -286,9 +362,14 @@ function redoAction() {
   resetUndoDebounceState();
   if (state.redoStack.length === 0) return;
   if (state.current?.payload) {
-    state.undoStack.push(snapshotElements());
-    state.current.payload.elements = state.redoStack.pop();
+    const undoSnapshot = snapshotPayload();
+    if (undoSnapshot) {
+      state.undoStack.push(undoSnapshot);
+    }
+    state.current.payload = state.redoStack.pop();
+    ensureValidCurrentPageIndex();
     renderStage();
+    renderPageList();
     renderLayerList();
     updatePropertyInputs();
     updateSelectionToolbar();
@@ -297,7 +378,132 @@ function redoAction() {
 }
 
 /* ── Layer list ───────────────────────────────────────────── */
-const LAYER_ICONS = { text: 'T', line: '―', rect: '☐', rect_fill: '▪', image: '🖼' };
+const LAYER_ICONS = { text: 'T', line: '―', rect: '☐', rect_fill: '▪', image: '🖼', chart: '↗' };
+
+function renderPageList() {
+  if (!pageListEl) return;
+  const pages = getPages();
+  pageListEl.innerHTML = '';
+
+  if (pageCountInfoEl) {
+    pageCountInfoEl.textContent = String(pages.length || 1);
+  }
+
+  pages.forEach((page, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'page-item' + (index === state.currentPageIndex ? ' is-active' : '');
+    button.dataset.index = String(index);
+
+    const pageIndex = document.createElement('span');
+    pageIndex.className = 'page-item-index';
+    pageIndex.textContent = String(index + 1);
+
+    const label = document.createElement('span');
+    label.className = 'page-item-label';
+    label.textContent = page.name || `Seite ${index + 1}`;
+
+    button.appendChild(pageIndex);
+    button.appendChild(label);
+    button.addEventListener('click', () => {
+      state.currentPageIndex = index;
+      setSelectedIds([]);
+      renderPageList();
+      renderStage();
+      renderLayerList();
+      updatePropertyInputs();
+      updateSelectionToolbar();
+    });
+    pageListEl.appendChild(button);
+  });
+
+  if (btnPageDelete) {
+    btnPageDelete.disabled = pages.length <= 1;
+  }
+  if (btnPageMoveUp) {
+    btnPageMoveUp.disabled = pages.length <= 1 || state.currentPageIndex <= 0;
+  }
+  if (btnPageMoveDown) {
+    btnPageMoveDown.disabled = pages.length <= 1 || state.currentPageIndex >= pages.length - 1;
+  }
+  if (stagePageIndicatorEl) {
+    stagePageIndicatorEl.textContent = `Seite ${pages.length === 0 ? 1 : state.currentPageIndex + 1} / ${Math.max(1, pages.length)}`;
+  }
+  if (stageMetaLabelEl) {
+    const { width, height, orientation } = getPageSettings();
+    stageMetaLabelEl.textContent = `Seite ${state.currentPageIndex + 1} · ${width.toFixed(0)} × ${height.toFixed(0)} mm · ${orientation}`;
+  }
+}
+
+function createEmptyPage(index) {
+  return {
+    id: `page_${Math.random().toString(16).slice(2, 10)}`,
+    name: `Seite ${index + 1}`,
+    elements: [],
+  };
+}
+
+function renumberPages() {
+  getPages().forEach((page, index) => {
+    if (!page.name || /^Seite\s+\d+$/i.test(page.name)) {
+      page.name = `Seite ${index + 1}`;
+    }
+  });
+}
+
+function addPage() {
+  if (!state.current?.payload) return;
+  pushUndo();
+  const pages = getPages();
+  pages.push(createEmptyPage(pages.length));
+  renumberPages();
+  state.currentPageIndex = pages.length - 1;
+  setSelectedIds([]);
+  renderPageList();
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  updateSelectionToolbar();
+  showMessage('Seite hinzugefügt.');
+}
+
+function deleteCurrentPage() {
+  const pages = getPages();
+  if (pages.length <= 1) {
+    showMessage('Mindestens eine Seite muss erhalten bleiben.', true);
+    return;
+  }
+  pushUndo();
+  pages.splice(state.currentPageIndex, 1);
+  renumberPages();
+  state.currentPageIndex = Math.max(0, Math.min(state.currentPageIndex, pages.length - 1));
+  setSelectedIds([]);
+  renderPageList();
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  updateSelectionToolbar();
+  showMessage('Seite gelöscht.');
+}
+
+function moveCurrentPage(direction) {
+  const pages = getPages();
+  const nextIndex = state.currentPageIndex + direction;
+  if (nextIndex < 0 || nextIndex >= pages.length) {
+    return;
+  }
+  pushUndo();
+  const [page] = pages.splice(state.currentPageIndex, 1);
+  pages.splice(nextIndex, 0, page);
+  renumberPages();
+  state.currentPageIndex = nextIndex;
+  renderPageList();
+  renderStage();
+  renderLayerList();
+  updatePropertyInputs();
+  updateSelectionToolbar();
+  showMessage(direction < 0 ? 'Seite nach vorn verschoben.' : 'Seite nach hinten verschoben.');
+}
 
 function renderLayerList() {
   if (!layerListEl) return;
@@ -495,10 +701,14 @@ function renderBindingList(filter = '') {
 
 /* ── Selection toolbar show/hide + count update ──────────── */
 function updateSelectionToolbar() {
-  if (!selectionToolbarEl) return;
   const count = state.selectedIds.length;
-  selectionToolbarEl.classList.toggle('is-disabled', count === 0);
-  selectionToolbarEl.querySelectorAll('button').forEach((btn) => {
+  if (selectionToolbarEl) {
+    selectionToolbarEl.classList.toggle('is-disabled', count === 0);
+    selectionToolbarEl.querySelectorAll('button').forEach((btn) => {
+      btn.disabled = count === 0;
+    });
+  }
+  document.querySelectorAll('.align-action[data-align], .distribute-action[data-distribute]').forEach((btn) => {
     btn.disabled = count === 0;
   });
   if (selectionInfoEl) {
@@ -539,11 +749,11 @@ function alignSelection(type) {
       
       let newX = minX, newY = minY;
       if (type === 'left') newX = 0;
-      else if (type === 'right') newX = PAGE_WIDTH_MM - gw;
-      else if (type === 'hcenter') newX = (PAGE_WIDTH_MM - gw) / 2;
+      else if (type === 'right') newX = getPageWidthMm() - gw;
+      else if (type === 'hcenter') newX = (getPageWidthMm() - gw) / 2;
       else if (type === 'top') newY = 0;
-      else if (type === 'bottom') newY = PAGE_HEIGHT_MM - gh;
-      else if (type === 'vcenter') newY = (PAGE_HEIGHT_MM - gh) / 2;
+      else if (type === 'bottom') newY = getPageHeightMm() - gh;
+      else if (type === 'vcenter') newY = (getPageHeightMm() - gh) / 2;
       
       const ox = newX - minX, oy = newY - minY;
       groupElems.forEach(el => {
@@ -556,11 +766,11 @@ function alignSelection(type) {
   const ungrouped = items.filter(el => !el.group_id);
 
   if (type === 'page-left')    { items.forEach(el => { el.x = 0; }); }
-  else if (type === 'page-right')  { items.forEach(el => { el.x = PAGE_WIDTH_MM - el.w; }); }
-  else if (type === 'page-hcenter') { items.forEach(el => { el.x = (PAGE_WIDTH_MM - el.w) / 2; }); }
+  else if (type === 'page-right')  { items.forEach(el => { el.x = getPageWidthMm() - el.w; }); }
+  else if (type === 'page-hcenter') { items.forEach(el => { el.x = (getPageWidthMm() - el.w) / 2; }); }
   else if (type === 'page-top')    { items.forEach(el => { el.y = 0; }); }
-  else if (type === 'page-bottom') { items.forEach(el => { el.y = PAGE_HEIGHT_MM - el.h; }); }
-  else if (type === 'page-vcenter') { items.forEach(el => { el.y = (PAGE_HEIGHT_MM - el.h) / 2; }); }
+  else if (type === 'page-bottom') { items.forEach(el => { el.y = getPageHeightMm() - el.h; }); }
+  else if (type === 'page-vcenter') { items.forEach(el => { el.y = (getPageHeightMm() - el.h) / 2; }); }
   else {
     // Align relative to bounding box of selection
     const b = selectedBoundsMm();
@@ -639,8 +849,8 @@ function duplicateSelected() {
   const newIds = [];
   items.forEach(el => {
     const copy = { ...el, id: `el_${Math.random().toString(16).slice(2, 10)}` };
-    copy.x = Number(Math.min(PAGE_WIDTH_MM - copy.w, copy.x + step).toFixed(1));
-    copy.y = Number(Math.min(PAGE_HEIGHT_MM - copy.h, copy.y + step).toFixed(1));
+    copy.x = Number(Math.min(getPageWidthMm() - copy.w, copy.x + step).toFixed(1));
+    copy.y = Number(Math.min(getPageHeightMm() - copy.h, copy.y + step).toFixed(1));
     copy.group_id = '';
     getCurrentElements().push(copy);
     newIds.push(copy.id);
@@ -668,8 +878,8 @@ function pasteClipboard() {
   const newIds = [];
   state.clipboard.forEach(el => {
     const copy = { ...el, id: `el_${Math.random().toString(16).slice(2, 10)}` };
-    copy.x = Number(Math.min(PAGE_WIDTH_MM - copy.w, copy.x + step * 2).toFixed(1));
-    copy.y = Number(Math.min(PAGE_HEIGHT_MM - copy.h, copy.y + step * 2).toFixed(1));
+    copy.x = Number(Math.min(getPageWidthMm() - copy.w, copy.x + step * 2).toFixed(1));
+    copy.y = Number(Math.min(getPageHeightMm() - copy.h, copy.y + step * 2).toFixed(1));
     copy.group_id = '';
     getCurrentElements().push(copy);
     newIds.push(copy.id);
@@ -893,7 +1103,7 @@ async function api(action, payload = null, method = 'GET', query = {}) {
 function createDefaultPayload(toolKey) {
   const step = getGridStepMm();
   return normalizePayloadForEditor({
-    schema_version: 2,
+    schema_version: 3,
     tool_key: toolKey,
     page: {
       format: 'a4',
@@ -902,36 +1112,40 @@ function createDefaultPayload(toolKey) {
       width: 210,
       height: 297,
     },
-    elements: [
+    pages: [
       {
-        id: `el_${Math.random().toString(16).slice(2, 10)}`,
-        type: 'text',
-        x: 4 * step,
-        y: 4 * step,
-        w: 24 * step,
-        h: 2 * step,
-        text: 'Neue Vorlage',
-        bind: '',
-        snap: false,
-        font_size: 13,
-        font_weight: 'bold',
-        align: 'left',
-        line_height_factor: 1.2,
-        baseline_offset_mm: 0,
-        overflow_mode: 'clip',
-        max_lines: 0,
-        font_family_id: 'helvetica',
-        group_id: '',
+        id: 'page_1',
+        name: 'Seite 1',
+        elements: [
+          {
+            id: `el_${Math.random().toString(16).slice(2, 10)}`,
+            type: 'text',
+            x: 4 * step,
+            y: 4 * step,
+            w: 24 * step,
+            h: 2 * step,
+            text: 'Neue Vorlage',
+            bind: '',
+            snap: false,
+            font_size: 13,
+            font_weight: 'bold',
+            align: 'left',
+            line_height_factor: 1.2,
+            baseline_offset_mm: 0,
+            overflow_mode: 'clip',
+            max_lines: 0,
+            font_family_id: 'helvetica',
+            group_id: '',
+          },
+        ],
       },
     ],
   }, toolKey);
 }
 
 function getCurrentElements() {
-  if (!state.current || !state.current.payload || !Array.isArray(state.current.payload.elements)) {
-    return [];
-  }
-  return state.current.payload.elements;
+  const page = getCurrentPage();
+  return Array.isArray(page?.elements) ? page.elements : [];
 }
 
 function fillTemplateSelect() {
@@ -974,12 +1188,95 @@ function fillBindingSelect(toolKey) {
   propBindEl.appendChild(empty);
 
   const list = catalogItemsForTool(toolKey);
-  list.forEach(item => {
-    const opt = document.createElement('option');
-    opt.value = item.key;
-    opt.textContent = `${item.key} · ${item.label}`;
-    propBindEl.appendChild(opt);
+  const grouped = new Map();
+  list.forEach((item) => {
+    const groupName = item.group || 'Allgemein';
+    if (!grouped.has(groupName)) {
+      grouped.set(groupName, []);
+    }
+    grouped.get(groupName).push(item);
   });
+
+  Array.from(grouped.keys())
+    .sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }))
+    .forEach((groupName) => {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = groupName;
+      grouped.get(groupName)
+        .sort((a, b) => {
+          const labelCmp = (a.label || '').localeCompare((b.label || ''), 'de', { sensitivity: 'base' });
+          if (labelCmp !== 0) return labelCmp;
+          return a.key.localeCompare(b.key, 'de', { sensitivity: 'base' });
+        })
+        .forEach((item) => {
+          const opt = document.createElement('option');
+          opt.value = item.key;
+          opt.textContent = `${item.label} (${item.key})`;
+          optgroup.appendChild(opt);
+        });
+      propBindEl.appendChild(optgroup);
+  });
+}
+
+function updateStageCanvasMetrics() {
+  const widthPx = Math.round(getPageWidthMm() * MM_TO_PX);
+  const heightPx = Math.round(getPageHeightMm() * MM_TO_PX);
+  if (stageEl) {
+    stageEl.style.width = `${widthPx}px`;
+    stageEl.style.height = `${heightPx}px`;
+  }
+  if (rulerXEl) {
+    rulerXEl.style.width = `${widthPx}px`;
+  }
+  if (rulerYEl) {
+    rulerYEl.style.height = `${heightPx}px`;
+  }
+  if (stageCanvasEl) {
+    stageCanvasEl.style.width = `${widthPx + 24}px`;
+    stageCanvasEl.style.height = `${heightPx + 24}px`;
+  }
+  if (stageSurfaceEl) {
+    stageSurfaceEl.style.width = `${widthPx + 24}px`;
+    stageSurfaceEl.style.height = `${heightPx + 24}px`;
+  }
+  viewState.baseWidthPx = widthPx + 24;
+  viewState.baseHeightPx = heightPx + 24;
+  applyZoom();
+}
+
+function chartPreviewPointsForElement(el) {
+  const bind = String(el.bind || '').trim();
+  if (bind === 'chart_lcpeak_series') {
+    return [0.32, 0.58, 0.82, 0.64, 0.46, 0.74, 0.41];
+  }
+  return [0.24, 0.41, 0.68, 0.59, 0.72, 0.48, 0.33];
+}
+
+function buildChartPreviewSvg(el) {
+  const points = chartPreviewPointsForElement(el);
+  const width = 100;
+  const height = 56;
+  const paddingX = 6;
+  const paddingY = 5;
+  const plotW = width - (paddingX * 2);
+  const plotH = height - (paddingY * 2);
+  const polyline = points.map((point, index) => {
+    const x = paddingX + ((plotW / Math.max(1, points.length - 1)) * index);
+    const y = paddingY + ((1 - point) * plotH);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const limitY = paddingY + (plotH * 0.28);
+  const limit = el.chart_show_limit ? `<line x1="${paddingX}" y1="${limitY.toFixed(1)}" x2="${(paddingX + plotW).toFixed(1)}" y2="${limitY.toFixed(1)}" stroke="#d76442" stroke-width="1.4" stroke-dasharray="4 3" />` : '';
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="rgba(255,255,255,0.0)" />
+      <line x1="${paddingX}" y1="${(paddingY + plotH).toFixed(1)}" x2="${(paddingX + plotW).toFixed(1)}" y2="${(paddingY + plotH).toFixed(1)}" stroke="#7c93b6" stroke-width="1" />
+      <line x1="${paddingX}" y1="${paddingY}" x2="${paddingX}" y2="${(paddingY + plotH).toFixed(1)}" stroke="#7c93b6" stroke-width="1" />
+      ${limit}
+      <polyline fill="none" stroke="${el.stroke_color || '#5478ff'}" stroke-width="2.2" points="${polyline}" />
+    </svg>
+  `;
 }
 
 function renderStage() {
@@ -990,8 +1287,8 @@ function renderStage() {
     return;
   }
 
-  const payload = state.current.payload;
-  const elements = Array.isArray(payload.elements) ? payload.elements : [];
+  updateStageCanvasMetrics();
+  const elements = getCurrentElements();
   const hasMultiSelection = state.selectedIds.length > 1;
 
   elements.forEach(el => {
@@ -1050,6 +1347,26 @@ function renderStage() {
         div.style.backgroundColor = 'rgba(255, 228, 0, 0.12)';
         div.textContent = 'Bild';
       }
+    } else if (el.type === 'chart') {
+      div.textContent = '';
+      div.style.background = 'linear-gradient(180deg, rgba(235,244,255,0.92), rgba(214,229,252,0.86))';
+      div.style.backgroundImage = 'none';
+
+      const title = document.createElement('div');
+      title.className = 'element-chart-title';
+      title.textContent = el.text || 'Diagramm';
+
+      const preview = document.createElement('div');
+      preview.className = 'element-chart-preview';
+      preview.innerHTML = buildChartPreviewSvg(el);
+
+      const binding = document.createElement('div');
+      binding.className = 'element-chart-binding';
+      binding.textContent = el.bind ? `{{${el.bind}}}` : 'Kein Binding';
+
+      div.appendChild(title);
+      div.appendChild(preview);
+      div.appendChild(binding);
     } else {
       const label = el.bind ? `{{${el.bind}}}` : el.text;
       div.textContent = label || '(leer)';
@@ -1131,7 +1448,10 @@ function updatePropertyInputs() {
     propStrokeColorEl.value = '#747474';
     propFillColorEl.value = '#14a76c';
     propStrokeWidthEl.value = '1';
+    if (propChartVariantEl) propChartVariantEl.value = 'line';
+    if (propChartShowLimitEl) propChartShowLimitEl.checked = true;
     propImageSrcEl.value = '';
+    syncPropertyToggleButtons();
     return;
   }
 
@@ -1153,6 +1473,9 @@ function updatePropertyInputs() {
     propFillColorEl.value = mixedOrFirst(e => e.fill_color) || '#14a76c';
     propStrokeColorEl.value = mixedOrFirst(e => e.stroke_color) || '#747474';
     propStrokeWidthEl.value = mixedOrFirst(e => e.stroke_width) || '1';
+    if (propChartVariantEl) propChartVariantEl.value = mixedOrFirst(e => e.chart_variant) || 'line';
+    if (propChartShowLimitEl) propChartShowLimitEl.checked = items.every(item => !!item.chart_show_limit);
+    syncPropertyToggleButtons();
     return;
   }
 
@@ -1175,7 +1498,90 @@ function updatePropertyInputs() {
   propStrokeColorEl.value = el.stroke_color || '#747474';
   propFillColorEl.value = el.fill_color || '#14a76c';
   propStrokeWidthEl.value = String(el.stroke_width || 1);
+  if (propChartVariantEl) propChartVariantEl.value = el.chart_variant || 'line';
+  if (propChartShowLimitEl) propChartShowLimitEl.checked = !!el.chart_show_limit;
   propImageSrcEl.value = el.image_src || '';
+  syncPropertyToggleButtons();
+}
+
+function syncPropertyToggleButtons() {
+  const currentWeight = propFontWeightEl ? String(propFontWeightEl.value || '') : '';
+  propFontWeightToggleEls.forEach((btn) => {
+    const active = (btn.getAttribute('data-font-weight') || '') === currentWeight;
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+
+  const currentAlign = propAlignEl ? String(propAlignEl.value || '') : '';
+  propAlignToggleEls.forEach((btn) => {
+    const active = (btn.getAttribute('data-align-value') || '') === currentAlign;
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function wireSidebarSplitters() {
+  if (!builderShellEl) return;
+
+  const MIN_LEFT = 230;
+  const MAX_LEFT = 560;
+  const MIN_RIGHT = 280;
+  const MAX_RIGHT = 680;
+
+  const rootStyle = document.documentElement.style;
+  const parseWidth = (value, fallback) => {
+    const n = Number.parseFloat(String(value || '').replace('px', '').trim());
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const startDrag = (side, event) => {
+    event.preventDefault();
+    const dragPointerId = event.pointerId;
+    const rect = builderShellEl.getBoundingClientRect();
+    const computed = getComputedStyle(document.documentElement);
+    const startLeft = parseWidth(computed.getPropertyValue('--sidebar-left-width'), 280);
+    const startRight = parseWidth(computed.getPropertyValue('--sidebar-right-width'), 360);
+    const splitter = side === 'left' ? splitterLeftEl : splitterRightEl;
+    if (splitter) splitter.classList.add('is-dragging');
+    if (splitter && typeof splitter.setPointerCapture === 'function' && dragPointerId !== undefined) {
+      try {
+        splitter.setPointerCapture(dragPointerId);
+      } catch (err) {
+        // ignore capture issues and continue with window listeners
+      }
+    }
+
+    const onMove = (moveEv) => {
+      const x = moveEv.clientX - rect.left;
+      if (side === 'left') {
+        const next = Math.max(MIN_LEFT, Math.min(MAX_LEFT, x));
+        rootStyle.setProperty('--sidebar-left-width', `${next}px`);
+      } else {
+        const fromRight = rect.width - x;
+        const next = Math.max(MIN_RIGHT, Math.min(MAX_RIGHT, fromRight));
+        rootStyle.setProperty('--sidebar-right-width', `${next}px`);
+      }
+    };
+
+    const onUp = () => {
+      if (splitter) splitter.classList.remove('is-dragging');
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+
+    // Avoid jumps when dragging starts after a prior resize.
+    rootStyle.setProperty('--sidebar-left-width', `${startLeft}px`);
+    rootStyle.setProperty('--sidebar-right-width', `${startRight}px`);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  if (splitterLeftEl) {
+    splitterLeftEl.addEventListener('pointerdown', (ev) => startDrag('left', ev));
+  }
+  if (splitterRightEl) {
+    splitterRightEl.addEventListener('pointerdown', (ev) => startDrag('right', ev));
+  }
 }
 
 function applyPropsToSelection() {
@@ -1205,6 +1611,8 @@ function applyPropsToSelection() {
     if (propStrokeColorEl.value) el.stroke_color = propStrokeColorEl.value || '#747474';
     if (propFillColorEl.value) el.fill_color = propFillColorEl.value || '#14a76c';
     if (propStrokeWidthEl.value !== '') el.stroke_width = Number(propStrokeWidthEl.value || 1);
+    if (propChartVariantEl?.value) el.chart_variant = propChartVariantEl.value;
+    if (propChartShowLimitEl) el.chart_show_limit = !!propChartShowLimitEl.checked;
     if (items.length === 1) el.image_src = propImageSrcEl.value || '';
     if (el.type === 'image') {
       updateImageAspectCache(el);
@@ -1522,11 +1930,14 @@ function onDrawPointerUp() {
   }
 
   addElement(drawCtx.type, {
-    x: Math.max(0, Math.min(PAGE_WIDTH_MM - width, left)),
-    y: Math.max(0, Math.min(PAGE_HEIGHT_MM - height, top)),
+    x: Math.max(0, Math.min(getPageWidthMm() - width, left)),
+    y: Math.max(0, Math.min(getPageHeightMm() - height, top)),
     w: width,
     h: height,
   });
+
+  // Drawing mode should auto-reset after one element creation.
+  setDrawToolMode('');
 
   drawCtx = null;
 }
@@ -1854,8 +2265,8 @@ function clientPointToStageMm(clientX, clientY) {
   const logicalX = (clientX - rect.left) / viewState.zoom / MM_TO_PX;
   const logicalY = (clientY - rect.top) / viewState.zoom / MM_TO_PX;
   return {
-    x: Math.max(0, Math.min(PAGE_WIDTH_MM, logicalX)),
-    y: Math.max(0, Math.min(PAGE_HEIGHT_MM, logicalY)),
+    x: Math.max(0, Math.min(getPageWidthMm(), logicalX)),
+    y: Math.max(0, Math.min(getPageHeightMm(), logicalY)),
   };
 }
 
@@ -1982,7 +2393,7 @@ function renderRulers() {
   const stepMm = getGridStepMm();
   const majorEvery = 2;
 
-  for (let mm = 0, i = 0; mm <= PAGE_WIDTH_MM + 0.001; mm += stepMm, i++) {
+  for (let mm = 0, i = 0; mm <= getPageWidthMm() + 0.001; mm += stepMm, i++) {
     const x = mm * MM_TO_PX;
     const tick = document.createElement('span');
     tick.className = 'ruler-tick';
@@ -1999,7 +2410,7 @@ function renderRulers() {
     }
   }
 
-  for (let mm = 0, i = 0; mm <= PAGE_HEIGHT_MM + 0.001; mm += stepMm, i++) {
+  for (let mm = 0, i = 0; mm <= getPageHeightMm() + 0.001; mm += stepMm, i++) {
     const y = mm * MM_TO_PX;
     const tick = document.createElement('span');
     tick.className = 'ruler-tick';
@@ -2049,8 +2460,8 @@ function onPointerMove(ev) {
     const groupW = maxEndX - minStartX;
     const groupH = maxEndY - minStartY;
 
-    let nextGroupX = Math.max(0, Math.min(PAGE_WIDTH_MM - groupW, minStartX + dxMm));
-    let nextGroupY = Math.max(0, Math.min(PAGE_HEIGHT_MM - groupH, minStartY + dyMm));
+    let nextGroupX = Math.max(0, Math.min(getPageWidthMm() - groupW, minStartX + dxMm));
+    let nextGroupY = Math.max(0, Math.min(getPageHeightMm() - groupH, minStartY + dyMm));
     nextGroupX = snapToGrid(nextGroupX);
     nextGroupY = snapToGrid(nextGroupY);
 
@@ -2207,8 +2618,8 @@ function onPointerMove(ev) {
           nextY = snapToGrid(nextY);
           nextW = Math.max(minW, snapToGrid(nextW));
           nextH = Math.max(minH, nextW / aspect);
-          nextX = Math.max(0, Math.min(PAGE_WIDTH_MM - nextW, nextX));
-          nextY = Math.max(0, Math.min(PAGE_HEIGHT_MM - nextH, nextY));
+          nextX = Math.max(0, Math.min(getPageWidthMm() - nextW, nextX));
+          nextY = Math.max(0, Math.min(getPageHeightMm() - nextH, nextY));
 
           el.x = Number(nextX.toFixed(1));
           el.y = Number(nextY.toFixed(1));
@@ -2278,8 +2689,8 @@ function onPointerMove(ev) {
       nextH = Math.max(minH, snapToGrid(nextH));
     }
 
-    nextX = Math.max(0, Math.min(PAGE_WIDTH_MM - nextW, nextX));
-    nextY = Math.max(0, Math.min(PAGE_HEIGHT_MM - nextH, nextY));
+    nextX = Math.max(0, Math.min(getPageWidthMm() - nextW, nextX));
+    nextY = Math.max(0, Math.min(getPageHeightMm() - nextH, nextY));
 
     el.x = Number(nextX.toFixed(1));
     el.y = Number(nextY.toFixed(1));
@@ -2291,8 +2702,8 @@ function onPointerMove(ev) {
     return;
   }
 
-  let nextX = Math.max(0, Math.min(PAGE_WIDTH_MM, dragCtx.startX + dxMm));
-  let nextY = Math.max(0, Math.min(PAGE_HEIGHT_MM, dragCtx.startY + dyMm));
+  let nextX = Math.max(0, Math.min(getPageWidthMm(), dragCtx.startX + dxMm));
+  let nextY = Math.max(0, Math.min(getPageHeightMm(), dragCtx.startY + dyMm));
   nextX = snapToGrid(nextX);
   nextY = snapToGrid(nextY);
 
@@ -2319,8 +2730,12 @@ function deleteSelectedElement() {
     return;
   }
 
-  state.current.payload.elements = kept;
+  const currentPage = getCurrentPage();
+  if (currentPage) {
+    currentPage.elements = kept;
+  }
   setSelectedIds([]);
+  renderPageList();
   renderStage();
   renderLayerList();
   updatePropertyInputs();
@@ -2340,6 +2755,11 @@ function refreshCurrentHeader() {
   if (!state.current) return;
   titleInputEl.value = state.current.title || '';
   statusSelectEl.value = state.current.status || 'draft';
+  if (pdfTitleTemplateInputEl) {
+    const payload = state.current.payload || {};
+    const fallback = state.current.title || 'PDF-Vorlage';
+    pdfTitleTemplateInputEl.value = String(payload.pdf_title_template || fallback);
+  }
 
   const currentToolKey = state.current.tool_key || state.allowedToolKeys[0] || '';
   if (assignCurrentDisplayEl) {
@@ -2390,10 +2810,12 @@ async function openTemplate(id) {
       version: 0,
       payload: createDefaultPayload(firstTool),
     };
-    setSelectedIds(state.current.payload.elements[0] ? [state.current.payload.elements[0].id] : []);
+    state.currentPageIndex = 0;
+    setSelectedIds(getCurrentElements()[0] ? [getCurrentElements()[0].id] : []);
     state.undoStack = [];
     state.redoStack = [];
     refreshCurrentHeader();
+    renderPageList();
     renderStage();
     renderLayerList();
     updatePropertyInputs();
@@ -2408,10 +2830,12 @@ async function openTemplate(id) {
 
   state.current = result.item;
   state.current.payload = normalizePayloadForEditor(state.current.payload, state.current.tool_key);
-  setSelectedIds(state.current?.payload?.elements?.[0] ? [state.current.payload.elements[0].id] : []);
+  state.currentPageIndex = 0;
+  setSelectedIds(getCurrentElements()[0] ? [getCurrentElements()[0].id] : []);
   state.undoStack = [];
   state.redoStack = [];
   refreshCurrentHeader();
+  renderPageList();
   renderStage();
   renderLayerList();
   updatePropertyInputs();
@@ -2457,13 +2881,14 @@ async function confirmAssign() {
   const allowedBindings = catalogItemsForTool(newKey).map(f => f.key);
 
   // Bindings bereinigen: nicht mehr verfügbare Felder leeren
-  const elements = getCurrentElements();
   let cleaned = 0;
-  elements.forEach(el => {
-    if (el.bind && !allowedBindings.includes(el.bind)) {
-      el.bind = '';
-      cleaned++;
-    }
+  getPages().forEach((page) => {
+    page.elements.forEach(el => {
+      if (el.bind && !allowedBindings.includes(el.bind)) {
+        el.bind = '';
+        cleaned++;
+      }
+    });
   });
 
   state.current.tool_key = newKey;
@@ -2494,6 +2919,9 @@ function collectCurrentPayload() {
   state.current.payload = normalizePayloadForEditor(payload, toolKey);
   const normalizedPayload = state.current.payload;
   normalizedPayload.tool_key = toolKey;
+  if (pdfTitleTemplateInputEl) {
+    normalizedPayload.pdf_title_template = String(pdfTitleTemplateInputEl.value || '').trim();
+  }
 
   return {
     title: titleInputEl.value.trim() || 'PDF-Vorlage',
@@ -2553,6 +2981,39 @@ function downloadJsonFile(fileName, contentObj) {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+function parseDownloadFilenameFromContentDisposition(headerValue) {
+  const raw = String(headerValue || '').trim();
+  if (raw === '') return '';
+
+  const starMatch = raw.match(/filename\*\s*=\s*([^;]+)/i);
+  if (starMatch && starMatch[1]) {
+    let encoded = String(starMatch[1]).trim();
+    encoded = encoded.replace(/^UTF-8''/i, '').replace(/^"|"$/g, '');
+    try {
+      const decoded = decodeURIComponent(encoded);
+      if (decoded !== '') return decoded;
+    } catch (err) {
+      // Ignore decode errors and fall through to plain filename.
+    }
+  }
+
+  const plainMatch = raw.match(/filename\s*=\s*(?:"([^"]+)"|([^;]+))/i);
+  if (plainMatch) {
+    const plain = String(plainMatch[1] || plainMatch[2] || '').trim();
+    if (plain !== '') return plain;
+  }
+
+  return '';
+}
+
+function openPdfPreviewWindow(blob, fileName) {
+  const previewUrl = String(blob || '').trim();
+  if (previewUrl === '') {
+    throw new Error('preview_url_missing');
+  }
+  window.open(previewUrl, '_blank', 'noopener,noreferrer');
 }
 
 function sanitizeFileStem(input, fallback = 'pdf-template') {
@@ -2619,34 +3080,18 @@ async function previewCurrent() {
     return;
   }
 
-  const url = buildApiUrl('render_preview');
+  const result = await api('preview_session_init', {
+    title: data.title,
+    tool_key: data.tool_key,
+    payload: data.payload,
+  }, 'POST');
 
-  const res = await fetch(url.toString(), {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      csrf: state.csrf,
-      title: data.title,
-      tool_key: data.tool_key,
-      payload: data.payload,
-    }),
-  });
-
-  const ct = (res.headers.get('content-type') || '').toLowerCase();
-  if (!res.ok || !ct.includes('application/pdf')) {
-    let message = `Preview fehlgeschlagen (HTTP ${res.status})`;
-    if (ct.includes('application/json')) {
-      const errPayload = await res.json();
-      message = errPayload.error || message;
-    }
-    throw new Error(message);
+  if (!result.ok || !result.preview_page_url) {
+    throw new Error(result.error || 'preview_init_failed');
   }
 
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, '_blank', 'noopener,noreferrer');
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  const previewUrl = new URL(String(result.preview_page_url), window.location.origin);
+  openPdfPreviewWindow(previewUrl.toString(), String(result.file_name || 'pdf-preview.pdf'));
 }
 
 async function deleteCurrent() {
@@ -2718,6 +3163,18 @@ function addElement(elementTypeOverride = null, boundsOverride = null) {
     next = { ...base, text: '', w: boundsOverride ? startW : 22 * step, h: boundsOverride ? startH : 6 * step, fill_color: '#98e3c3' };
   } else if (elementType === 'image') {
     next = { ...base, text: '', w: boundsOverride ? startW : 14 * step, h: boundsOverride ? startH : 9 * step, image_src: '' };
+  } else if (elementType === 'chart') {
+    next = {
+      ...base,
+      text: 'Neues Diagramm',
+      bind: state.current?.tool_key === 'nti_tool' ? 'chart_laeq_series' : '',
+      w: boundsOverride ? startW : 24 * step,
+      h: boundsOverride ? startH : 12 * step,
+      chart_variant: 'line',
+      chart_show_limit: true,
+      fill_color: '#dceaff',
+      stroke_color: '#5478ff',
+    };
   }
 
   elements.push(next);
@@ -2730,6 +3187,8 @@ function addElement(elementTypeOverride = null, boundsOverride = null) {
 
 function addElementByType(elementType) {
   addElement(elementType);
+  // One-shot create: immediately return to selection mode.
+  setDrawToolMode('');
 }
 
 function wireEvents() {
@@ -2795,12 +3254,42 @@ function wireEvents() {
   if (btnDuplicateSelected) {
     btnDuplicateSelected.addEventListener('click', duplicateSelected);
   }
+  if (btnPageAdd) {
+    btnPageAdd.addEventListener('click', addPage);
+  }
+  if (btnPageDelete) {
+    btnPageDelete.addEventListener('click', deleteCurrentPage);
+  }
+  if (btnPageMoveUp) {
+    btnPageMoveUp.addEventListener('click', () => moveCurrentPage(-1));
+  }
+  if (btnPageMoveDown) {
+    btnPageMoveDown.addEventListener('click', () => moveCurrentPage(1));
+  }
   if (btnGroupSelection) {
     btnGroupSelection.addEventListener('click', createGroupFromSelection);
   }
   if (btnUngroupSelection) {
     btnUngroupSelection.addEventListener('click', ungroupSelection);
   }
+
+  propFontWeightToggleEls.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!propFontWeightEl) return;
+      propFontWeightEl.value = btn.getAttribute('data-font-weight') || 'normal';
+      syncPropertyToggleButtons();
+      applyPropsToSelection();
+    });
+  });
+
+  propAlignToggleEls.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!propAlignEl) return;
+      propAlignEl.value = btn.getAttribute('data-align-value') || 'left';
+      syncPropertyToggleButtons();
+      applyPropsToSelection();
+    });
+  });
 
   // ── Duplicate template ──
   if (btnDuplicateTemplate) {
@@ -3145,7 +3634,7 @@ function wireEvents() {
       if (ev.shiftKey) ungroupSelection(); else createGroupFromSelection();
       return;
     }
-    if (ev.key === 'Delete' || ev.key === 'Backspace') {
+    if (ev.key === 'Delete' || ev.key === 'Backspace' || ev.key === 'Entf') {
       if (state.selectedIds.length > 0) {
         ev.preventDefault();
         deleteSelectedElement();
@@ -3161,9 +3650,9 @@ function wireEvents() {
       pushUndo();
       items.forEach(el => {
         if (ev.key === 'ArrowLeft')  el.x = Number(Math.max(0, el.x - nudge).toFixed(1));
-        if (ev.key === 'ArrowRight') el.x = Number(Math.min(PAGE_WIDTH_MM - el.w, el.x + nudge).toFixed(1));
+        if (ev.key === 'ArrowRight') el.x = Number(Math.min(getPageWidthMm() - el.w, el.x + nudge).toFixed(1));
         if (ev.key === 'ArrowUp')    el.y = Number(Math.max(0, el.y - nudge).toFixed(1));
-        if (ev.key === 'ArrowDown')  el.y = Number(Math.min(PAGE_HEIGHT_MM - el.h, el.y + nudge).toFixed(1));
+        if (ev.key === 'ArrowDown')  el.y = Number(Math.min(getPageHeightMm() - el.h, el.y + nudge).toFixed(1));
       });
       renderStage();
       renderLayerList();
@@ -3191,14 +3680,27 @@ function wireEvents() {
     propStrokeColorEl,
     propFillColorEl,
     propStrokeWidthEl,
+    propChartVariantEl,
+    propChartShowLimitEl,
     propImageSrcEl,
   ]
+    .filter(Boolean)
     .forEach(input => input.addEventListener('input', applyPropsToSelection));
 
   titleInputEl.addEventListener('input', () => {
     if (!state.current) return;
     state.current.title = titleInputEl.value;
+    if (pdfTitleTemplateInputEl && pdfTitleTemplateInputEl.value.trim() === '') {
+      pdfTitleTemplateInputEl.value = titleInputEl.value;
+    }
   });
+
+  if (pdfTitleTemplateInputEl) {
+    pdfTitleTemplateInputEl.addEventListener('input', () => {
+      if (!state.current?.payload) return;
+      state.current.payload.pdf_title_template = String(pdfTitleTemplateInputEl.value || '').trim();
+    });
+  }
 
   // toolKeySelectEl mutiert state NICHT direkt – Änderung nur via bestätigten Assign-Dialog
 
@@ -3226,6 +3728,7 @@ async function init() {
     setDrawToolMode('');
     initViewportMetrics();
     renderRulers();
+    wireSidebarSplitters();
 
     try {
       await loadRepoImages();

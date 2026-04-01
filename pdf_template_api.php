@@ -14,9 +14,14 @@ function pdf_template_json_response(array $payload, int $status = 200): never {
 }
 
 function pdf_template_read_json_input(): array {
+  $contentType = strtolower((string)($_SERVER['CONTENT_TYPE'] ?? ''));
+  if ($contentType !== '' && strpos($contentType, 'application/json') === false) {
+    return is_array($_POST) ? $_POST : [];
+  }
+
   $raw = file_get_contents('php://input');
   if ($raw === false || $raw === '') {
-    return [];
+    return is_array($_POST) ? $_POST : [];
   }
 
   try {
@@ -32,7 +37,7 @@ $input = $method === 'POST' ? pdf_template_read_json_input() : [];
 $action = (string)($_GET['action'] ?? $input['action'] ?? '');
 
 $adminOnlyActions = ['create', 'save', 'set_status', 'delete', 'duplicate', 'import_json'];
-$builderToolActions = ['bootstrap', 'list_repo_images', 'list', 'get', 'export', 'render_preview', 'render_final'];
+$builderToolActions = ['bootstrap', 'list_repo_images', 'list', 'get', 'export', 'render_preview', 'render_final', 'preview_session_init', 'preview_session_page', 'preview_session_pdf'];
 $isAdminOnlyAction = in_array($action, $adminOnlyActions, true);
 $isBuilderToolAction = in_array($action, $builderToolActions, true);
 $isRuntimeAction = $action === 'render_tool';
@@ -97,6 +102,78 @@ function pdf_template_collect_repo_images(string $baseDir, string $baseUrlPrefix
   });
 
   return $images;
+}
+
+function pdf_template_build_download_filename(string $resolvedTitle, string $fallback = 'pdf-export'): array {
+  $name = trim($resolvedTitle);
+  $name = preg_replace('/[\x00-\x1F\x7F]+/u', '', $name) ?? $name;
+  $name = preg_replace('/[\\\\\/:*?"<>|]+/u', '-', $name) ?? $name;
+  $name = preg_replace('/\s+/u', ' ', $name) ?? $name;
+  $name = trim($name, " .\t\n\r\0\x0B-");
+  if ($name === '') {
+    $name = $fallback;
+  }
+
+  if (mb_strlen($name) > 120) {
+    $name = mb_substr($name, 0, 120);
+    $name = rtrim($name, " .\t\n\r\0\x0B-");
+  }
+
+  $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+  if (!is_string($ascii) || $ascii === '') {
+    $ascii = $name;
+  }
+  $ascii = strtolower($ascii);
+  $ascii = preg_replace('/[^a-z0-9._-]+/', '-', $ascii) ?? $ascii;
+  $ascii = trim($ascii, '-_.');
+  if ($ascii === '') {
+    $ascii = $fallback;
+  }
+
+  return ['display' => $name, 'ascii' => $ascii];
+}
+
+function pdf_template_preview_store_get_all(): array {
+  $items = $_SESSION['pdf_template_preview_store'] ?? [];
+  return is_array($items) ? $items : [];
+}
+
+function pdf_template_preview_store_put(array $entry): string {
+  $items = pdf_template_preview_store_get_all();
+  $now = time();
+
+  foreach ($items as $token => $stored) {
+    $createdAt = (int)($stored['created_at'] ?? 0);
+    if ($createdAt < ($now - 1800)) {
+      unset($items[$token]);
+    }
+  }
+
+  $token = bin2hex(random_bytes(16));
+  $entry['created_at'] = $now;
+  $items[$token] = $entry;
+
+  if (count($items) > 8) {
+    uasort($items, static function (array $a, array $b): int {
+      return (int)($a['created_at'] ?? 0) <=> (int)($b['created_at'] ?? 0);
+    });
+    while (count($items) > 8) {
+      array_shift($items);
+    }
+  }
+
+  $_SESSION['pdf_template_preview_store'] = $items;
+  return $token;
+}
+
+function pdf_template_preview_store_get(string $token): ?array {
+  $items = pdf_template_preview_store_get_all();
+  $entry = $items[$token] ?? null;
+  return is_array($entry) ? $entry : null;
+}
+
+function pdf_template_escape_html(string $value): string {
+  return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 if ($action === 'bootstrap') {
@@ -587,7 +664,7 @@ if ($action === 'delete' && $method === 'POST') {
   pdf_template_json_response(['ok' => true]);
 }
 
-if ($action === 'render_preview' && $method === 'POST') {
+if ($action === 'preview_session_init' && $method === 'POST') {
   $toolKey = trim((string)($input['tool_key'] ?? ''));
   $title = trim((string)($input['title'] ?? 'PDF-Vorschau'));
   $payloadInput = $input['payload'] ?? null;
@@ -612,10 +689,148 @@ if ($action === 'render_preview' && $method === 'POST') {
   }
 
   $sampleData = is_array($sampleDataInput) ? $sampleDataInput : pdf_template_example_data($toolKey);
-  $pdf = pdf_template_render_pdf($payload, $sampleData, $title);
+  $resolvedTitle = pdf_template_resolve_title_template(
+    (string)($payload['pdf_title_template'] ?? $title),
+    $sampleData,
+    $title
+  );
+  $fileName = pdf_template_build_download_filename($resolvedTitle, 'pdf-template-preview');
+  $token = pdf_template_preview_store_put([
+    'tool_key' => $toolKey,
+    'title' => $title,
+    'payload' => $payload,
+    'sample_data' => $sampleData,
+    'resolved_title' => $resolvedTitle,
+    'file_name' => $fileName,
+  ]);
+
+  pdf_template_json_response([
+    'ok' => true,
+    'token' => $token,
+    'preview_page_url' => '/pdf_template_api.php?action=preview_session_page&token=' . rawurlencode($token),
+    'file_name' => $fileName['display'] . '.pdf',
+  ]);
+}
+
+if ($action === 'preview_session_page' && $method === 'GET') {
+  $token = trim((string)($_GET['token'] ?? ''));
+  $entry = $token !== '' ? pdf_template_preview_store_get($token) : null;
+  if (!is_array($entry)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Preview not found';
+    exit;
+  }
+
+  $displayName = (string)((($entry['file_name'] ?? [])['display'] ?? 'PDF Vorschau'));
+  $downloadUrl = '/pdf_template_api.php?action=preview_session_pdf&token=' . rawurlencode($token) . '&download=1';
+  $inlineUrl = '/pdf_template_api.php?action=preview_session_pdf&token=' . rawurlencode($token);
+
+  header("Content-Security-Policy: default-src 'none'; img-src 'self' data: blob:; style-src 'unsafe-inline'; frame-src 'self'; child-src 'self'; navigate-to 'self'; frame-ancestors 'self';");
+  header('Content-Type: text/html; charset=utf-8');
+  echo '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">';
+  echo '<title>' . pdf_template_escape_html($displayName . '.pdf') . '</title>';
+  echo '<style>';
+  echo 'html,body{margin:0;height:100%;background:#1f1f1f;color:#f4f4f4;font-family:Segoe UI,system-ui,sans-serif;}';
+  echo '.topbar{height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#2b2b2b;border-bottom:1px solid #4b4b4b;}';
+  echo '.name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;}';
+  echo '.download{color:#fff;text-decoration:none;background:#5478ff;padding:7px 12px;border-radius:8px;font-weight:600;font-size:13px;}';
+  echo 'iframe{width:100%;height:calc(100% - 48px);border:0;background:#2a2a2a;}';
+  echo '</style></head><body>';
+  echo '<div class="topbar"><div class="name">' . pdf_template_escape_html($displayName . '.pdf') . '</div><a class="download" href="' . pdf_template_escape_html($downloadUrl) . '">PDF herunterladen</a></div>';
+  echo '<iframe src="' . pdf_template_escape_html($inlineUrl) . '#view=FitH"></iframe>';
+  echo '</body></html>';
+  exit;
+}
+
+if ($action === 'preview_session_pdf' && $method === 'GET') {
+  $token = trim((string)($_GET['token'] ?? ''));
+  $entry = $token !== '' ? pdf_template_preview_store_get($token) : null;
+  if (!is_array($entry)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Preview not found';
+    exit;
+  }
+
+  $toolKey = (string)($entry['tool_key'] ?? 'nti_tool');
+  $payload = is_array($entry['payload'] ?? null) ? $entry['payload'] : [];
+  $sampleData = is_array($entry['sample_data'] ?? null) ? $entry['sample_data'] : pdf_template_example_data($toolKey);
+  $resolvedTitle = (string)($entry['resolved_title'] ?? 'PDF Vorschau');
+  $pdf = pdf_template_render_pdf($payload, $sampleData, $resolvedTitle);
+  $fileName = is_array($entry['file_name'] ?? null) ? $entry['file_name'] : pdf_template_build_download_filename($resolvedTitle, 'pdf-template-preview');
+  $asciiName = (string)($fileName['ascii'] ?? 'pdf-template-preview');
+  $displayName = (string)($fileName['display'] ?? 'pdf-template-preview');
+  $download = (string)($_GET['download'] ?? '') === '1';
+  $disposition = $download ? 'attachment' : 'inline';
+
+  header("Content-Security-Policy: default-src 'none'; frame-ancestors 'self';");
+  header('Content-Type: application/pdf');
+  header('Content-Disposition: ' . $disposition . '; filename="' . $asciiName . '.pdf"; filename*=UTF-8\'\'' . rawurlencode($displayName . '.pdf'));
+  header('Cache-Control: no-store');
+  echo $pdf;
+  exit;
+}
+
+if ($action === 'render_preview' && $method === 'POST') {
+  $toolKey = trim((string)($input['tool_key'] ?? ''));
+  $title = trim((string)($input['title'] ?? 'PDF-Vorschau'));
+  $payloadInput = $input['payload'] ?? null;
+  $sampleDataInput = $input['sample_data'] ?? null;
+
+  if (is_string($payloadInput) && $payloadInput !== '') {
+    try {
+      $decodedPayload = json_decode($payloadInput, true, 512, JSON_THROW_ON_ERROR);
+      if (is_array($decodedPayload)) {
+        $payloadInput = $decodedPayload;
+      }
+    } catch (Throwable $e) {
+      // Leave as-is; validation below will return missing_payload.
+    }
+  }
+
+  if (is_string($sampleDataInput) && $sampleDataInput !== '') {
+    try {
+      $decodedSample = json_decode($sampleDataInput, true, 512, JSON_THROW_ON_ERROR);
+      if (is_array($decodedSample)) {
+        $sampleDataInput = $decodedSample;
+      }
+    } catch (Throwable $e) {
+      // Ignore and use default sample data below.
+    }
+  }
+
+  if (!is_array($payloadInput)) {
+    pdf_template_json_response(['ok' => false, 'error' => 'missing_payload'], 400);
+  }
+
+  if ($toolKey === '') {
+    $toolKey = trim((string)($payloadInput['tool_key'] ?? 'nti_tool'));
+  }
+
+  if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {
+    pdf_template_json_response(['ok' => false, 'error' => 'invalid_tool_key'], 400);
+  }
+
+  $payload = pdf_template_normalize_payload($payloadInput, $toolKey);
+  $errors = pdf_template_validate_payload($payload, $toolKey);
+  if ($errors !== []) {
+    pdf_template_json_response(['ok' => false, 'error' => 'invalid_payload', 'details' => $errors], 400);
+  }
+
+  $sampleData = is_array($sampleDataInput) ? $sampleDataInput : pdf_template_example_data($toolKey);
+  $resolvedTitle = pdf_template_resolve_title_template(
+    (string)($payload['pdf_title_template'] ?? $title),
+    $sampleData,
+    $title
+  );
+  $pdf = pdf_template_render_pdf($payload, $sampleData, $resolvedTitle);
+  $fileName = pdf_template_build_download_filename($resolvedTitle, 'pdf-template-preview');
+  $asciiName = $fileName['ascii'];
+  $displayName = $fileName['display'];
 
   header('Content-Type: application/pdf');
-  header('Content-Disposition: inline; filename="pdf-template-preview.pdf"');
+  header('Content-Disposition: inline; filename="' . $asciiName . '.pdf"; filename*=UTF-8\'\'' . rawurlencode($displayName . '.pdf'));
   header('Cache-Control: no-store');
   echo $pdf;
   exit;
@@ -658,15 +873,19 @@ if ($action === 'render_final' && $method === 'POST') {
 
   $data = is_array($input['data'] ?? null) ? $input['data'] : pdf_template_example_data($toolKey);
   $title = trim((string)($row['title'] ?? 'PDF Export'));
-  $pdf = pdf_template_render_pdf($payload, $data, $title);
+  $resolvedTitle = pdf_template_resolve_title_template(
+    (string)($payload['pdf_title_template'] ?? $title),
+    $data,
+    $title
+  );
+  $pdf = pdf_template_render_pdf($payload, $data, $resolvedTitle);
 
-  $safeName = preg_replace('/[^a-zA-Z0-9_-]+/', '-', strtolower($title));
-  if (!is_string($safeName) || $safeName === '') {
-    $safeName = 'pdf-export';
-  }
+  $fileName = pdf_template_build_download_filename($resolvedTitle, 'pdf-export');
+  $asciiName = $fileName['ascii'];
+  $displayName = $fileName['display'];
 
   header('Content-Type: application/pdf');
-  header('Content-Disposition: attachment; filename="' . $safeName . '.pdf"');
+  header('Content-Disposition: attachment; filename="' . $asciiName . '.pdf"; filename*=UTF-8\'\'' . rawurlencode($displayName . '.pdf'));
   header('Cache-Control: no-store');
   echo $pdf;
   exit;
@@ -731,12 +950,16 @@ if ($action === 'render_tool' && $method === 'POST') {
 
   $data = is_array($input['data'] ?? null) ? $input['data'] : pdf_template_example_data($toolKey);
   $title = trim((string)($row['title'] ?? 'PDF Export'));
-  $pdf = pdf_template_render_pdf($payload, $data, $title);
+  $resolvedTitle = pdf_template_resolve_title_template(
+    (string)($payload['pdf_title_template'] ?? $title),
+    $data,
+    $title
+  );
+  $pdf = pdf_template_render_pdf($payload, $data, $resolvedTitle);
 
-  $safeName = preg_replace('/[^a-zA-Z0-9_-]+/', '-', strtolower($title));
-  if (!is_string($safeName) || $safeName === '') {
-    $safeName = 'pdf-export';
-  }
+  $fileName = pdf_template_build_download_filename($resolvedTitle, 'pdf-export');
+  $asciiName = $fileName['ascii'];
+  $displayName = $fileName['display'];
 
   $disposition = strtolower(trim((string)($input['disposition'] ?? 'inline')));
   if (!in_array($disposition, ['inline', 'attachment'], true)) {
@@ -747,7 +970,7 @@ if ($action === 'render_tool' && $method === 'POST') {
   header('X-PDF-Template-Tool: ' . $toolKey);
   header('X-PDF-Template-Status: ' . (string)($row['status'] ?? 'draft'));
   header('Content-Type: application/pdf');
-  header('Content-Disposition: ' . $disposition . '; filename="' . $safeName . '.pdf"');
+  header('Content-Disposition: ' . $disposition . '; filename="' . $asciiName . '.pdf"; filename*=UTF-8\'\'' . rawurlencode($displayName . '.pdf'));
   header('Cache-Control: no-store');
   echo $pdf;
   exit;

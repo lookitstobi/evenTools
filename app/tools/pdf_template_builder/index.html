@@ -15,6 +15,33 @@
         <p class="header-subtitle">Vorlagen laden, aufbauen, ausrichten und einem Tool zuweisen.</p>
       </div>
       <div class="header-groups">
+        <div class="header-group header-group-template">
+          <span class="header-group-label">Vorlage</span>
+          <div class="header-controls header-controls-template">
+            <label class="header-inline-field">
+              Vorlage
+              <select id="templateSelect"></select>
+            </label>
+            <label class="header-inline-field">
+              Titel
+              <input id="titleInput" type="text" placeholder="Titel der Vorlage">
+            </label>
+            <label class="header-inline-field header-inline-field-sm">
+              Status
+              <select id="statusSelect">
+                <option value="draft">Entwurf</option>
+                <option value="published">Veroeffentlicht</option>
+              </select>
+            </label>
+            <label class="header-inline-field header-inline-field-sm">
+              Tool
+              <select id="toolKeySelect"></select>
+            </label>
+            <button id="btnAssign" class="btn btn-primary" type="button" disabled>Tool uebernehmen</button>
+            <span id="assignCurrentDisplay" class="meta-chip">-</span>
+            <span id="templateVersionInfo" class="meta-chip">Neu</span>
+          </div>
+        </div>
         <div class="header-group">
           <span class="header-group-label">Datei</span>
           <div class="header-controls">
@@ -40,41 +67,16 @@
 
     <main class="builder-shell">
       <aside class="sidebar sidebar-left card">
-        <section class="panel-section">
-          <div class="panel-section-head">
-            <h2>Vorlage</h2>
-            <span id="templateVersionInfo" class="meta-chip">Neu</span>
+        <section class="panel-section panel-section-compact">
+          <div class="selection-summary">
+            <span class="selection-summary-label">Ausgewaehltes Element</span>
+            <span id="selectionInfo" class="selection-summary-value">Keine Auswahl</span>
           </div>
-          <div class="panel-stack">
-            <label>
-              Vorlage laden
-              <select id="templateSelect"></select>
-            </label>
-            <label>
-              Titel
-              <input id="titleInput" type="text" placeholder="Titel der Vorlage">
-            </label>
-            <div class="compact-grid compact-grid-2">
-              <label>
-                Status
-                <select id="statusSelect">
-                  <option value="draft">Entwurf</option>
-                  <option value="published">Veroeffentlicht</option>
-                </select>
-              </label>
-              <label>
-                Tool
-                <select id="toolKeySelect"></select>
-              </label>
-            </div>
-            <div class="template-summary">
-              <div>
-                <span class="summary-label">Aktuelle Zuordnung</span>
-                <span id="assignCurrentDisplay" class="summary-value">-</span>
-              </div>
-              <button id="btnAssign" class="btn btn-primary" type="button" disabled>Tool uebernehmen</button>
-            </div>
-          </div>
+          <label class="selection-title-template">
+            PDF-Dateiname (mit Variablen)
+            <input id="pdfTitleTemplateInput" type="text" placeholder="Messprotokoll - [project_name] ([measurement_date])">
+            <small>Steuert den Namen der erzeugten PDF-Datei. Beispiele: [project_name], [measurement_date], [report_name], [today], [now]</small>
+          </label>
         </section>
 
         <section class="panel-section">
@@ -82,52 +84,72 @@
             <h2>Elemente</h2>
             <span class="meta-chip" id="layerCountInfo">0</span>
           </div>
+          <div class="panel-stack panel-stack-tight page-manager">
+            <div class="panel-section-head">
+              <h2>Seiten</h2>
+              <span class="meta-chip" id="pageCountInfo">1</span>
+            </div>
+            <div class="page-manager-actions">
+              <button id="btnPageAdd" class="btn btn-icon-only" type="button" title="Seite hinzufuegen" aria-label="Seite hinzufuegen">
+                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button id="btnPageDelete" class="btn btn-danger btn-icon-only" type="button" title="Seite loeschen" aria-label="Seite loeschen">
+                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M7 7l1 12h8l1-12"/></svg>
+              </button>
+              <button id="btnPageMoveUp" class="btn btn-icon-only" type="button" title="Seite nach vorne" aria-label="Seite nach vorne">
+                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M7 11l5-5 5 5"/></svg>
+              </button>
+              <button id="btnPageMoveDown" class="btn btn-icon-only" type="button" title="Seite nach hinten" aria-label="Seite nach hinten">
+                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M17 13l-5 5-5-5"/></svg>
+              </button>
+            </div>
+            <div id="pageList" class="page-list"></div>
+          </div>
           <div class="tool-palette">
             <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="text" title="Text" aria-label="Text hinzufuegen">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v2h-6v10h-2V8H5V6z"/></svg>
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M12 6v12"/></svg>
             </button>
             <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="line" title="Linie" aria-label="Linie hinzufuegen">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l16-12 1.2 1.6L5.2 19.6 4 18z"/></svg>
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18L20 6"/></svg>
             </button>
             <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="rect" title="Rahmen" aria-label="Rahmen hinzufuegen">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5zm2 2v10h12V7H6z"/></svg>
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg>
             </button>
             <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="rect_fill" title="Flaeche" aria-label="Flaeche hinzufuegen">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5z"/></svg>
+              <svg class="icon-fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg>
             </button>
             <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="image" title="Bild" aria-label="Bild hinzufuegen">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5zm2 2v10h12V7H6zm2.5 8l2.7-3.4 2.1 2.5 1.6-2 2.1 2.9H8.5zM9 10a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14"/><circle cx="9" cy="10" r="1.5"/><path d="M6.5 16l3.2-3.8 2.3 2.6 2-2.4 3.5 3.6"/></svg>
+            </button>
+            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="chart" title="Diagramm" aria-label="Diagramm hinzufuegen">
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l3.5-4 3 2.8 5-6"/></svg>
             </button>
           </div>
-          <div class="element-actions compact-grid compact-grid-2">
-            <button id="btnDuplicateSelected" class="btn" type="button">Element duplizieren</button>
-            <button id="btnDeleteSelected" class="btn btn-danger" type="button">Auswahl loeschen</button>
-            <button id="btnGroupSelection" class="btn" type="button">Gruppieren</button>
-            <button id="btnUngroupSelection" class="btn" type="button">Gruppe loesen</button>
+          <div class="element-actions">
+            <button id="btnDuplicateSelected" class="btn btn-icon-only" type="button" title="Element duplizieren" aria-label="Element duplizieren">
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11"/><rect x="5" y="5" width="11" height="11"/></svg>
+            </button>
+            <button id="btnDeleteSelected" class="btn btn-danger btn-icon-only" type="button" title="Auswahl loeschen" aria-label="Auswahl loeschen">
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M7 7l1 12h8l1-12"/></svg>
+            </button>
+            <button id="btnGroupSelection" class="btn btn-icon-only" type="button" title="Gruppieren" aria-label="Gruppieren">
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/><path d="M10 7h4M7 10v4M17 10v4M10 17h4"/></svg>
+            </button>
+            <button id="btnUngroupSelection" class="btn btn-icon-only" type="button" title="Gruppe loesen" aria-label="Gruppe loesen">
+              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/><path d="M10 10l4 4M14 10l-4 4"/></svg>
+            </button>
           </div>
           <div class="layer-list-wrap">
             <div id="layerList" class="layer-list"></div>
           </div>
         </section>
 
-        <section class="panel-section panel-section-grow">
-          <div class="panel-section-head">
-            <h2>Bindings</h2>
-            <span class="meta-chip">Katalog</span>
-          </div>
-          <div class="panel-stack panel-stack-tight">
-            <label>
-              Tool-Filter
-              <select id="bindingToolFilterSelect"></select>
-            </label>
-            <label>
-              Feld suchen
-              <input id="bindingSearchInput" type="search" placeholder="z. B. project_name">
-            </label>
-            <div id="bindingList" class="binding-list"></div>
-          </div>
-        </section>
+        <select id="bindingToolFilterSelect" hidden aria-hidden="true"></select>
+        <input id="bindingSearchInput" type="search" hidden aria-hidden="true">
+        <div id="bindingList" class="binding-list" hidden aria-hidden="true"></div>
       </aside>
+
+      <div id="splitterLeft" class="sidebar-splitter" role="separator" aria-label="Linke Seitenleiste Breite" aria-orientation="vertical" tabindex="0"></div>
 
       <section class="workspace">
         <div class="workspace-toolbar card">
@@ -153,48 +175,33 @@
                   </button>
               </div>
             </div>
-          </div>
-          <div class="workspace-toolbar-right">
-            <span id="selectionInfo">Keine Auswahl</span>
-          </div>
-        </div>
-
-        <div id="selectionToolbar" class="selection-toolbar card is-disabled">
-          <div class="toolbar-group">
-            <span class="toolbar-label">Ausrichten</span>
-            <div class="toolbar-actions">
-              <button class="btn align-action" type="button" data-align="left">Links</button>
-              <button class="btn align-action" type="button" data-align="hcenter">Horizontal Mitte</button>
-              <button class="btn align-action" type="button" data-align="right">Rechts</button>
-              <button class="btn align-action" type="button" data-align="top">Oben</button>
-              <button class="btn align-action" type="button" data-align="vcenter">Vertikal Mitte</button>
-              <button class="btn align-action" type="button" data-align="bottom">Unten</button>
-            </div>
-          </div>
-          <div class="toolbar-group">
-            <span class="toolbar-label">Seite</span>
-            <div class="toolbar-actions">
-              <button class="btn align-action" type="button" data-align="page-left">An Seite links</button>
-              <button class="btn align-action" type="button" data-align="page-hcenter">An Seite mittig</button>
-              <button class="btn align-action" type="button" data-align="page-right">An Seite rechts</button>
-              <button class="btn align-action" type="button" data-align="page-top">An Seite oben</button>
-              <button class="btn align-action" type="button" data-align="page-vcenter">An Seite mittig vertikal</button>
-              <button class="btn align-action" type="button" data-align="page-bottom">An Seite unten</button>
-            </div>
-          </div>
-          <div class="toolbar-group">
-            <span class="toolbar-label">Verteilen</span>
-            <div class="toolbar-actions">
-              <button class="btn distribute-action" type="button" data-distribute="horizontal">Horizontal verteilen</button>
-              <button class="btn distribute-action" type="button" data-distribute="vertical">Vertikal verteilen</button>
+            <div class="toolbar-group">
+              <span class="toolbar-label">Ausrichten</span>
+              <div class="toolbar-actions toolbar-actions-icons">
+                <button class="btn btn-icon-only align-action" type="button" data-align="left" title="Links" aria-label="Links ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h2v16H4V4zm4 2h12v2H8V6zm0 5h9v2H8v-2zm0 5h12v2H8v-2z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="hcenter" title="Horizontal mittig" aria-label="Horizontal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v18h-2V3zM4 6h6v2H4V6zm10 0h6v2h-6V6zM6 11h12v2H6v-2zm-2 5h6v2H4v-2zm10 0h6v2h-6v-2z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="right" title="Rechts" aria-label="Rechts ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 4h2v16h-2V4zM4 6h12v2H4V6zm7 5h5v2h-5v-2zM4 16h12v2H4v-2z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="top" title="Oben" aria-label="Oben ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v2H4V4zm2 4h2v10H6V8zm5 0h2v7h-2V8zm5 0h2v9h-2V8z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="vcenter" title="Vertikal mittig" aria-label="Vertikal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h18v2H3v-2zM6 4h2v6H6V4zm0 10h2v6H6v-6zm10-8h2v4h-2V6zm0 8h2v4h-2v-4z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="bottom" title="Unten" aria-label="Unten ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16v2H4v-2zM6 8h2v8H6V8zm5 5h2v3h-2v-3zm5 2h2v1h-2v-1z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="page-left" title="An Seite links" aria-label="An Seite links ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2v16H3V4zm5 2h11v2H8V6zm0 5h8v2H8v-2zm0 5h11v2H8v-2z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="page-hcenter" title="An Seite horizontal mittig" aria-label="An Seite horizontal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v20h-2V2zM5 6h14v2H5V6zm2 5h10v2H7v-2zm-2 5h14v2H5v-2z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="page-right" title="An Seite rechts" aria-label="An Seite rechts ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h2v16h-2V4zM5 6h12v2H5V6zm8 5h4v2h-4v-2zM5 16h12v2H5v-2z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="page-top" title="An Seite oben" aria-label="An Seite oben ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v2H4V3zm3 5h2v10H7V8zm5 0h2v7h-2V8zm5 0h2v9h-2V8z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="page-vcenter" title="An Seite vertikal mittig" aria-label="An Seite vertikal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 11h20v2H2v-2zM6 5h2v6H6V5zm0 8h2v6H6v-6zm10-6h2v4h-2V7zm0 6h2v4h-2v-4z"/></svg></button>
+                <button class="btn btn-icon-only align-action" type="button" data-align="page-bottom" title="An Seite unten" aria-label="An Seite unten ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16v2H4v-2zM7 9h2v8H7V9zm5 12h2V9h-2v12zm5-3h2v-9h-2v9z"/></svg></button>
+                <button class="btn btn-icon-only distribute-action" type="button" data-distribute="horizontal" title="Horizontal verteilen" aria-label="Horizontal verteilen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2v16H3V4zm16 0h2v16h-2V4zM7 10h3v4H7v-4zm7-3h3v10h-3V7z"/></svg></button>
+                <button class="btn btn-icon-only distribute-action" type="button" data-distribute="vertical" title="Vertikal verteilen" aria-label="Vertikal verteilen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v2H4V3zm0 16h16v2H4v-2zm6-12h4v3h-4V7zm-3 7h10v3H7v-3z"/></svg></button>
+              </div>
             </div>
           </div>
         </div>
 
         <section class="stage-wrap card">
           <div class="stage-meta">
-            <span>A4 Vorschau mit Lineal und Raster</span>
+            <span id="stageMetaLabel">A4 Vorschau mit Lineal und Raster</span>
             <div class="stage-meta-right">
+              <span id="stagePageIndicator">Seite 1 / 1</span>
               <span>Shift beim Ziehen schaltet Snap temporaer um.</span>
             </div>
           </div>
@@ -209,6 +216,8 @@
           </div>
         </section>
       </section>
+
+      <div id="splitterRight" class="sidebar-splitter" role="separator" aria-label="Rechte Seitenleiste Breite" aria-orientation="vertical" tabindex="0"></div>
 
       <aside id="propsPanel" class="sidebar sidebar-right card props-panel">
         <section class="panel-section panel-section-grow">
@@ -226,7 +235,7 @@
               Binding
               <select id="propBind"></select>
             </label>
-            <div class="prop-row">
+            <div class="prop-row prop-row-4">
               <label>
                 X (mm)
                 <input id="propX" type="number" step="0.5">
@@ -235,8 +244,6 @@
                 Y (mm)
                 <input id="propY" type="number" step="0.5">
               </label>
-            </div>
-            <div class="prop-row">
               <label>
                 Breite (mm)
                 <input id="propW" type="number" step="0.5">
@@ -246,36 +253,65 @@
                 <input id="propH" type="number" step="0.5">
               </label>
             </div>
-            <div class="prop-row">
+            <div class="prop-row prop-row-3">
               <label>
                 Schrift (pt)
                 <input id="propFontSize" type="number" step="0.5" min="6" max="40">
               </label>
-              <label>
+              <label class="prop-toggle-block">
                 Gewicht
-                <select id="propFontWeight">
+                <select id="propFontWeight" class="visually-hidden-select">
                   <option value="normal">normal</option>
                   <option value="bold">bold</option>
                 </select>
+                <div class="prop-toggle-buttons" role="group" aria-label="Schriftgewicht">
+                  <button class="btn prop-toggle-btn prop-toggle-text" type="button" data-font-weight="normal" aria-label="Normal" title="Normal">
+                    <span class="weight-glyph weight-glyph-normal" aria-hidden="true">B</span>
+                  </button>
+                  <button class="btn prop-toggle-btn prop-toggle-text" type="button" data-font-weight="bold" aria-label="Fett" title="Fett">
+                    <span class="weight-glyph weight-glyph-bold" aria-hidden="true">B</span>
+                  </button>
+                </div>
+              </label>
+              <label class="prop-toggle-block">
+                Ausrichtung
+                <select id="propAlign" class="visually-hidden-select">
+                  <option value="left">left</option>
+                  <option value="center">center</option>
+                  <option value="right">right</option>
+                </select>
+                <div class="prop-toggle-buttons" role="group" aria-label="Textausrichtung">
+                  <button class="btn prop-toggle-btn" type="button" data-align-value="left" aria-label="Linksbuendig" title="Linksbuendig">
+                    <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 9h12M4 13h8M4 17h14M4 21h18"/></svg>
+                  </button>
+                  <button class="btn prop-toggle-btn" type="button" data-align-value="center" aria-label="Zentriert" title="Zentriert">
+                    <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 9h12M8 13h8M5 17h14M3 21h18"/></svg>
+                  </button>
+                  <button class="btn prop-toggle-btn" type="button" data-align-value="right" aria-label="Rechtsbuendig" title="Rechtsbuendig">
+                    <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M8 9h12M12 13h8M6 17h14M2 21h18"/></svg>
+                  </button>
+                </div>
               </label>
             </div>
-            <div class="prop-row">
+            <div class="prop-row prop-row-3">
               <label>
-                Font-Familie
+                Font
                 <select id="propFontFamilyId">
                   <option value="helvetica">helvetica</option>
                 </select>
               </label>
               <label>
-                Ausrichtung
-                <select id="propAlign">
-                  <option value="left">left</option>
-                  <option value="center">center</option>
-                  <option value="right">right</option>
+                Diagrammtyp
+                <select id="propChartVariant">
+                  <option value="line">line</option>
                 </select>
               </label>
+              <label class="prop-check">
+                <span>Grenzwert anzeigen</span>
+                <input id="propChartShowLimit" type="checkbox">
+              </label>
             </div>
-            <div class="prop-row">
+            <div class="prop-row prop-row-2-tight">
               <label>
                 Zeilenfaktor
                 <input id="propLineHeightFactor" type="number" step="0.05" min="0.8" max="2.0">
@@ -285,7 +321,7 @@
                 <input id="propBaselineOffsetMm" type="number" step="0.1" min="-5" max="5">
               </label>
             </div>
-            <div class="prop-row">
+            <div class="prop-row prop-row-2-tight">
               <label>
                 Max. Zeilen (0=auto)
                 <input id="propMaxLines" type="number" step="1" min="0" max="200">
@@ -298,7 +334,7 @@
                 </select>
               </label>
             </div>
-            <div class="prop-row">
+            <div class="prop-row prop-row-2-tight">
               <label>
                 Linienstaerke
                 <input id="propStrokeWidth" type="number" step="0.2" min="0.2" max="10">
@@ -308,7 +344,7 @@
                 <input id="propSnap" type="checkbox">
               </label>
             </div>
-            <div class="prop-row">
+            <div class="prop-row prop-row-3">
               <label>
                 Textfarbe
                 <input id="propTextColor" type="color" value="#272727">
@@ -317,11 +353,11 @@
                 Linienfarbe
                 <input id="propStrokeColor" type="color" value="#747474">
               </label>
+              <label>
+                Fuellfarbe
+                <input id="propFillColor" type="color" value="#14a76c">
+              </label>
             </div>
-            <label>
-              Fuellfarbe
-              <input id="propFillColor" type="color" value="#14a76c">
-            </label>
             <div class="image-source-tools">
               <label>
                 Bild aus Repository
@@ -357,6 +393,7 @@
       <button class="ctx-item" type="button" data-add-type="rect">Rechteck (Linie)</button>
       <button class="ctx-item" type="button" data-add-type="rect_fill">Rechteck (gefuellt)</button>
       <button class="ctx-item" type="button" data-add-type="image">Bild</button>
+      <button class="ctx-item" type="button" data-add-type="chart">Diagramm</button>
     </div>
     <button id="ctxDelete" class="ctx-item" type="button">Entfernen</button>
     <button id="ctxGroup" class="ctx-item" type="button">Gruppieren</button>

@@ -702,6 +702,32 @@ function triggerDownload(blob, fileName, openInNewTab){
   setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
 }
 
+function parseDownloadFilenameFromContentDisposition(headerValue){
+  const raw = String(headerValue || '').trim();
+  if(!raw) return '';
+
+  // RFC 5987: filename*=UTF-8''...
+  const starMatch = raw.match(/filename\*\s*=\s*([^;]+)/i);
+  if(starMatch && starMatch[1]){
+    let encoded = String(starMatch[1]).trim();
+    encoded = encoded.replace(/^UTF-8''/i, '').replace(/^"|"$/g, '');
+    try {
+      const decoded = decodeURIComponent(encoded);
+      if(decoded) return decoded;
+    } catch(_err) {
+      // Fallback to filename below.
+    }
+  }
+
+  const plainMatch = raw.match(/filename\s*=\s*(?:"([^"]+)"|([^;]+))/i);
+  if(plainMatch){
+    const value = (plainMatch[1] || plainMatch[2] || '').trim();
+    if(value) return value;
+  }
+
+  return '';
+}
+
 function sanitizeBaseName(){
   const datum = getVal('datumMessung').trim() || 'kein-datum';
   const ev = getVal('eventName').trim() || 'unbenannt';
@@ -1790,6 +1816,24 @@ async function generateTemplatePDF(){
     k_werte_gesetzt: getVal('kset').trim(),
     correction_k1: getVal('k1').trim(),
     correction_k2: getVal('k2').trim(),
+    chart_laeq_series: {
+      title: (summary && summary.laeq_g30 != null) ? 'LAeq,30min Verlauf' : 'LAeq Verlauf',
+      unit: 'dB(A)',
+      limit: LIMIT_LAEQ_30,
+      points: chartSamples.map((sample) => ({
+        label: sample.time || '',
+        value: sample.LAeq,
+      })).filter((point) => Number.isFinite(point.value)),
+    },
+    chart_lcpeak_series: {
+      title: 'LCpeak Verlauf',
+      unit: 'dB(C)',
+      limit: LIMIT_LCPEAK,
+      points: chartSamples.map((sample) => ({
+        label: sample.time || '',
+        value: sample.LC,
+      })).filter((point) => Number.isFinite(point.value)),
+    },
   };
 
   let apiPath = '/pdf_template_api.php';
@@ -1831,6 +1875,9 @@ async function generateTemplatePDF(){
     return;
   }
 
+  const contentDisposition = res.headers.get('content-disposition') || '';
+  const serverFileName = parseDownloadFilenameFromContentDisposition(contentDisposition);
+
   const firstPdfBuffer = await res.arrayBuffer();
 
   applyChartTheme('light');
@@ -1839,9 +1886,9 @@ async function generateTemplatePDF(){
 
   const mergedBytes = await mergePdfBuffers(firstPdfBuffer, secondPdfBuffer);
   const blob = new Blob([mergedBytes], { type: 'application/pdf' });
-  const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, '_blank', 'noopener,noreferrer');
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  const fallbackName = `${sanitizeBaseName()}.pdf`;
+  const finalFileName = (serverFileName || fallbackName).trim() || fallbackName;
+  triggerDownload(blob, finalFileName, false);
 }
 
 async function generateLegacyPDF(){
