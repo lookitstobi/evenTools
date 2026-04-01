@@ -157,9 +157,18 @@ label.label-required::after{
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdf" class="icon-btn subtle" type="button" disabled title="Messbericht als PDF-Vorschau oeffnen">PDF-Vorschau</button>
+      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messbericht mit der Vorlage aus dem pdfTool rendern">PDF aus Vorlage</button>
     </div>
     <div class="header-secondary-actions">
+      <details class="header-menu">
+        <summary class="icon-btn subtle menu-trigger" title="PDF-Aktionen anzeigen">PDF</summary>
+        <div class="header-dropdown">
+          <div class="menu-list">
+            <button id="btnPdf" class="menu-item-btn" type="button" disabled title="Messbericht mit dem Legacy-PDF-Generator oeffnen">Legacy-PDF oeffnen</button>
+          </div>
+        </div>
+      </details>
+
       <details class="header-menu">
         <summary class="icon-btn subtle menu-trigger" title="Speicheroptionen fuer lokale Dateien und HTML-Export anzeigen">Speichern</summary>
         <div class="header-dropdown">
@@ -657,7 +666,7 @@ function applySavedState(rawState, options = {}){
     setText('chartInfo', '');
     if(chartLAeq){ chartLAeq.destroy(); chartLAeq = null; }
     if(chartLCpeak){ chartLCpeak.destroy(); chartLCpeak = null; }
-    el('btnPdf').disabled = true;
+    setPdfButtonsDisabled(true);
     updateComplianceStatus();
     updateStateChips();
   }
@@ -699,6 +708,25 @@ function triggerDownload(blob, fileName, openInNewTab){
   if(openInNewTab){
     try{ window.open(url, '_blank'); }catch(e){ console.warn('Could not open preview tab', e); }
   }
+  setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
+}
+
+function openPdfPreview(blob, fileName){
+  const url = URL.createObjectURL(blob);
+  try {
+    const previewWindow = window.open(url, '_blank', 'noopener');
+    if(previewWindow) return;
+  } catch(err) {
+    console.warn('Could not open PDF preview tab', err);
+  }
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
   setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
 }
 
@@ -1498,7 +1526,7 @@ function calculateAndRender(){
   // update header compliance indicator based on table results
   updateComplianceStatus();
 
-  el('btnPdf').disabled = false;
+  setPdfButtonsDisabled(false);
 }
 
 function paRow(type="", qty=""){
@@ -1644,19 +1672,11 @@ function addChartImage(doc, chart, x, y, maxW, maxH, scale){
   return drawH;
 }
 
-function getPdfRuntimeMode(){
-  const mode = String(window.TOOLSAPP_RUNTIME?.pdf_mode || '').trim().toLowerCase();
-  return mode === 'template' ? 'template' : 'legacy';
-}
-
-function syncPdfButtonMode(){
-  const btn = el('btnPdf');
-  if(!btn) return;
-  const isTemplate = getPdfRuntimeMode() === 'template';
-  btn.textContent = isTemplate ? 'PDF-Vorschau (Template)' : 'PDF-Vorschau (Legacy)';
-  btn.title = isTemplate
-    ? 'Messbericht mit dem neuen PDF-System und der Editor-Vorlage öffnen'
-    : 'Messbericht mit dem alten Legacy-PDF-Generator öffnen';
+function setPdfButtonsDisabled(disabled){
+  ['btnPdfTemplate', 'btnPdf'].forEach((id) => {
+    const button = el(id);
+    if(button) button.disabled = disabled;
+  });
 }
 
 async function generateTemplatePDF(){
@@ -1888,7 +1908,7 @@ async function generateTemplatePDF(){
   const blob = new Blob([mergedBytes], { type: 'application/pdf' });
   const fallbackName = `${sanitizeBaseName()}.pdf`;
   const finalFileName = (serverFileName || fallbackName).trim() || fallbackName;
-  triggerDownload(blob, finalFileName, false);
+  openPdfPreview(blob, finalFileName);
 }
 
 async function generateLegacyPDF(){
@@ -2278,11 +2298,7 @@ async function generateLegacyPDF(){
 }
 
 async function generatePDF(){
-  if(getPdfRuntimeMode() === 'template'){
-    await generateTemplatePDF();
-    return;
-  }
-  await generateLegacyPDF();
+  await generateTemplatePDF();
 }
 
 function exportHTML(){
@@ -2358,7 +2374,11 @@ document.querySelectorAll('.header-menu').forEach(menu => {
 });
 
 // wire import button to hidden file input
-el('btnPdf').addEventListener('click', generatePDF);
+el('btnPdfTemplate').addEventListener('click', generatePDF);
+el('btnPdf').addEventListener('click', ()=>{
+  closeHeaderMenus();
+  generateLegacyPDF();
+});
 el('btnImport').addEventListener('click', ()=>{
   const inp = el('fileInput'); if(inp) inp.click();
 });
@@ -2407,7 +2427,7 @@ el('fileInput').addEventListener('change', (e)=>{
         lastLogFileName = '';
         setDot('dotLog','bad');
         setText('chipLog','Log: Fehler (keine Daten)');
-        el('btnPdf').disabled = true;
+        setPdfButtonsDisabled(true);
         updateComplianceStatus();
         return;
       }
@@ -2426,11 +2446,10 @@ el('fileInput').addEventListener('change', (e)=>{
       setDot('dotLog','bad');
       setText('chipLog','Log: Fehler');
       setText('parseInfo', 'Fehler beim Parsen: ' + String(err && err.message ? err.message : err));
-      el('btnPdf').disabled = true;
+      setPdfButtonsDisabled(true);
       updateComplianceStatus();
     }
   };
-      syncPdfButtonMode();
   reader.readAsText(f);
 });
 
@@ -2438,7 +2457,7 @@ el('fileInput').addEventListener('change', (e)=>{
   const today = new Date().toISOString().split('T')[0];
   setVal('berichtDatum', today);
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
-  syncPdfButtonMode();
+  setPdfButtonsDisabled(true);
   markRequiredFields();
   updateRecoveryButton();
   window.addEventListener('beforeunload', persistRecoveryState);
