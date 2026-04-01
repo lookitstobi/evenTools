@@ -80,6 +80,7 @@ put -O "$STRATO_PATH" "$LOCAL_DIR/dguv_print_agent.php"
 put -O "$STRATO_PATH" "$LOCAL_DIR/index.php"
 put -O "$STRATO_PATH" "$LOCAL_DIR/login.php"
 put -O "$STRATO_PATH" "$LOCAL_DIR/logout.php"
+put -O "$STRATO_PATH" "$LOCAL_DIR/pdf_template_api.php"
 put -O "$STRATO_PATH" "$LOCAL_DIR/tool.php"
 put -O "$STRATO_PATH" "$LOCAL_DIR/toolserve.php"
 

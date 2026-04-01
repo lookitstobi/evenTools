@@ -90,6 +90,7 @@ ROOT_FILES = {
     "index.php",
     "login.php",
     "logout.php",
+    "pdf_template_api.php",
     "tool.php",
     "toolserve.php",
 }
