@@ -43,14 +43,14 @@ Hinweis: Werte in GitHub Secrets **ohne Anführungszeichen** eintragen.
 3. Datenordner erstellen: `mkdir -p data/backups`.
 4. Schreibtest: `touch data/.write_test && rm data/.write_test`.
 5. Migration mit explizitem Datenpfad:
-6. Vendor-Bibliotheken für nti_tool herunterladen:
+6. Vendor-Bibliotheken für pegelTool herunterladen:
 
 ```bash
 php download_vendor.php
 ```
 
-Dieses Skript lädt Chart.js, jsPDF und pdf-lib lokal in `app/tools/nti_tool/vendor/` herunter.
-Ohne diese Dateien ist die PDF-Export-Funktion im NTI-Tool nicht verfügbar.
+Dieses Skript lädt Chart.js, jsPDF und pdf-lib lokal in `app/tools/pegelTool/vendor/` herunter.
+Ohne diese Dateien ist die PDF-Export-Funktion im pegelTool nicht verfügbar.
 
 ```bash
 APP_DATA_DIR=/home/www/HTML_Tools/toolsapp/data php app/migrate.php

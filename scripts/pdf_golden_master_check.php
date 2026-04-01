@@ -62,7 +62,7 @@ if ($count < 5 || $count > 8) {
   $errors[] = 'cases muss zwischen 5 und 8 Eintraegen enthalten.';
 }
 
-$validToolKeys = ['nti_tool', 'dguv_v3', 'cuesheet', 'patchmatrix'];
+$validToolKeys = ['pegelTool', 'dguv_v3', 'cuesheet', 'patchmatrix'];
 $seenIds = [];
 
 foreach ($cases as $idx => $case) {

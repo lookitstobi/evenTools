@@ -95,7 +95,7 @@ function pdf_template_allowed_tool_keys(): array {
     return $cache;
   }
 
-  $preferred = ['nti_tool', 'dguv_v3', 'cuesheet', 'patchmatrix'];
+  $preferred = ['pegelTool', 'dguv_v3', 'cuesheet', 'patchmatrix'];
   $excluded = ['pdf_template_builder', 'dev_todo'];
 
   $keys = [];
@@ -152,7 +152,7 @@ function pdf_template_allowed_tool_keys(): array {
 
 function pdf_template_field_catalog(): array {
   $catalog = [
-    'nti_tool' => [
+    'pegelTool' => [
       ['key' => 'project_name', 'label' => 'Projektname', 'group' => 'Projekt'],
       ['key' => 'measurement_date', 'label' => 'Messdatum', 'group' => 'Messung'],
       ['key' => 'operator_name', 'label' => 'Operator', 'group' => 'Beteiligte'],
@@ -428,7 +428,7 @@ function pdf_template_starter_payload(string $toolKey): array {
   return pdf_template_normalize_payload($base, $toolKey);
 }
 
-function pdf_template_nti_detailed_payload(): array {
+function pdf_template_pegel_detailed_payload(): array {
   $M = 12;   // left/right margin in mm
   $pageW = 186; // 210 - 2*12
   // column positions (fieldPair: col2 starts at M + pageW/2 + 2 = 105)
@@ -475,7 +475,7 @@ function pdf_template_nti_detailed_payload(): array {
 
   return [
     'schema_version' => 2,
-    'tool_key' => 'nti_tool',
+    'tool_key' => 'pegelTool',
     'page' => ['format' => 'a4', 'orientation' => 'portrait', 'unit' => 'mm', 'width' => 210, 'height' => 297],
     'elements' => [
       // ── Header ──────────────────────────────────────────────────
@@ -609,12 +609,12 @@ function pdf_template_nti_detailed_payload(): array {
 function pdf_template_ensure_starter_templates(PDO $db, int $uid, string $username): void {
   $now = pdf_template_iso_now();
 
-  // NTI-spezifische Detailvorlage (basiert auf dem echten jsPDF-Layout)
+  // pegelTool-spezifische Detailvorlage (basiert auf dem echten jsPDF-Layout)
   $ntiTitle = 'Messbericht · DIN 15905-5';
   $ntiCheck = $db->prepare('SELECT id FROM pdf_templates WHERE tool_key = ? AND title = ? AND deleted_at IS NULL LIMIT 1');
-  $ntiCheck->execute(['nti_tool', $ntiTitle]);
-  $ntiPayload = pdf_template_normalize_payload(pdf_template_nti_detailed_payload(), 'nti_tool');
-  $ntiErrors  = pdf_template_validate_payload($ntiPayload, 'nti_tool');
+  $ntiCheck->execute(['pegelTool', $ntiTitle]);
+  $ntiPayload = pdf_template_normalize_payload(pdf_template_pegel_detailed_payload(), 'pegelTool');
+  $ntiErrors  = pdf_template_validate_payload($ntiPayload, 'pegelTool');
   if ($ntiErrors === []) {
     $canonicalPayloadJson = json_encode($ntiPayload, JSON_THROW_ON_ERROR);
     $existingNti = $ntiCheck->fetch(PDO::FETCH_ASSOC);
@@ -643,11 +643,11 @@ function pdf_template_ensure_starter_templates(PDO $db, int $uid, string $userna
     } else {
       $ins = $db->prepare('INSERT INTO pdf_templates (title, tool_key, status, payload_json, owner_user_id, owner_username, version, created_at, updated_at, updated_by_user_id, updated_by_username)
         VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)');
-      $ins->execute([$ntiTitle, 'nti_tool', 'draft', $canonicalPayloadJson, $uid, $username, $now, $now, $uid, $username]);
+      $ins->execute([$ntiTitle, 'pegelTool', 'draft', $canonicalPayloadJson, $uid, $username, $now, $now, $uid, $username]);
       $ntiId = (int)$db->lastInsertId();
       $rev = $db->prepare('INSERT INTO pdf_template_revisions (template_id, version, title, tool_key, status, payload_json, updated_at, updated_by_user_id, updated_by_username)
         VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?)');
-      $rev->execute([$ntiId, $ntiTitle, 'nti_tool', 'draft', $canonicalPayloadJson, $now, $uid, $username]);
+      $rev->execute([$ntiId, $ntiTitle, 'pegelTool', 'draft', $canonicalPayloadJson, $now, $uid, $username]);
     }
   }
 

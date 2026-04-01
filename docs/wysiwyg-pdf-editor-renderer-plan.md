@@ -39,7 +39,7 @@ Ziel: Der visuelle Stand im Editor soll mit der final gerenderten PDF-Ausgabe ü
 - Baseline-Dokument liegt vor und ist von Team/Owner akzeptiert.
 
 ### Task 0.2 - Testdaten festziehen
-- Definiere feste Testdaten je Tool (insb. nti_tool) mit:
+- Definiere feste Testdaten je Tool (insb. pegelTool) mit:
   - langen Strings
   - Umlauten/Sonderzeichen
   - numerischen Feldern
@@ -182,7 +182,7 @@ Ziel: Der visuelle Stand im Editor soll mit der final gerenderten PDF-Ausgabe ü
 - Sicherstellen, dass neue Assets/Markup kompatibel sind.
 
 ### Task 6.4 - End-to-End Runtime-Test
-- nti_tool -> render_tool -> finales PDF mit echten Bindings.
+- pegelTool -> render_tool -> finales PDF mit echten Bindings.
 
 **Done wenn**
 - Alle Referenzfälle bestehen, keine kritischen CSP/Firewall-Verstöße, Runtime-PDF korrekt.
@@ -213,7 +213,7 @@ Ziel: Der visuelle Stand im Editor soll mit der final gerenderten PDF-Ausgabe ü
 2. Editor und finaler PDF-Render nutzen dieselben Layout-Regeln und Assets.
 3. JSON ist das kanonische Layoutformat; visuelles Editieren + Persistenz + Revision funktioniert.
 4. Golden-Master-Fälle sind innerhalb definierter Toleranzen.
-5. nti_tool rendert produktive PDFs korrekt über render_tool.
+5. pegelTool rendert produktive PDFs korrekt über render_tool.
 6. Firewall-/CSP-Regeln bleiben vollständig erfüllt.
 
 ---
@@ -234,5 +234,5 @@ Ziel: Der visuelle Stand im Editor soll mit der final gerenderten PDF-Ausgabe ü
 ## Handoff-Hinweise für den nächsten Agenten
 - Starte mit Phase 1 (Reaktivierung), danach sofort Smoke-Test (open/load/save/preview).
 - Führe Änderungen in kleinen, testbaren Inkrementen aus (nicht Big-Bang).
-- Nach jeder Phase: Regression-Check auf Runtime-Render nti_tool.
+- Nach jeder Phase: Regression-Check auf Runtime-Render pegelTool.
 - Vor Merge zwingend Security/Firewall/CSP prüfen.

@@ -28,7 +28,7 @@ function list_files(string $root): array {
         '.github/',
         '__pycache__/',
         'memories/',
-        'app/tools/nti_tool/vendor/',
+        'app/tools/pegelTool/vendor/',
         'scripts/',
     ];
 

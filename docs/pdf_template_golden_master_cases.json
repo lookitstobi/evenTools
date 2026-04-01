@@ -6,7 +6,7 @@
   "cases": [
     {
       "id": "gm-nti-longtext",
-      "tool_key": "nti_tool",
+      "tool_key": "pegelTool",
       "template_title": "GoldenMaster Nti Longtext",
       "focus": ["wrap", "line_height", "ellipsis", "baseline"],
       "checks": [
@@ -17,7 +17,7 @@
     },
     {
       "id": "gm-nti-alignment",
-      "tool_key": "nti_tool",
+      "tool_key": "pegelTool",
       "template_title": "GoldenMaster Nti Alignment",
       "focus": ["left_center_right", "box_width", "font_size"],
       "checks": [

@@ -1,6 +1,6 @@
 <?php
 /**
- * Einmaliges Setup-Skript: Lädt CDN-Bibliotheken für nti_tool lokal herunter.
+ * Einmaliges Setup-Skript: Lädt CDN-Bibliotheken für pegelTool lokal herunter.
  * Aufruf via CLI: php download_vendor.php
  * Darf NICHT über den Webserver erreichbar sein (.htaccess blockiert es via deploy.php-Regel bereits nicht,
  * aber sicherheitshalber sollte es nach dem ersten Ausführen gelöscht werden).
@@ -12,7 +12,7 @@ if (PHP_SAPI !== 'cli') {
     exit('Nur via CLI ausführbar.');
 }
 
-$vendor = __DIR__ . '/app/tools/nti_tool/vendor';
+$vendor = __DIR__ . '/app/tools/pegelTool/vendor';
 if (!is_dir($vendor)) {
     mkdir($vendor, 0775, true);
 }

@@ -69,7 +69,7 @@ $tool_meta = [
     'sub' => 'Tool zum Management von DGUV-Prüfungen und Betriebsmitteln',
     'logo' => '/assets/Logos/dguvTools.png'
   ],
-  'nti_tool' => [
+  'pegelTool' => [
     'title' => 'pegelTools',
     'sub' => 'Protokollierung und Auswertung von Schallpegelmessungen',
     'logo' => '/assets/Logos/pegelTools.png'

@@ -464,7 +464,7 @@ if ($action === 'import_json' && $method === 'POST') {
 }
 
 if ($action === 'create' && $method === 'POST') {
-  $toolKey = trim((string)($input['tool_key'] ?? 'nti_tool'));
+  $toolKey = trim((string)($input['tool_key'] ?? 'pegelTool'));
   if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {
     pdf_template_json_response(['ok' => false, 'error' => 'invalid_tool_key'], 400);
   }
@@ -675,7 +675,7 @@ if ($action === 'preview_session_init' && $method === 'POST') {
   }
 
   if ($toolKey === '') {
-    $toolKey = trim((string)($payloadInput['tool_key'] ?? 'nti_tool'));
+    $toolKey = trim((string)($payloadInput['tool_key'] ?? 'pegelTool'));
   }
 
   if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {
@@ -754,7 +754,7 @@ if ($action === 'preview_session_pdf' && $method === 'GET') {
     exit;
   }
 
-  $toolKey = (string)($entry['tool_key'] ?? 'nti_tool');
+  $toolKey = (string)($entry['tool_key'] ?? 'pegelTool');
   $payload = is_array($entry['payload'] ?? null) ? $entry['payload'] : [];
   $sampleData = is_array($entry['sample_data'] ?? null) ? $entry['sample_data'] : pdf_template_example_data($toolKey);
   $resolvedTitle = (string)($entry['resolved_title'] ?? 'PDF Vorschau');
@@ -806,7 +806,7 @@ if ($action === 'render_preview' && $method === 'POST') {
   }
 
   if ($toolKey === '') {
-    $toolKey = trim((string)($payloadInput['tool_key'] ?? 'nti_tool'));
+    $toolKey = trim((string)($payloadInput['tool_key'] ?? 'pegelTool'));
   }
 
   if (!in_array($toolKey, pdf_template_allowed_tool_keys(), true)) {

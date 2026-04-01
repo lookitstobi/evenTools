@@ -7,9 +7,9 @@
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
-<script src="/toolserve.php?name=nti_tool&file=vendor/chart.umd.min.js"></script>
-  <script src="/toolserve.php?name=nti_tool&file=vendor/jspdf.umd.min.js"></script>
-  <script src="/toolserve.php?name=nti_tool&file=vendor/pdf-lib.min.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
+  <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
+  <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
 <style>
 :root{
   --bg:#272727;
@@ -361,7 +361,7 @@ const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
 const MAX_LOG_BYTES = 8 * 1024 * 1024;
 const STATE_SCHEMA_VERSION = 1;
-const RECOVERY_STORAGE_KEY = 'nti_tool_recovery_v1';
+const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
 const FORM_FIELD_IDS = [
   'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
@@ -508,7 +508,7 @@ function buildStateObject(options = {}){
   const includeLogText = options.includeLogText !== false;
   return {
     schemaVersion: STATE_SCHEMA_VERSION,
-    sourceApp: 'nti_tool',
+    sourceApp: 'pegelTool',
     savedAt: new Date().toISOString(),
     header: header,
     samples: includeSamples ? samples : [],
@@ -1839,7 +1839,7 @@ async function generateTemplatePDF(){
   let apiPath = '/pdf_template_api.php';
   const scriptSrc = Array.from(document.getElementsByTagName('script'))
     .map((script) => script.src)
-    .find((src) => typeof src === 'string' && src.includes('toolserve.php') && src.includes('name=nti_tool'));
+    .find((src) => typeof src === 'string' && src.includes('toolserve.php') && src.includes('name=pegelTool'));
   if (scriptSrc) {
     const scriptUrl = new URL(scriptSrc, window.location.href);
     if (/\/toolserve\.php$/i.test(scriptUrl.pathname)) {
@@ -1855,7 +1855,7 @@ async function generateTemplatePDF(){
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      tool_key: 'nti_tool',
+      tool_key: 'pegelTool',
       template_title: 'Messbericht · DIN 15905-5',
       data: payloadData,
       disposition: 'inline',

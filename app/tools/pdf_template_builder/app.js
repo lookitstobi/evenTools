@@ -196,7 +196,7 @@ function normalizePageForEditor(rawPage, index) {
 function normalizePayloadForEditor(payload, fallbackToolKey) {
   const src = payload && typeof payload === 'object' ? payload : {};
   const page = src.page && typeof src.page === 'object' ? src.page : {};
-  const toolKey = String(src.tool_key || fallbackToolKey || 'nti_tool');
+  const toolKey = String(src.tool_key || fallbackToolKey || 'pegelTool');
   const elementsRaw = Array.isArray(src.elements) ? src.elements : [];
   const pagesRaw = Array.isArray(src.pages) ? src.pages : [];
   const pages = (pagesRaw.length > 0 ? pagesRaw : [{ id: 'page_1', name: 'Seite 1', elements: elementsRaw }])
@@ -2801,7 +2801,7 @@ async function loadTemplateList() {
 
 async function openTemplate(id) {
   if (!id) {
-    const firstTool = state.current?.tool_key || state.allowedToolKeys[0] || 'nti_tool';
+    const firstTool = state.current?.tool_key || state.allowedToolKeys[0] || 'pegelTool';
     state.current = {
       id: 0,
       title: 'Neue PDF-Vorlage',
@@ -2914,7 +2914,7 @@ function collectCurrentPayload() {
   if (!state.current) return null;
 
   // tool_key kommt aus state.current – wird NUR durch explizite Zuordnung geändert
-  const toolKey = state.current.tool_key || state.allowedToolKeys[0] || 'nti_tool';
+  const toolKey = state.current.tool_key || state.allowedToolKeys[0] || 'pegelTool';
   const payload = state.current.payload || createDefaultPayload(toolKey);
   state.current.payload = normalizePayloadForEditor(payload, toolKey);
   const normalizedPayload = state.current.payload;
@@ -3167,7 +3167,7 @@ function addElement(elementTypeOverride = null, boundsOverride = null) {
     next = {
       ...base,
       text: 'Neues Diagramm',
-      bind: state.current?.tool_key === 'nti_tool' ? 'chart_laeq_series' : '',
+      bind: state.current?.tool_key === 'pegelTool' ? 'chart_laeq_series' : '',
       w: boundsOverride ? startW : 24 * step,
       h: boundsOverride ? startH : 12 * step,
       chart_variant: 'line',
@@ -3723,7 +3723,7 @@ async function init() {
     state.fieldCatalog = typeof boot.field_catalog === 'object' && boot.field_catalog ? boot.field_catalog : {};
 
     fillToolSelect();
-    fillBindingSelect(state.allowedToolKeys[0] || 'nti_tool');
+    fillBindingSelect(state.allowedToolKeys[0] || 'pegelTool');
     updateAssignButtonState();
     setDrawToolMode('');
     initViewportMetrics();

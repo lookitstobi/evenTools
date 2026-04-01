@@ -60,7 +60,7 @@ CREATE TABLE users (
   id INTEGER PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   passhash TEXT NOT NULL,
-  tools TEXT NOT NULL,       -- JSON array of tool names ["patchmatrix", "nti_tool"]
+  tools TEXT NOT NULL,       -- JSON array of tool names ["patchmatrix", "pegelTool"]
   is_admin INTEGER DEFAULT 0 -- 0 = standard user, 1 = admin
 );
 ```
