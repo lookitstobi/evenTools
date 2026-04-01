@@ -725,12 +725,13 @@ if ($action === 'preview_session_page' && $method === 'GET') {
   $displayName = (string)((($entry['file_name'] ?? [])['display'] ?? 'PDF Vorschau'));
   $downloadUrl = '/pdf_template_api.php?action=preview_session_pdf&token=' . rawurlencode($token) . '&download=1';
   $inlineUrl = '/pdf_template_api.php?action=preview_session_pdf&token=' . rawurlencode($token);
+  $nonce = csp_nonce();
 
-  header("Content-Security-Policy: default-src 'none'; img-src 'self' data: blob:; style-src 'unsafe-inline'; frame-src 'self'; child-src 'self'; navigate-to 'self'; frame-ancestors 'self';");
+  header("Content-Security-Policy: default-src 'none'; img-src 'self' data: blob:; style-src 'nonce-{$nonce}'; frame-src 'self'; child-src 'self'; navigate-to 'self'; frame-ancestors 'self';");
   header('Content-Type: text/html; charset=utf-8');
   echo '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">';
   echo '<title>' . pdf_template_escape_html($displayName . '.pdf') . '</title>';
-  echo '<style>';
+  echo '<style nonce="' . $nonce . '">';
   echo 'html,body{margin:0;height:100%;background:#1f1f1f;color:#f4f4f4;font-family:Segoe UI,system-ui,sans-serif;}';
   echo '.topbar{height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#2b2b2b;border-bottom:1px solid #4b4b4b;}';
   echo '.name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;}';

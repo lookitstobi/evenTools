@@ -10,6 +10,8 @@ Sicheres SFTP-Deploy für Toolsapp.
 from __future__ import annotations
 
 import fnmatch
+import hashlib
+import json
 import os
 import posixpath
 import re
@@ -118,6 +120,7 @@ EXCLUDE_NAMES = {
 
 EXCLUDE_PATTERNS = {
     "*.sqlite",
+    "*.bak_*",
     "*.log",
     "*.pyc",
 }
@@ -133,6 +136,7 @@ PROTECTED_REMOTE_PATTERNS = {
 
 BACKUP_DB_FILES = ["users.sqlite", "dguv.sqlite", "cuesheet.sqlite"]
 BACKUP_DIR_PREFIX = "deploy_"
+DEPLOY_MANIFEST_FILE = ".deploy-manifest.json"
 
 
 def list_remote_entries_map(sftp: paramiko.SFTPClient, remote_dir: str) -> Dict[str, paramiko.SFTPAttributes]:
@@ -140,6 +144,80 @@ def list_remote_entries_map(sftp: paramiko.SFTPClient, remote_dir: str) -> Dict[
         return {entry.filename: entry for entry in sftp.listdir_attr(remote_dir)}
     except OSError:
         return {}
+
+
+def read_remote_text_file(sftp: paramiko.SFTPClient, remote_file: str) -> Optional[str]:
+    try:
+        with sftp.open(remote_file, "r") as handle:
+            data = handle.read()
+    except OSError:
+        return None
+
+    if isinstance(data, bytes):
+        return data.decode("utf-8")
+    return str(data)
+
+
+def write_remote_text_file(sftp: paramiko.SFTPClient, remote_file: str, content: str) -> None:
+    ensure_remote_dir(sftp, posixpath.dirname(remote_file))
+    with sftp.open(remote_file, "w") as handle:
+        handle.write(content)
+
+
+def load_remote_manifest(sftp: paramiko.SFTPClient, remote_base: str) -> Dict[str, str]:
+    remote_manifest_file = remote_join(remote_base, DEPLOY_MANIFEST_FILE)
+    text = read_remote_text_file(sftp, remote_manifest_file)
+    if text is None:
+        return {}
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        print("⚠️ Ungueltiges Remote-Manifest, baue Manifest neu auf")
+        return {}
+
+    if not isinstance(parsed, dict):
+        return {}
+
+    manifest: Dict[str, str] = {}
+    for key, value in parsed.items():
+        if isinstance(key, str) and isinstance(value, str):
+            manifest[key] = value
+    return manifest
+
+
+def save_remote_manifest(sftp: paramiko.SFTPClient, remote_base: str, manifest: Dict[str, str]) -> None:
+    remote_manifest_file = remote_join(remote_base, DEPLOY_MANIFEST_FILE)
+    content = json.dumps(manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    write_remote_text_file(sftp, remote_manifest_file, content)
+
+
+def file_sha256(local_file: Path, hash_cache: Dict[str, str]) -> str:
+    cache_key = str(local_file)
+    cached = hash_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    hasher = hashlib.sha256()
+    with local_file.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(64 * 1024), b""):
+            hasher.update(chunk)
+    digest = hasher.hexdigest()
+    hash_cache[cache_key] = digest
+    return digest
+
+
+def should_upload_from_manifest(
+    local_file: Path,
+    relative_path: str,
+    remote_manifest: Dict[str, str],
+    next_manifest: Dict[str, str],
+    hash_cache: Dict[str, str],
+) -> bool:
+    local_hash = file_sha256(local_file, hash_cache)
+    next_manifest[relative_path] = local_hash
+    remote_hash = remote_manifest.get(relative_path)
+    return remote_hash != local_hash
 
 
 def commit_requests_forced_backup(message: str) -> bool:
@@ -290,17 +368,11 @@ def upload_file_if_needed(
     local_file: Path,
     remote_file: str,
     display_path: str,
+    remote_manifest: Dict[str, str],
+    next_manifest: Dict[str, str],
+    hash_cache: Dict[str, str],
 ) -> None:
-    should_upload = True
-    try:
-        remote_stat = sftp.stat(remote_file)
-        local_stat = local_file.stat()
-        if int(remote_stat.st_size) == int(local_stat.st_size) and int(remote_stat.st_mtime) >= int(local_stat.st_mtime):
-            should_upload = False
-    except OSError:
-        should_upload = True
-
-    if should_upload:
+    if should_upload_from_manifest(local_file, display_path, remote_manifest, next_manifest, hash_cache):
         ensure_remote_dir(sftp, posixpath.dirname(remote_file))
         sftp.put(str(local_file), remote_file)
         print(f"📤 {display_path}")
@@ -311,6 +383,9 @@ def sync_directory(
     local_dir: Path,
     remote_dir: str,
     remote_base: str,
+    remote_manifest: Dict[str, str],
+    next_manifest: Dict[str, str],
+    hash_cache: Dict[str, str],
 ) -> None:
     ensure_remote_dir(sftp, remote_dir)
     remote_entries = list_remote_entries_map(sftp, remote_dir)
@@ -327,16 +402,10 @@ def sync_directory(
 
         if item.is_dir():
             local_dirs.add(item.name)
-            sync_directory(sftp, item, remote_item, remote_base)
+            sync_directory(sftp, item, remote_item, remote_base, remote_manifest, next_manifest, hash_cache)
         elif item.is_file():
             local_files.add(item.name)
-            remote_entry = remote_entries.get(item.name)
-            should_upload = True
-            if remote_entry and stat.S_ISREG(remote_entry.st_mode):
-                local_stat = item.stat()
-                if int(remote_entry.st_size) == int(local_stat.st_size) and int(remote_entry.st_mtime) >= int(local_stat.st_mtime):
-                    should_upload = False
-            if should_upload:
+            if should_upload_from_manifest(item, relative_display, remote_manifest, next_manifest, hash_cache):
                 ensure_remote_dir(sftp, posixpath.dirname(remote_item))
                 sftp.put(str(item), remote_item)
                 print(f"📤 {relative_display}")
@@ -363,7 +432,13 @@ def sync_directory(
                 sftp.remove(remote_item)
 
 
-def sync_root_files(sftp: paramiko.SFTPClient, remote_base: str) -> None:
+def sync_root_files(
+    sftp: paramiko.SFTPClient,
+    remote_base: str,
+    remote_manifest: Dict[str, str],
+    next_manifest: Dict[str, str],
+    hash_cache: Dict[str, str],
+) -> None:
     ensure_remote_dir(sftp, remote_base)
     remote_entries = list_remote_entries_map(sftp, remote_base)
 
@@ -374,13 +449,7 @@ def sync_root_files(sftp: paramiko.SFTPClient, remote_base: str) -> None:
             continue
         deployed_files.add(file_name)
         remote_file = remote_join(remote_base, file_name)
-        remote_entry = remote_entries.get(file_name)
-        should_upload = True
-        if remote_entry and stat.S_ISREG(remote_entry.st_mode):
-            local_stat = local_file.stat()
-            if int(remote_entry.st_size) == int(local_stat.st_size) and int(remote_entry.st_mtime) >= int(local_stat.st_mtime):
-                should_upload = False
-        if should_upload:
+        if should_upload_from_manifest(local_file, file_name, remote_manifest, next_manifest, hash_cache):
             ensure_remote_dir(sftp, posixpath.dirname(remote_file))
             sftp.put(str(local_file), remote_file)
             print(f"📤 {file_name}")
@@ -465,19 +534,33 @@ def main() -> int:
         backup_runtime_data(sftp)
 
         print(f"📦 Deploy nach {remote_base}")
-        sync_root_files(sftp, remote_base)
+        remote_manifest = load_remote_manifest(sftp, remote_base)
+        next_manifest: Dict[str, str] = {}
+        hash_cache: Dict[str, str] = {}
+
+        sync_root_files(sftp, remote_base, remote_manifest, next_manifest, hash_cache)
 
         for directory in sorted(ROOT_DIRS):
             local_dir = PROJECT_ROOT / directory
             if not local_dir.exists() or not local_dir.is_dir():
                 continue
             remote_dir = remote_join(remote_base, directory)
-            sync_directory(sftp, local_dir, remote_dir, remote_base)
+            sync_directory(sftp, local_dir, remote_dir, remote_base, remote_manifest, next_manifest, hash_cache)
 
         migration_file = PROJECT_ROOT / "app" / "migrate.php"
         if migration_file.exists():
             remote_migration = remote_join(remote_base, "app", "migrate.php")
-            upload_file_if_needed(sftp, migration_file, remote_migration, "app/migrate.php")
+            upload_file_if_needed(
+                sftp,
+                migration_file,
+                remote_migration,
+                "app/migrate.php",
+                remote_manifest,
+                next_manifest,
+                hash_cache,
+            )
+
+        save_remote_manifest(sftp, remote_base, next_manifest)
 
         print("✅ Deployment abgeschlossen")
         if REMOTE_DATA_PATH:

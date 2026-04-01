@@ -40,6 +40,7 @@ jobs:
       - name: Deploy to Strato
         run: python3 deploy.py
         env:
+          PYTHONUNBUFFERED: '1'
           STRATO_HOST: ${{ secrets.STRATO_HOST }}
           STRATO_USER: ${{ secrets.STRATO_USER }}
           STRATO_PASS: ${{ secrets.STRATO_PASS }}
