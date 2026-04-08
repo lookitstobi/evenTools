@@ -1766,9 +1766,31 @@ async function generateTemplatePDF(){
   // 4. Hintergrund-PDF laden und Felder einblenden.
   try{
     const bgDoc = await PDFLib.PDFDocument.load(pdfBytes);
+
+    // Felder aufteilen in AcroForm-Einträge und Koordinaten-Einträge.
+    const allFields   = Array.isArray(templateMeta.fields) ? templateMeta.fields : [];
+    const acroFields  = allFields.filter(f => f.mode === 'acro');
+    const coordFields = allFields.filter(f => (f.mode || '') !== 'acro');
+
+    // AcroForm-Felder direkt im bgDoc befüllen und flatten.
+    if(acroFields.length){
+      try{
+        const form = bgDoc.getForm();
+        for(const f of acroFields){
+          const value = String(data[f.field] ?? '');
+          if(!value || !f.acro_field_name) continue;
+          try{
+            const field = form.getTextField(f.acro_field_name);
+            field.setText(value);
+          }catch(e){ /* Feld nicht vorhanden oder falscher Typ – ignorieren */ }
+        }
+        form.flatten();
+      }catch(e){ /* Kein AcroForm in diesem PDF – ignorieren */ }
+    }
+
     const outDoc = await PDFLib.PDFDocument.create();
 
-    // Alle Seiten aus Hintergrund-PDF kopieren.
+    // Alle Seiten aus Hintergrund-PDF kopieren (mit gefüllten AcroForm-Feldern).
     const pageIndices = bgDoc.getPageIndices();
     const copiedPages = await outDoc.copyPages(bgDoc, pageIndices);
     copiedPages.forEach(p => outDoc.addPage(p));
@@ -1779,9 +1801,8 @@ async function generateTemplatePDF(){
       bold:    await outDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
     };
 
-    // Felder einblenden.
-    const fields = Array.isArray(templateMeta.fields) ? templateMeta.fields : [];
-    for(const f of fields){
+    // Koordinaten-Felder als Text einblenden.
+    for(const f of coordFields){
       const pageIdx = Math.max(0, (f.page || 1) - 1);
       if(pageIdx >= outDoc.getPageCount()) continue;
 

@@ -29,6 +29,7 @@ function list_files(string $root): array {
         '__pycache__/',
         'memories/',
         'app/tools/pegelTool/vendor/',
+        'app/tools/pdf_template_builder/vendor/',
         'scripts/',
     ];
 

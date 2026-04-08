@@ -64,6 +64,13 @@ function pdf_template_init_schema(PDO $db): void {
     updated_at TEXT NOT NULL
   )');
 
+  // Migration: detected_acro_fields_json-Spalte nachträglich hinzufügen (idempotent).
+  try {
+    $db->exec('ALTER TABLE pdf_uploaded_templates ADD COLUMN detected_acro_fields_json TEXT NOT NULL DEFAULT "[]"');
+  } catch (Throwable) {
+    // Spalte existiert bereits – ignorieren.
+  }
+
   $db->exec('CREATE TABLE IF NOT EXISTS pdf_tool_assignments (
     tool_key TEXT PRIMARY KEY,
     template_id INTEGER NOT NULL,
@@ -205,7 +212,7 @@ function pdf_upload_save(PDO $db, string $title, string $pdfBytes, int $uid, str
 
 function pdf_upload_get(PDO $db, int $id): ?array {
   $stmt = $db->prepare(
-    'SELECT id, title, fields_json, owner_user_id, owner_username, created_at, updated_at
+    'SELECT id, title, fields_json, detected_acro_fields_json, owner_user_id, owner_username, created_at, updated_at
      FROM pdf_uploaded_templates WHERE id = ?'
   );
   $stmt->execute([$id]);
@@ -220,14 +227,21 @@ function pdf_upload_get(PDO $db, int $id): ?array {
     $fields = [];
   }
 
+  try {
+    $acroFields = json_decode((string)($row['detected_acro_fields_json'] ?? '[]'), true, 512, JSON_THROW_ON_ERROR);
+  } catch (Throwable $e) {
+    $acroFields = [];
+  }
+
   return [
-    'id'             => (int)$row['id'],
-    'title'          => (string)$row['title'],
-    'fields'         => is_array($fields) ? $fields : [],
-    'owner_user_id'  => (int)$row['owner_user_id'],
-    'owner_username' => (string)$row['owner_username'],
-    'created_at'     => (string)$row['created_at'],
-    'updated_at'     => (string)$row['updated_at'],
+    'id'                   => (int)$row['id'],
+    'title'                => (string)$row['title'],
+    'fields'               => is_array($fields) ? $fields : [],
+    'detected_acro_fields' => is_array($acroFields) ? $acroFields : [],
+    'owner_user_id'        => (int)$row['owner_user_id'],
+    'owner_username'       => (string)$row['owner_username'],
+    'created_at'           => (string)$row['created_at'],
+    'updated_at'           => (string)$row['updated_at'],
   ];
 }
 
@@ -245,7 +259,7 @@ function pdf_upload_get_bytes(PDO $db, int $id): ?string {
 function pdf_upload_list(PDO $db): array {
   // Lädt alle Vorlagen mit Tool-Zuweisung, aber ohne pdf_data (zu groß).
   $stmt = $db->query(
-    'SELECT t.id, t.title, t.owner_user_id, t.owner_username, t.created_at, t.updated_at,
+    'SELECT t.id, t.title, t.fields_json, t.detected_acro_fields_json, t.owner_user_id, t.owner_username, t.created_at, t.updated_at,
             a.tool_key AS assigned_tool_key
      FROM pdf_uploaded_templates t
      LEFT JOIN pdf_tool_assignments a ON a.template_id = t.id
@@ -254,14 +268,26 @@ function pdf_upload_list(PDO $db): array {
   $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
   $result = [];
   foreach ($rows as $row) {
+    try {
+      $listAcro = json_decode((string)($row['detected_acro_fields_json'] ?? '[]'), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+      $listAcro = [];
+    }
+    try {
+      $listFields = json_decode((string)($row['fields_json'] ?? '[]'), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+      $listFields = [];
+    }
     $result[] = [
-      'id'                => (int)$row['id'],
-      'title'             => (string)$row['title'],
-      'owner_user_id'     => (int)$row['owner_user_id'],
-      'owner_username'    => (string)$row['owner_username'],
-      'created_at'        => (string)$row['created_at'],
-      'updated_at'        => (string)$row['updated_at'],
-      'assigned_tool_key' => isset($row['assigned_tool_key']) ? (string)$row['assigned_tool_key'] : null,
+      'id'                   => (int)$row['id'],
+      'title'                => (string)$row['title'],
+      'fields'               => is_array($listFields) ? $listFields : [],
+      'detected_acro_fields' => is_array($listAcro) ? $listAcro : [],
+      'owner_user_id'        => (int)$row['owner_user_id'],
+      'owner_username'       => (string)$row['owner_username'],
+      'created_at'           => (string)$row['created_at'],
+      'updated_at'           => (string)$row['updated_at'],
+      'assigned_tool_key'    => isset($row['assigned_tool_key']) ? (string)$row['assigned_tool_key'] : null,
     ];
   }
   return $result;
@@ -283,10 +309,36 @@ function pdf_upload_update_title(PDO $db, int $id, string $title): void {
   $stmt->execute([$title, pdf_template_iso_now(), $id]);
 }
 
+function pdf_upload_save_detected_acro_fields(PDO $db, int $id, array $names): void {
+  // Nur Strings, keine Duplikate, max 200 Einträge.
+  $clean = [];
+  foreach ($names as $n) {
+    if (is_string($n) && $n !== '' && !in_array($n, $clean, true)) {
+      $clean[] = $n;
+    }
+    if (count($clean) >= 200) {
+      break;
+    }
+  }
+  $stmt = $db->prepare(
+    'UPDATE pdf_uploaded_templates SET detected_acro_fields_json = ?, updated_at = ? WHERE id = ?'
+  );
+  $stmt->execute([json_encode($clean, JSON_UNESCAPED_UNICODE), pdf_template_iso_now(), $id]);
+}
+
 function pdf_upload_save_fields(PDO $db, int $id, array $fields): void {
   $clean = [];
   foreach ($fields as $f) {
     if (!is_array($f)) {
+      continue;
+    }
+    // AcroForm-Modus: nur field + acro_field_name gespeichert.
+    if (($f['mode'] ?? '') === 'acro') {
+      $clean[] = [
+        'mode'           => 'acro',
+        'field'          => (string)($f['field'] ?? ''),
+        'acro_field_name' => (string)($f['acro_field_name'] ?? ''),
+      ];
       continue;
     }
     $clean[] = [
@@ -326,7 +378,7 @@ function pdf_upload_unassign_tool(PDO $db, string $toolKey): void {
 
 function pdf_upload_get_active_for_tool(PDO $db, string $toolKey): ?array {
   $stmt = $db->prepare(
-    'SELECT t.id, t.title, t.fields_json, a.tool_key AS assigned_tool_key
+    'SELECT t.id, t.title, t.fields_json, t.detected_acro_fields_json, a.tool_key AS assigned_tool_key
      FROM pdf_uploaded_templates t
      INNER JOIN pdf_tool_assignments a ON a.template_id = t.id
      WHERE a.tool_key = ?'
@@ -343,10 +395,17 @@ function pdf_upload_get_active_for_tool(PDO $db, string $toolKey): ?array {
     $fields = [];
   }
 
+  try {
+    $acroFields = json_decode((string)($row['detected_acro_fields_json'] ?? '[]'), true, 512, JSON_THROW_ON_ERROR);
+  } catch (Throwable $e) {
+    $acroFields = [];
+  }
+
   return [
-    'id'                => (int)$row['id'],
-    'title'             => (string)$row['title'],
-    'fields'            => is_array($fields) ? $fields : [],
-    'assigned_tool_key' => (string)$row['assigned_tool_key'],
+    'id'                   => (int)$row['id'],
+    'title'                => (string)$row['title'],
+    'fields'               => is_array($fields) ? $fields : [],
+    'detected_acro_fields' => is_array($acroFields) ? $acroFields : [],
+    'assigned_tool_key'    => (string)$row['assigned_tool_key'],
   ];
 }

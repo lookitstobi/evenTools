@@ -6,6 +6,7 @@
   <title>PDF Vorlagen-Manager</title>
   <link rel="stylesheet" href="/assets/app.css">
   <link rel="stylesheet" href="/toolserve.php?name=pdf_template_builder&file=style.css">
+  <script src="/toolserve.php?name=pdf_template_builder&file=vendor/pdf-lib.min.js"></script>
 </head>
 <body class="pm-body">
 
@@ -47,81 +48,88 @@
 
   <!-- Rechte Spalte: Detail-Panel -->
   <main class="pm-detail" id="detailPanel">
-    <div class="pm-detail-empty" id="detailEmpty">
-      <div class="pm-detail-empty-icon">📄</div>
-      <p>Wähle links eine Vorlage aus oder lade eine neue hoch.</p>
-    </div>
+    <div class="pm-detail-split" id="detailContent">
 
-    <div id="detailContent" hidden>
-
-      <!-- Metadaten -->
-      <section class="pm-section card">
-        <div class="pm-section-header">
-          <h3 class="pm-section-title">Metadaten</h3>
-          <button id="btnPreview" class="btn" type="button">PDF Vorschau</button>
+      <!-- Linke Spalte: PDF-Vorschau -->
+      <div class="pm-preview-pane">
+        <div class="pm-preview-toolbar">
+          <span class="pm-preview-title">Vorschau</span>
+          <button id="btnReloadPreview" class="btn pm-preview-reload-btn" type="button" title="Vorschau neu laden">&#8635;</button>
         </div>
-        <div class="pm-meta-grid">
-          <div class="field">
-            <label class="label" for="detailTitle">Titel</label>
-            <input id="detailTitle" class="input" type="text">
+        <div id="previewPlaceholder" class="pm-preview-placeholder">
+          <span>Vorlage auswählen</span>
+        </div>
+        <iframe id="previewFrame" class="pm-preview-frame" title="PDF-Vorschau" hidden></iframe>
+      </div>
+
+      <!-- Rechte Spalte: Eingaben -->
+      <div class="pm-fields-pane">
+
+        <!-- Vorlage (Metadaten) -->
+        <section class="pm-section card">
+          <h3 class="pm-section-title">Vorlage</h3>
+          <div class="pm-meta-grid">
+            <div class="field">
+              <label class="label" for="detailTitle">Titel</label>
+              <input id="detailTitle" class="input" type="text">
+            </div>
+            <div class="pm-meta-info">
+              <span class="pm-meta-label">Hochgeladen von</span>
+              <span id="detailOwner" class="pm-meta-value">&#8212;</span>
+              <span class="pm-meta-label">Am</span>
+              <span id="detailCreatedAt" class="pm-meta-value">&#8212;</span>
+            </div>
           </div>
-          <div class="pm-meta-info">
-            <span class="pm-meta-label">Hochgeladen von</span>
-            <span id="detailOwner" class="pm-meta-value">—</span>
-            <span class="pm-meta-label">Am</span>
-            <span id="detailCreatedAt" class="pm-meta-value">—</span>
+          <div class="pm-meta-actions">
+            <button id="btnSaveTitle" class="btn btn-primary" type="button">Titel speichern</button>
+            <button id="btnDelete" class="btn btn-danger" type="button">Vorlage löschen</button>
           </div>
-        </div>
-        <div class="pm-meta-actions">
-          <button id="btnSaveTitle" class="btn btn-primary" type="button">Titel speichern</button>
-          <button id="btnDelete" class="btn btn-danger" type="button">Vorlage löschen</button>
-        </div>
-        <div id="metaMsg" class="pm-msg" hidden></div>
-      </section>
+          <div id="metaMsg" class="pm-msg" hidden></div>
+        </section>
 
-      <!-- Tool-Zuweisung -->
-      <section class="pm-section card">
-        <h3 class="pm-section-title">Tool-Zuweisung</h3>
-        <p class="pm-hint">Legt fest, für welches Tool diese Vorlage als Standard-Template verwendet wird. Jedes Tool kann nur eine aktive Vorlage haben.</p>
-        <div class="pm-assign-row">
-          <select id="assignToolKey" class="input pm-assign-select">
-            <option value="">— Tool auswählen —</option>
-          </select>
-          <button id="btnAssign" class="btn btn-primary" type="button">Zuweisen</button>
-          <button id="btnUnassign" class="btn" type="button">Zuweisung entfernen</button>
-        </div>
-        <div id="assignedChip" class="pm-chip" hidden></div>
-        <div id="assignMsg" class="pm-msg" hidden></div>
-      </section>
+        <!-- Tool-Zuweisung -->
+        <section class="pm-section card">
+          <h3 class="pm-section-title">Tool-Zuweisung</h3>
+          <p class="pm-hint">Legt fest, für welches Tool diese Vorlage als Standard-Template verwendet wird. Jedes Tool kann nur eine aktive Vorlage haben.</p>
+          <div class="pm-assign-row">
+            <select id="assignToolKey" class="input pm-assign-select">
+              <option value="">&#8212; Tool auswählen &#8212;</option>
+            </select>
+            <button id="btnAssign" class="btn btn-primary" type="button">Zuweisen</button>
+            <button id="btnUnassign" class="btn" type="button">Zuweisung entfernen</button>
+          </div>
+          <div id="assignedChip" class="pm-chip" hidden></div>
+          <div id="assignMsg" class="pm-msg" hidden></div>
+        </section>
 
-      <!-- Felder konfigurieren -->
-      <section class="pm-section card">
-        <h3 class="pm-section-title">Felder konfigurieren</h3>
-        <p class="pm-hint">Lege fest, welche Daten aus dem Messprotokoll an welcher Position auf die PDF-Vorlage geschrieben werden. Koordinaten in mm von der oberen linken Ecke der jeweiligen Seite.</p>
-        <div class="pm-fields-toolbar">
-          <button id="btnAddField" class="btn" type="button">+ Feld hinzufügen</button>
-          <button id="btnSaveFields" class="btn btn-primary" type="button">Felder speichern</button>
-        </div>
-        <div class="pm-table-wrap">
-          <table class="pm-table" id="fieldsTable">
-            <thead>
-              <tr>
-                <th>Feld</th>
-                <th>Seite</th>
-                <th>X mm</th>
-                <th>Y mm</th>
-                <th>Größe pt</th>
-                <th>Ausrichtung</th>
-                <th>Farbe</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="fieldsBody"></tbody>
-          </table>
-        </div>
-        <div class="pm-fields-tip">Tipp: X/Y beziehen sich auf die obere linke Ecke des Textes, gemessen von der oberen linken Seite des Blatts (A4 = 210 × 297 mm).</div>
-        <div id="fieldsMsg" class="pm-msg" hidden></div>
-      </section>
+        <!-- Felder-Zuweisung -->
+        <section class="pm-section card" id="acroSection">
+          <div class="pm-section-header">
+            <h3 class="pm-section-title" id="acroSectionTitle">Felder-Zuweisung</h3>
+            <button id="btnScanAcro" class="btn" type="button">Felder erkennen</button>
+          </div>
+          <p class="pm-hint">Weise den PDF-Formularfeldern Variablen zu. Klicke auf <strong>&#8222;Felder erkennen&#8220;</strong>, um die Felder aus dem PDF einzulesen.</p>
+          <div id="acroNoFields">
+            <p class="pm-hint pm-hint--cta">Noch keine Felder erkannt &#8211; klicke auf <strong>&#8222;Felder erkennen&#8220;</strong>, um die Formularfelder dieses PDFs einzulesen.</p>
+          </div>
+          <div id="acroTableWrap" class="pm-table-wrap" hidden>
+            <table class="pm-table pm-acro-table" id="acroTable">
+              <thead>
+                <tr>
+                  <th>Feldname im PDF</th>
+                  <th>Variable</th>
+                </tr>
+              </thead>
+              <tbody id="acroBody"></tbody>
+            </table>
+          </div>
+          <div id="acroActions" class="pm-meta-actions" hidden>
+            <button id="btnSaveAcro" class="btn btn-primary" type="button">Speichern</button>
+          </div>
+          <div id="acroMsg" class="pm-msg" hidden></div>
+        </section>
+
+      </div><!-- /pm-fields-pane -->
 
     </div><!-- /detailContent -->
   </main>
@@ -305,7 +313,6 @@
   }
 
   function renderDetail(item) {
-    el('detailEmpty').hidden = true;
     el('detailContent').hidden = false;
 
     el('detailTitle').value = item.title || '';
@@ -314,7 +321,14 @@
 
     clearMsg('metaMsg');
     clearMsg('assignMsg');
-    clearMsg('fieldsMsg');
+    clearMsg('acroMsg');
+
+    // PDF-Vorschau setzen.
+    var frame = el('previewFrame');
+    var placeholder = el('previewPlaceholder');
+    frame.src = API + '?action=get_pdf&id=' + item.id;
+    frame.hidden = false;
+    placeholder.hidden = true;
 
     // Aktuelle Zuweisung anzeigen.
     var tpl = state.templates.find(function (t) { return t.id === item.id; });
@@ -329,154 +343,21 @@
       el('assignToolKey').value = '';
     }
 
-    // Felder rendern.
-    renderFields(item.fields || []);
+    // Felder-Zuweisung rendern.
+    renderAcroMapping(item);
   }
 
-  // ---------------------------------------------------------------------------
-  // Felder-Tabelle
-  // ---------------------------------------------------------------------------
-
-  function buildFieldOptions(toolKey) {
-    var catalog = state.fieldCatalog[toolKey] || [];
-    // Alle Felder aus allen Tools zusammenfassen, wenn kein Tool zugewiesen.
-    if (!catalog.length) {
-      Object.values(state.fieldCatalog).forEach(function (fields) {
-        fields.forEach(function (f) {
-          if (!catalog.some(function (c) { return c.key === f.key; })) {
-            catalog.push(f);
-          }
-        });
-      });
-    }
-    return catalog;
-  }
-
-  function renderFields(fields) {
-    var tbody = el('fieldsBody');
-    tbody.innerHTML = '';
-
-    var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
-    var assignedKey = tpl ? tpl.assigned_tool_key : null;
-    var catalog = buildFieldOptions(assignedKey || '');
-
-    (fields || []).forEach(function (f) {
-      tbody.appendChild(makeFieldRow(f, catalog));
-    });
-  }
-
-  function makeFieldRow(f, catalog) {
-    var tr = document.createElement('tr');
-
-    // Feld-Dropdown.
-    var tdField = document.createElement('td');
-    var selField = document.createElement('select');
-    selField.className = 'input pm-small-input';
-    var optEmpty = document.createElement('option');
-    optEmpty.value = '';
-    optEmpty.textContent = '— Feld —';
-    selField.appendChild(optEmpty);
-
-    var groups = {};
-    (catalog || []).forEach(function (c) {
-      if (!groups[c.group]) groups[c.group] = [];
-      groups[c.group].push(c);
-    });
-    Object.keys(groups).forEach(function (groupName) {
-      var optgrp = document.createElement('optgroup');
-      optgrp.label = groupName;
-      groups[groupName].forEach(function (c) {
-        var opt = document.createElement('option');
-        opt.value = c.key;
-        opt.textContent = c.label;
-        if (f && f.field === c.key) opt.selected = true;
-        optgrp.appendChild(opt);
-      });
-      selField.appendChild(optgrp);
-    });
-    tdField.appendChild(selField);
-    tr.appendChild(tdField);
-
-    // Seite, X, Y, Größe.
-    [
-      { key: 'page',   val: f ? f.page   : 1,   type: 'number', min: 1,   step: 1,    cls: 'pm-num-input' },
-      { key: 'x_mm',  val: f ? f.x_mm   : 0,   type: 'number', min: 0,   step: 0.5,  cls: 'pm-num-input' },
-      { key: 'y_mm',  val: f ? f.y_mm   : 0,   type: 'number', min: 0,   step: 0.5,  cls: 'pm-num-input' },
-      { key: 'size_pt',val: f ? f.size_pt : 10,  type: 'number', min: 1,   step: 0.5,  cls: 'pm-num-input' },
-    ].forEach(function (col) {
-      var td = document.createElement('td');
-      var inp = document.createElement('input');
-      inp.type = col.type;
-      inp.className = 'input ' + col.cls;
-      inp.value = String(col.val !== undefined ? col.val : '');
-      inp.min = String(col.min);
-      inp.step = String(col.step);
-      inp.dataset.col = col.key;
-      td.appendChild(inp);
-      tr.appendChild(td);
-    });
-
-    // Ausrichtung.
-    var tdAlign = document.createElement('td');
-    var selAlign = document.createElement('select');
-    selAlign.className = 'input pm-small-input';
-    ['left', 'center', 'right'].forEach(function (a) {
-      var opt = document.createElement('option');
-      opt.value = a;
-      opt.textContent = a === 'left' ? 'Links' : (a === 'center' ? 'Mitte' : 'Rechts');
-      if (f && f.align === a) opt.selected = true;
-      selAlign.appendChild(opt);
-    });
-    tdAlign.appendChild(selAlign);
-    tr.appendChild(tdAlign);
-
-    // Farbe.
-    var tdColor = document.createElement('td');
-    var inpColor = document.createElement('input');
-    inpColor.type = 'color';
-    inpColor.className = 'pm-color-input';
-    inpColor.value = (f && f.color) ? f.color : '#000000';
-    tdColor.appendChild(inpColor);
-    tr.appendChild(tdColor);
-
-    // Entfernen.
-    var tdDel = document.createElement('td');
-    var btnDel = document.createElement('button');
-    btnDel.type = 'button';
-    btnDel.className = 'btn btn-danger pm-del-btn';
-    btnDel.textContent = '✕';
-    btnDel.addEventListener('click', function () { tr.remove(); });
-    tdDel.appendChild(btnDel);
-    tr.appendChild(tdDel);
-
-    return tr;
-  }
-
-  function collectFields() {
-    var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
-    var assignedKey = tpl ? tpl.assigned_tool_key : null;
-    var catalog = buildFieldOptions(assignedKey || '');
-    var rows = el('fieldsBody').querySelectorAll('tr');
+  function collectAcroFields() {
+    var rows = el('acroBody').querySelectorAll('tr');
     var fields = [];
     rows.forEach(function (tr) {
-      var selField = tr.querySelector('select');
-      var inputs = tr.querySelectorAll('input[data-col]');
-      var selAlign = tr.querySelectorAll('select')[1];
-      var colorInp = tr.querySelector('input[type="color"]');
-
-      var field = selField ? selField.value : '';
-      var vals = {};
-      inputs.forEach(function (inp) { vals[inp.dataset.col] = inp.value; });
-
-      fields.push({
-        field:   field,
-        page:    parseInt(vals['page'] || '1', 10),
-        x_mm:    parseFloat(vals['x_mm'] || '0'),
-        y_mm:    parseFloat(vals['y_mm'] || '0'),
-        size_pt: parseFloat(vals['size_pt'] || '10'),
-        align:   selAlign ? selAlign.value : 'left',
-        color:   colorInp ? colorInp.value : '#000000',
-      });
+      var nameInput = tr.querySelector('.pm-acro-name-input');
+      var varSelect = tr.querySelector('.pm-acro-var-select');
+      var acroName = nameInput ? nameInput.value : '';
+      var varKey = varSelect ? varSelect.value : '';
+      if (acroName && varKey) {
+        fields.push({ mode: 'acro', field: varKey, acro_field_name: acroName });
+      }
     });
     return fields;
   }
@@ -534,7 +415,6 @@
           state.activeId = null;
           state.currentItem = null;
           el('detailContent').hidden = true;
-          el('detailEmpty').hidden = false;
           renderList();
         } else {
           showMsg('metaMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
@@ -542,11 +422,11 @@
       });
     });
 
-    // Vorschau.
-    el('btnPreview').addEventListener('click', function () {
+    // Vorschau neu laden.
+    el('btnReloadPreview').addEventListener('click', function () {
       if (!state.activeId) return;
-      var url = API + '?action=get_pdf&id=' + state.activeId;
-      window.open(url, '_blank', 'noopener,noreferrer');
+      var frame = el('previewFrame');
+      frame.src = API + '?action=get_pdf&id=' + state.activeId;
     });
 
     // Tool zuweisen.
@@ -567,8 +447,7 @@
           chip.textContent = 'Aktuell zugewiesen: ' + toolKey;
           chip.hidden = false;
           showMsg('assignMsg', 'Vorlage "' + toolKey + '" zugewiesen.', 'ok');
-          // Feldkatalog für dieses Tool neu laden.
-          renderFields((state.currentItem || {}).fields || []);
+          renderAcroMapping(state.currentItem);
         } else {
           showMsg('assignMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
         }
@@ -594,24 +473,162 @@
       });
     });
 
-    // Feld hinzufügen.
-    el('btnAddField').addEventListener('click', function () {
+  }
+
+  // ---------------------------------------------------------------------------
+  // AcroForm-Mapping
+  // ---------------------------------------------------------------------------
+
+  function buildFieldOptions(toolKey) {
+    var catalog = state.fieldCatalog[toolKey] || [];
+    if (!catalog.length) {
+      Object.values(state.fieldCatalog).forEach(function (fields) {
+        fields.forEach(function (f) {
+          if (!catalog.some(function (c) { return c.key === f.key; })) {
+            catalog.push(f);
+          }
+        });
+      });
+    }
+    return catalog;
+  }
+
+  function renderAcroMapping(item) {
+    if (!item) return;
+    var detected = item.detected_acro_fields || [];
+    var existingAcro = (item.fields || []).filter(function (f) { return f.mode === 'acro'; });
+
+    if (!detected.length) {
+      el('acroNoFields').hidden = false;
+      el('acroTableWrap').hidden = true;
+      el('acroActions').hidden = true;
+      return;
+    }
+
+    el('acroNoFields').hidden = true;
+    el('acroTableWrap').hidden = false;
+    el('acroActions').hidden = false;
+
+    var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+    var assignedKey = tpl ? tpl.assigned_tool_key : null;
+    var catalog = buildFieldOptions(assignedKey || '');
+
+    var tbody = el('acroBody');
+    tbody.innerHTML = '';
+    detected.forEach(function (acroFieldName) {
+      var existing = existingAcro.find(function (e) { return e.acro_field_name === acroFieldName; });
+      var assignedVar = existing ? existing.field : '';
+      tbody.appendChild(makeAcroMappingRow(acroFieldName, assignedVar, catalog));
+    });
+  }
+
+  function makeAcroMappingRow(acroFieldName, assignedVarKey, catalog) {
+    var tr = document.createElement('tr');
+
+    var tdName = document.createElement('td');
+    var code = document.createElement('code');
+    code.className = 'pm-acro-field-name';
+    code.textContent = acroFieldName;
+    var hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.className = 'pm-acro-name-input';
+    hidden.value = acroFieldName;
+    tdName.appendChild(code);
+    tdName.appendChild(hidden);
+    tr.appendChild(tdName);
+
+    var tdVar = document.createElement('td');
+    var selVar = document.createElement('select');
+    selVar.className = 'input pm-small-input pm-acro-var-select';
+    var optEmpty = document.createElement('option');
+    optEmpty.value = '';
+    optEmpty.textContent = '\u2014 nicht zuweisen \u2014';
+    selVar.appendChild(optEmpty);
+
+    var groupOrder = [];
+    var groups = {};
+    (catalog || []).forEach(function (c) {
+      if (!groups[c.group]) { groups[c.group] = []; groupOrder.push(c.group); }
+      groups[c.group].push(c);
+    });
+    groupOrder.forEach(function (groupName) {
+      var optgrp = document.createElement('optgroup');
+      optgrp.label = groupName;
+      groups[groupName].forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c.key;
+        opt.textContent = c.label;
+        if (assignedVarKey && c.key === assignedVarKey) opt.selected = true;
+        optgrp.appendChild(opt);
+      });
+      selVar.appendChild(optgrp);
+    });
+    tdVar.appendChild(selVar);
+    tr.appendChild(tdVar);
+
+    return tr;
+  }
+
+  function wireAcro() {
+    el('btnScanAcro').addEventListener('click', function () {
+      if (!state.activeId) return;
+      if (typeof PDFLib === 'undefined') {
+        showMsg('acroMsg', 'PDF-Bibliothek nicht geladen. Seite neu laden.', 'bad');
+        return;
+      }
+      var btn = el('btnScanAcro');
+      btn.disabled = true;
+      btn.textContent = 'Erkenne\u2026';
       var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
-      var assignedKey = tpl ? tpl.assigned_tool_key : null;
-      var catalog = buildFieldOptions(assignedKey || '');
-      el('fieldsBody').appendChild(makeFieldRow(null, catalog));
+      var toolKey = tpl ? (tpl.assigned_tool_key || '') : '';
+      var pdfUrl = '/pdf_template_api.php?action=get_pdf&id=' + state.activeId
+        + (toolKey ? '&tool_key=' + encodeURIComponent(toolKey) : '');
+
+      fetch(pdfUrl, { credentials: 'same-origin' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('PDF-Laden fehlgeschlagen (' + r.status + ')');
+          return r.arrayBuffer();
+        })
+        .then(function (buf) {
+          return PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+        })
+        .then(function (pdfDoc) {
+          var form = pdfDoc.getForm();
+          var fields = form.getFields();
+          var names = fields.map(function (f) { return f.getName(); });
+          return apiPost('scan_acro_fields', { id: state.activeId, acro_fields: names })
+            .then(function (result) {
+              if (!result.ok) throw new Error(result.error || 'Speichern fehlgeschlagen');
+              return names;
+            });
+        })
+        .then(function (names) {
+          if (state.currentItem) state.currentItem.detected_acro_fields = names;
+          var li = state.templates.find(function (t) { return t.id === state.activeId; });
+          if (li) li.detected_acro_fields = names;
+          renderAcroMapping(state.currentItem);
+          showMsg('acroMsg', names.length + ' Formularfeld(er) erkannt.', 'ok');
+        })
+        .catch(function (err) {
+          showMsg('acroMsg', 'Fehler: ' + (err.message || 'unbekannt'), 'bad');
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = 'Formularfelder erkennen';
+        });
     });
 
-    // Felder speichern.
-    el('btnSaveFields').addEventListener('click', function () {
+    el('btnSaveAcro').addEventListener('click', function () {
       if (!state.activeId) return;
-      var fields = collectFields();
-      apiPost('save_fields', { id: state.activeId, fields: fields }).then(function (data) {
+      var acroFields  = collectAcroFields();
+      var coordFields = ((state.currentItem || {}).fields || []).filter(function (f) { return (f.mode || '') !== 'acro'; });
+      var allFields   = coordFields.concat(acroFields);
+      apiPost('save_fields', { id: state.activeId, fields: allFields }).then(function (data) {
         if (data.ok) {
-          if (state.currentItem) state.currentItem.fields = fields;
-          showMsg('fieldsMsg', 'Feldkonfiguration gespeichert.', 'ok');
+          if (state.currentItem) state.currentItem.fields = allFields;
+          showMsg('acroMsg', 'Mapping gespeichert.', 'ok');
         } else {
-          showMsg('fieldsMsg', 'Fehler: ' + (data.error || 'unbekannt') + (data.key ? ' (' + data.key + ')' : ''), 'bad');
+          showMsg('acroMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
         }
       });
     });
@@ -667,7 +684,6 @@
       });
   }
 
-  // ---------------------------------------------------------------------------
   // Variablen-Glossar
   // ---------------------------------------------------------------------------
 
@@ -832,6 +848,7 @@
 
   init();
   wireGlossary();
+  wireAcro();
 
 }());
 </script>

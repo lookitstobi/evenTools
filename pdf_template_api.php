@@ -37,7 +37,7 @@ $action = trim((string)($_GET['action'] ?? ''));
 // Zugangskontrolle
 // ---------------------------------------------------------------------------
 
-$adminActions  = ['upload', 'save_fields', 'assign_tool', 'unassign_tool', 'delete', 'update_title'];
+$adminActions  = ['upload', 'save_fields', 'assign_tool', 'unassign_tool', 'delete', 'update_title', 'scan_acro_fields'];
 $builderActions = ['list', 'get_meta', 'get_pdf', 'get_active_template', 'field_catalog', 'tool_keys'];
 
 if (in_array($action, $adminActions, true)) {
@@ -309,10 +309,34 @@ if ($action === 'save_fields' && $method === 'POST') {
     if ($key !== '' && !isset($allKeys[$key])) {
       pdf_api_json(['ok' => false, 'error' => 'invalid_field_key', 'key' => $key], 400);
     }
+    // AcroForm-Einträge brauchen acro_field_name.
+    if (($f['mode'] ?? '') === 'acro' && trim((string)($f['acro_field_name'] ?? '')) === '') {
+      pdf_api_json(['ok' => false, 'error' => 'missing_acro_field_name'], 400);
+    }
     $sanitized[] = $f;
   }
 
   pdf_upload_save_fields($db, $id, $sanitized);
+  pdf_api_json(['ok' => true]);
+}
+
+// ---------------------------------------------------------------------------
+// Action: scan_acro_fields — erkannte AcroForm-Feldnamen für eine Vorlage speichern
+// ---------------------------------------------------------------------------
+
+if ($action === 'scan_acro_fields' && $method === 'POST') {
+  $id         = (int)($input['id'] ?? 0);
+  $acroFields = $input['acro_fields'] ?? [];
+  if ($id <= 0) {
+    pdf_api_json(['ok' => false, 'error' => 'missing_id'], 400);
+  }
+  if (!is_array($acroFields)) {
+    pdf_api_json(['ok' => false, 'error' => 'invalid_acro_fields'], 400);
+  }
+  if (pdf_upload_get($db, $id) === null) {
+    pdf_api_json(['ok' => false, 'error' => 'not_found'], 404);
+  }
+  pdf_upload_save_detected_acro_fields($db, $id, $acroFields);
   pdf_api_json(['ok' => true]);
 }
 
