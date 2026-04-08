@@ -81,10 +81,8 @@ $tool_meta = [
   ],
   'pdf_template_builder' => [
     'title' => 'pdfTools',
-    'sub' => 'GUI fuer PDF-Vorlagen und Platzhalter',
-    'logo' => '/assets/Logos/pdfTools.png',
-    'disabled' => empty($config['pdf_template_builder_enabled']),
-    'disabled_note' => 'Der Editor ist aktuell inaktiv und bleibt fuer laufende Arbeiten erhalten.'
+    'sub' => 'PDF-Vorlagen hochladen, konfigurieren und zuweisen',
+    'logo' => '/assets/Logos/pdfTools.png'
   ],
   'timeTools' => [
     'title' => 'timeTools',

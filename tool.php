@@ -13,21 +13,6 @@ if (!$name || !in_array($name, $allowed, true)) {
   exit;
 }
 
-if ($name === 'pdf_template_builder' && empty($config['pdf_template_builder_enabled'])) {
-  http_response_code(503);
-  page_start('PDF-Editor in Bearbeitung');
-  echo '<div class="card">';
-  echo '<div class="h1">PDF-Editor derzeit inaktiv</div>';
-  echo '<div class="small">Der Editor bleibt als Entwicklungsstand erhalten, ist aber vorübergehend deaktiviert.</div>';
-  echo '<div class="sep"></div>';
-  echo '<div class="flash warn">Bitte nutze im Dashboard den PDF-Modus-Schalter, um für Berichte zwischen Legacy und neuem Templatesystem zu wechseln.</div>';
-  echo '<div class="spacer-10"></div>';
-  echo '<a class="btn" href="/index.php">Zurück zum Dashboard</a>';
-  echo '</div>';
-  page_end();
-  exit;
-}
-
 $path = realpath($config['tools_dir'] . '/' . $name . '/index.html');
 $base = realpath($config['tools_dir']);
 

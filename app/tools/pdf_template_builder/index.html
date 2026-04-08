@@ -3,441 +3,838 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PDF Template Builder</title>
+  <title>PDF Vorlagen-Manager</title>
   <link rel="stylesheet" href="/assets/app.css">
-  <link rel="stylesheet" href="/toolserve.php?name=pdf_template_builder&amp;file=style.css">
+  <link rel="stylesheet" href="/toolserve.php?name=pdf_template_builder&file=style.css">
 </head>
-<body class="builder-body">
-  <div class="builder-app">
-    <header class="header builder-header">
-      <div class="header-brand">
-        <h1>PDF Template Builder</h1>
-        <p class="header-subtitle">Vorlagen laden, aufbauen, ausrichten und einem Tool zuweisen.</p>
+<body class="pm-body">
+
+<div class="pm-layout">
+
+  <!-- Linke Spalte: Template-Liste + Upload -->
+  <aside class="pm-sidebar card">
+    <div class="pm-sidebar-header">
+      <h2 class="pm-sidebar-title">Vorlagen</h2>
+      <div class="pm-sidebar-header-actions">
+        <button id="btnGlossary" class="btn pm-help-btn" type="button" title="Variablen-Referenz">?</button>
+        <button id="btnShowUpload" class="btn btn-primary" type="button">+ Hochladen</button>
       </div>
-      <div class="header-groups">
-        <div class="header-group header-group-template">
-          <span class="header-group-label">Vorlage</span>
-          <div class="header-controls header-controls-template">
-            <label class="header-inline-field">
-              Vorlage
-              <select id="templateSelect"></select>
-            </label>
-            <label class="header-inline-field">
-              Titel
-              <input id="titleInput" type="text" placeholder="Titel der Vorlage">
-            </label>
-            <label class="header-inline-field header-inline-field-sm">
-              Status
-              <select id="statusSelect">
-                <option value="draft">Entwurf</option>
-                <option value="published">Veroeffentlicht</option>
-              </select>
-            </label>
-            <label class="header-inline-field header-inline-field-sm">
-              Tool
-              <select id="toolKeySelect"></select>
-            </label>
-            <button id="btnAssign" class="btn btn-primary" type="button" disabled>Tool uebernehmen</button>
-            <span id="assignCurrentDisplay" class="meta-chip">-</span>
-            <span id="templateVersionInfo" class="meta-chip">Neu</span>
+    </div>
+
+    <!-- Upload-Panel (initial versteckt) -->
+    <div id="uploadPanel" class="pm-upload-panel" hidden>
+      <form id="uploadForm" class="pm-upload-form">
+        <div class="field">
+          <label class="label" for="uploadTitle">Titel der Vorlage</label>
+          <input id="uploadTitle" class="input" type="text" placeholder="z. B. Messprotokoll Philharmonie" required>
+        </div>
+        <div class="field">
+          <label class="label" for="uploadFile">PDF-Datei (max. 15 MB)</label>
+          <input id="uploadFile" type="file" accept="application/pdf,.pdf" required>
+        </div>
+        <div class="pm-upload-actions">
+          <button type="submit" class="btn btn-primary" id="btnUploadSubmit">Hochladen</button>
+          <button type="button" class="btn" id="btnUploadCancel">Abbrechen</button>
+        </div>
+      </form>
+      <div id="uploadMsg" class="pm-msg" hidden></div>
+    </div>
+
+    <div id="templateList" class="pm-template-list">
+      <div class="pm-empty-hint">Lade Vorlagen…</div>
+    </div>
+  </aside>
+
+  <!-- Rechte Spalte: Detail-Panel -->
+  <main class="pm-detail" id="detailPanel">
+    <div class="pm-detail-empty" id="detailEmpty">
+      <div class="pm-detail-empty-icon">📄</div>
+      <p>Wähle links eine Vorlage aus oder lade eine neue hoch.</p>
+    </div>
+
+    <div id="detailContent" hidden>
+
+      <!-- Metadaten -->
+      <section class="pm-section card">
+        <div class="pm-section-header">
+          <h3 class="pm-section-title">Metadaten</h3>
+          <button id="btnPreview" class="btn" type="button">PDF Vorschau</button>
+        </div>
+        <div class="pm-meta-grid">
+          <div class="field">
+            <label class="label" for="detailTitle">Titel</label>
+            <input id="detailTitle" class="input" type="text">
+          </div>
+          <div class="pm-meta-info">
+            <span class="pm-meta-label">Hochgeladen von</span>
+            <span id="detailOwner" class="pm-meta-value">—</span>
+            <span class="pm-meta-label">Am</span>
+            <span id="detailCreatedAt" class="pm-meta-value">—</span>
           </div>
         </div>
-        <div class="header-group">
-          <span class="header-group-label">Datei</span>
-          <div class="header-controls">
-            <button id="btnNew" class="btn" type="button">Neu</button>
-            <button id="btnDuplicateTemplate" class="btn" type="button">Duplizieren</button>
-            <button id="btnSave" class="btn btn-primary" type="button">Speichern</button>
-            <button id="btnImport" class="btn" type="button">Import</button>
-            <button id="btnExport" class="btn" type="button">Export</button>
-          </div>
+        <div class="pm-meta-actions">
+          <button id="btnSaveTitle" class="btn btn-primary" type="button">Titel speichern</button>
+          <button id="btnDelete" class="btn btn-danger" type="button">Vorlage löschen</button>
         </div>
-        <div class="header-group">
-          <span class="header-group-label">Pruefen</span>
-          <div class="header-controls">
-            <button id="btnPreview" class="btn" type="button">PDF Vorschau</button>
-            <button id="btnHelp" class="btn" type="button">Hilfe</button>
-            <button id="btnDelete" class="btn btn-danger" type="button">Vorlage loeschen</button>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <input id="importFileInput" type="file" accept="application/json,.json" hidden>
-
-    <main class="builder-shell">
-      <aside class="sidebar sidebar-left card">
-        <section class="panel-section panel-section-compact">
-          <div class="selection-summary">
-            <span class="selection-summary-label">Ausgewaehltes Element</span>
-            <span id="selectionInfo" class="selection-summary-value">Keine Auswahl</span>
-          </div>
-          <label class="selection-title-template">
-            PDF-Dateiname (mit Variablen)
-            <input id="pdfTitleTemplateInput" type="text" placeholder="Messprotokoll - [project_name] ([measurement_date])">
-            <small>Steuert den Namen der erzeugten PDF-Datei. Beispiele: [project_name], [measurement_date], [report_name], [today], [now]</small>
-          </label>
-        </section>
-
-        <section class="panel-section">
-          <div class="panel-section-head">
-            <h2>Elemente</h2>
-            <span class="meta-chip" id="layerCountInfo">0</span>
-          </div>
-          <div class="panel-stack panel-stack-tight page-manager">
-            <div class="panel-section-head">
-              <h2>Seiten</h2>
-              <span class="meta-chip" id="pageCountInfo">1</span>
-            </div>
-            <div class="page-manager-actions">
-              <button id="btnPageAdd" class="btn btn-icon-only" type="button" title="Seite hinzufuegen" aria-label="Seite hinzufuegen">
-                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-              <button id="btnPageDelete" class="btn btn-danger btn-icon-only" type="button" title="Seite loeschen" aria-label="Seite loeschen">
-                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M7 7l1 12h8l1-12"/></svg>
-              </button>
-              <button id="btnPageMoveUp" class="btn btn-icon-only" type="button" title="Seite nach vorne" aria-label="Seite nach vorne">
-                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M7 11l5-5 5 5"/></svg>
-              </button>
-              <button id="btnPageMoveDown" class="btn btn-icon-only" type="button" title="Seite nach hinten" aria-label="Seite nach hinten">
-                <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M17 13l-5 5-5-5"/></svg>
-              </button>
-            </div>
-            <div id="pageList" class="page-list"></div>
-          </div>
-          <div class="tool-palette">
-            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="text" title="Text" aria-label="Text hinzufuegen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M12 6v12"/></svg>
-            </button>
-            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="line" title="Linie" aria-label="Linie hinzufuegen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18L20 6"/></svg>
-            </button>
-            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="rect" title="Rahmen" aria-label="Rahmen hinzufuegen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg>
-            </button>
-            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="rect_fill" title="Flaeche" aria-label="Flaeche hinzufuegen">
-              <svg class="icon-fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg>
-            </button>
-            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="image" title="Bild" aria-label="Bild hinzufuegen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14"/><circle cx="9" cy="10" r="1.5"/><path d="M6.5 16l3.2-3.8 2.3 2.6 2-2.4 3.5 3.6"/></svg>
-            </button>
-            <button class="btn tool-palette-btn btn-icon-only" type="button" data-add-type="chart" title="Diagramm" aria-label="Diagramm hinzufuegen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l3.5-4 3 2.8 5-6"/></svg>
-            </button>
-          </div>
-          <div class="element-actions">
-            <button id="btnDuplicateSelected" class="btn btn-icon-only" type="button" title="Element duplizieren" aria-label="Element duplizieren">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11"/><rect x="5" y="5" width="11" height="11"/></svg>
-            </button>
-            <button id="btnDeleteSelected" class="btn btn-danger btn-icon-only" type="button" title="Auswahl loeschen" aria-label="Auswahl loeschen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M10 11v6M14 11v6M7 7l1 12h8l1-12"/></svg>
-            </button>
-            <button id="btnGroupSelection" class="btn btn-icon-only" type="button" title="Gruppieren" aria-label="Gruppieren">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/><path d="M10 7h4M7 10v4M17 10v4M10 17h4"/></svg>
-            </button>
-            <button id="btnUngroupSelection" class="btn btn-icon-only" type="button" title="Gruppe loesen" aria-label="Gruppe loesen">
-              <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/><path d="M10 10l4 4M14 10l-4 4"/></svg>
-            </button>
-          </div>
-          <div class="layer-list-wrap">
-            <div id="layerList" class="layer-list"></div>
-          </div>
-        </section>
-
-        <select id="bindingToolFilterSelect" hidden aria-hidden="true"></select>
-        <input id="bindingSearchInput" type="search" hidden aria-hidden="true">
-        <div id="bindingList" class="binding-list" hidden aria-hidden="true"></div>
-      </aside>
-
-      <div id="splitterLeft" class="sidebar-splitter" role="separator" aria-label="Linke Seitenleiste Breite" aria-orientation="vertical" tabindex="0"></div>
-
-      <section class="workspace">
-        <div class="workspace-toolbar card">
-          <div class="workspace-toolbar-left">
-            <div class="toolbar-group">
-              <span class="toolbar-label">Ansicht</span>
-              <div class="toolbar-actions">
-                  <button id="btnFitPage" class="btn btn-icon-only" type="button" title="Ganze Seite" aria-label="Auf ganze Seite zoomen">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>
-                  </button>
-                  <button id="btnFitWidth" class="btn btn-icon-only" type="button" title="An Breite anpassen" aria-label="Auf Seitenbreite zoomen">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h18v2H3v-2zm4-5l-4 6 4 6 1.2-1.6L5.3 13H11v-2H5.3l2.9-3.4L7 6zm10 0l-1.2 1.6 2.9 3.4H13v2h5.7l-2.9 3.4L17 18l4-6-4-6z"/></svg>
-                  </button>
-                  <button id="btnZoomOut" class="btn btn-icon-only" type="button" title="Verkleinern" aria-label="Verkleinern">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v2H5z"/></svg>
-                  </button>
-                  <button id="btnZoomReset" class="btn" type="button" title="Zoom zuruecksetzen">100%</button>
-                  <button id="btnZoomIn" class="btn btn-icon-only" type="button" title="Vergroessern" aria-label="Vergroessern">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z"/></svg>
-                  </button>
-                  <button id="btnToggleGrid" class="btn btn-icon-only" type="button" aria-pressed="true" title="Raster" aria-label="Raster ein oder ausblenden">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4V4zm2 2v3h3V6H6zm5 0v3h2V6h-2zm4 0v3h3V6h-3zM6 11v2h3v-2H6zm5 0v2h2v-2h-2zm4 0v2h3v-2h-3zM6 15v3h3v-3H6zm5 0v3h2v-3h-2zm4 0v3h3v-3h-3z"/></svg>
-                  </button>
-              </div>
-            </div>
-            <div class="toolbar-group">
-              <span class="toolbar-label">Ausrichten</span>
-              <div class="toolbar-actions toolbar-actions-icons">
-                <button class="btn btn-icon-only align-action" type="button" data-align="left" title="Links" aria-label="Links ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h2v16H4V4zm4 2h12v2H8V6zm0 5h9v2H8v-2zm0 5h12v2H8v-2z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="hcenter" title="Horizontal mittig" aria-label="Horizontal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v18h-2V3zM4 6h6v2H4V6zm10 0h6v2h-6V6zM6 11h12v2H6v-2zm-2 5h6v2H4v-2zm10 0h6v2h-6v-2z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="right" title="Rechts" aria-label="Rechts ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 4h2v16h-2V4zM4 6h12v2H4V6zm7 5h5v2h-5v-2zM4 16h12v2H4v-2z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="top" title="Oben" aria-label="Oben ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v2H4V4zm2 4h2v10H6V8zm5 0h2v7h-2V8zm5 0h2v9h-2V8z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="vcenter" title="Vertikal mittig" aria-label="Vertikal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h18v2H3v-2zM6 4h2v6H6V4zm0 10h2v6H6v-6zm10-8h2v4h-2V6zm0 8h2v4h-2v-4z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="bottom" title="Unten" aria-label="Unten ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16v2H4v-2zM6 8h2v8H6V8zm5 5h2v3h-2v-3zm5 2h2v1h-2v-1z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="page-left" title="An Seite links" aria-label="An Seite links ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2v16H3V4zm5 2h11v2H8V6zm0 5h8v2H8v-2zm0 5h11v2H8v-2z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="page-hcenter" title="An Seite horizontal mittig" aria-label="An Seite horizontal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 2h2v20h-2V2zM5 6h14v2H5V6zm2 5h10v2H7v-2zm-2 5h14v2H5v-2z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="page-right" title="An Seite rechts" aria-label="An Seite rechts ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h2v16h-2V4zM5 6h12v2H5V6zm8 5h4v2h-4v-2zM5 16h12v2H5v-2z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="page-top" title="An Seite oben" aria-label="An Seite oben ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v2H4V3zm3 5h2v10H7V8zm5 0h2v7h-2V8zm5 0h2v9h-2V8z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="page-vcenter" title="An Seite vertikal mittig" aria-label="An Seite vertikal mittig ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 11h20v2H2v-2zM6 5h2v6H6V5zm0 8h2v6H6v-6zm10-6h2v4h-2V7zm0 6h2v4h-2v-4z"/></svg></button>
-                <button class="btn btn-icon-only align-action" type="button" data-align="page-bottom" title="An Seite unten" aria-label="An Seite unten ausrichten"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16v2H4v-2zM7 9h2v8H7V9zm5 12h2V9h-2v12zm5-3h2v-9h-2v9z"/></svg></button>
-                <button class="btn btn-icon-only distribute-action" type="button" data-distribute="horizontal" title="Horizontal verteilen" aria-label="Horizontal verteilen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2v16H3V4zm16 0h2v16h-2V4zM7 10h3v4H7v-4zm7-3h3v10h-3V7z"/></svg></button>
-                <button class="btn btn-icon-only distribute-action" type="button" data-distribute="vertical" title="Vertikal verteilen" aria-label="Vertikal verteilen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v2H4V3zm0 16h16v2H4v-2zm6-12h4v3h-4V7zm-3 7h10v3H7v-3z"/></svg></button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <section class="stage-wrap card">
-          <div class="stage-meta">
-            <span id="stageMetaLabel">A4 Vorschau mit Lineal und Raster</span>
-            <div class="stage-meta-right">
-              <span id="stagePageIndicator">Seite 1 / 1</span>
-              <span>Shift beim Ziehen oder Aufziehen schaltet Snap temporaer aus.</span>
-            </div>
-          </div>
-          <div id="stageViewport" class="stage-viewport">
-            <div id="stageSurface" class="stage-surface">
-              <div id="stageCanvas" class="stage-canvas">
-                <div id="rulerX" class="ruler ruler-x"></div>
-                <div id="rulerY" class="ruler ruler-y"></div>
-                <div id="stage" class="stage stage-grid-on"></div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <div id="metaMsg" class="pm-msg" hidden></div>
       </section>
 
-      <div id="splitterRight" class="sidebar-splitter" role="separator" aria-label="Rechte Seitenleiste Breite" aria-orientation="vertical" tabindex="0"></div>
+      <!-- Tool-Zuweisung -->
+      <section class="pm-section card">
+        <h3 class="pm-section-title">Tool-Zuweisung</h3>
+        <p class="pm-hint">Legt fest, für welches Tool diese Vorlage als Standard-Template verwendet wird. Jedes Tool kann nur eine aktive Vorlage haben.</p>
+        <div class="pm-assign-row">
+          <select id="assignToolKey" class="input pm-assign-select">
+            <option value="">— Tool auswählen —</option>
+          </select>
+          <button id="btnAssign" class="btn btn-primary" type="button">Zuweisen</button>
+          <button id="btnUnassign" class="btn" type="button">Zuweisung entfernen</button>
+        </div>
+        <div id="assignedChip" class="pm-chip" hidden></div>
+        <div id="assignMsg" class="pm-msg" hidden></div>
+      </section>
 
-      <aside id="propsPanel" class="sidebar sidebar-right card props-panel">
-        <section class="panel-section panel-section-grow">
-          <div class="panel-section-head">
-            <h2>Eigenschaften</h2>
-            <span class="meta-chip">Inspector</span>
-          </div>
-          <div class="selection-hint">Einzelauswahl zeigt Detailwerte. Bei Mehrfachauswahl wirken geaenderte Felder auf alle gewaelten Elemente.</div>
-          <div class="props-grid">
-            <label>
-              Text
-              <textarea id="propText" rows="3"></textarea>
-            </label>
-            <label>
-              Binding
-              <select id="propBind"></select>
-            </label>
-            <div class="prop-row prop-row-4">
-              <label>
-                X (mm)
-                <input id="propX" type="number" step="0.5">
-              </label>
-              <label>
-                Y (mm)
-                <input id="propY" type="number" step="0.5">
-              </label>
-              <label>
-                Breite (mm)
-                <input id="propW" type="number" step="0.5">
-              </label>
-              <label>
-                Hoehe (mm)
-                <input id="propH" type="number" step="0.5">
-              </label>
-            </div>
-            <div class="prop-row prop-row-3">
-              <label>
-                Schrift (pt)
-                <input id="propFontSize" type="number" step="0.5" min="6" max="40">
-              </label>
-              <label class="prop-toggle-block">
-                Gewicht
-                <select id="propFontWeight" class="visually-hidden-select">
-                  <option value="normal">normal</option>
-                  <option value="bold">bold</option>
-                </select>
-                <div class="prop-toggle-buttons" role="group" aria-label="Schriftgewicht">
-                  <button class="btn prop-toggle-btn prop-toggle-text" type="button" data-font-weight="normal" aria-label="Normal" title="Normal">
-                    <span class="weight-glyph weight-glyph-normal" aria-hidden="true">B</span>
-                  </button>
-                  <button class="btn prop-toggle-btn prop-toggle-text" type="button" data-font-weight="bold" aria-label="Fett" title="Fett">
-                    <span class="weight-glyph weight-glyph-bold" aria-hidden="true">B</span>
-                  </button>
-                </div>
-              </label>
-              <label class="prop-toggle-block">
-                Ausrichtung
-                <select id="propAlign" class="visually-hidden-select">
-                  <option value="left">left</option>
-                  <option value="center">center</option>
-                  <option value="right">right</option>
-                </select>
-                <div class="prop-toggle-buttons" role="group" aria-label="Textausrichtung">
-                  <button class="btn prop-toggle-btn" type="button" data-align-value="left" aria-label="Linksbuendig" title="Linksbuendig">
-                    <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 9h12M4 13h8M4 17h14M4 21h18"/></svg>
-                  </button>
-                  <button class="btn prop-toggle-btn" type="button" data-align-value="center" aria-label="Zentriert" title="Zentriert">
-                    <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M6 9h12M8 13h8M5 17h14M3 21h18"/></svg>
-                  </button>
-                  <button class="btn prop-toggle-btn" type="button" data-align-value="right" aria-label="Rechtsbuendig" title="Rechtsbuendig">
-                    <svg class="icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M8 9h12M12 13h8M6 17h14M2 21h18"/></svg>
-                  </button>
-                </div>
-              </label>
-            </div>
-            <div class="prop-row prop-row-3">
-              <label>
-                Font
-                <select id="propFontFamilyId">
-                  <option value="helvetica">helvetica</option>
-                </select>
-              </label>
-              <label>
-                Diagrammtyp
-                <select id="propChartVariant">
-                  <option value="line">line</option>
-                </select>
-              </label>
-              <label class="prop-check">
-                <span>Grenzwert anzeigen</span>
-                <input id="propChartShowLimit" type="checkbox">
-              </label>
-            </div>
-            <div class="prop-row prop-row-2-tight">
-              <label>
-                Zeilenfaktor
-                <input id="propLineHeightFactor" type="number" step="0.05" min="0.8" max="2.0">
-              </label>
-              <label>
-                Baseline Offset (mm)
-                <input id="propBaselineOffsetMm" type="number" step="0.1" min="-5" max="5">
-              </label>
-            </div>
-            <div class="prop-row prop-row-2-tight">
-              <label>
-                Max. Zeilen (0=auto)
-                <input id="propMaxLines" type="number" step="1" min="0" max="200">
-              </label>
-              <label>
-                Overflow
-                <select id="propOverflowMode">
-                  <option value="clip">clip</option>
-                  <option value="ellipsis">ellipsis</option>
-                </select>
-              </label>
-            </div>
-            <div class="prop-row prop-row-2-tight">
-              <label>
-                Linienstaerke
-                <input id="propStrokeWidth" type="number" step="0.2" min="0.2" max="10">
-              </label>
-              <label class="prop-check">
-                <span>Am Raster einrasten</span>
-                <input id="propSnap" type="checkbox">
-              </label>
-            </div>
-            <div class="prop-row prop-row-3">
-              <label>
-                Textfarbe
-                <input id="propTextColor" type="color" value="#272727">
-              </label>
-              <label>
-                Linienfarbe
-                <input id="propStrokeColor" type="color" value="#747474">
-              </label>
-              <label>
-                Fuellfarbe
-                <input id="propFillColor" type="color" value="#14a76c">
-              </label>
-            </div>
-            <div class="image-source-tools">
-              <label>
-                Bild aus Repository
-                <div class="image-source-row">
-                  <select id="repoImageSelect">
-                    <option value="">- Bild auswaehlen -</option>
-                  </select>
-                  <button id="btnApplyRepoImage" class="btn" type="button">Uebernehmen</button>
-                </div>
-              </label>
-              <label>
-                Lokales Bild hochladen
-                <div class="image-source-row">
-                  <input id="imageUploadInput" type="file" accept="image/*">
-                </div>
-              </label>
-            </div>
-            <label>
-              Bildquelle (Data-URL JPEG oder URL)
-              <textarea id="propImageSrc" rows="3" placeholder="data:image/jpeg;base64,..."></textarea>
-            </label>
-          </div>
-        </section>
-      </aside>
-    </main>
+      <!-- Felder konfigurieren -->
+      <section class="pm-section card">
+        <h3 class="pm-section-title">Felder konfigurieren</h3>
+        <p class="pm-hint">Lege fest, welche Daten aus dem Messprotokoll an welcher Position auf die PDF-Vorlage geschrieben werden. Koordinaten in mm von der oberen linken Ecke der jeweiligen Seite.</p>
+        <div class="pm-fields-toolbar">
+          <button id="btnAddField" class="btn" type="button">+ Feld hinzufügen</button>
+          <button id="btnSaveFields" class="btn btn-primary" type="button">Felder speichern</button>
+        </div>
+        <div class="pm-table-wrap">
+          <table class="pm-table" id="fieldsTable">
+            <thead>
+              <tr>
+                <th>Feld</th>
+                <th>Seite</th>
+                <th>X mm</th>
+                <th>Y mm</th>
+                <th>Größe pt</th>
+                <th>Ausrichtung</th>
+                <th>Farbe</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="fieldsBody"></tbody>
+          </table>
+        </div>
+        <div class="pm-fields-tip">Tipp: X/Y beziehen sich auf die obere linke Ecke des Textes, gemessen von der oberen linken Seite des Blatts (A4 = 210 × 297 mm).</div>
+        <div id="fieldsMsg" class="pm-msg" hidden></div>
+      </section>
+
+    </div><!-- /detailContent -->
+  </main>
+
+</div><!-- /pm-layout -->
+
+<!-- Glossar-Modal -->
+<div id="glossaryOverlay" class="pm-modal-overlay" hidden>
+  <div class="pm-modal" role="dialog" aria-modal="true" aria-labelledby="glossaryTitle">
+    <div class="pm-modal-header">
+      <h2 class="pm-modal-title" id="glossaryTitle">Variablen-Referenz</h2>
+      <button id="btnGlossaryClose" class="pm-modal-close" type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <div class="pm-modal-toolbar">
+      <label class="pm-modal-tool-label" for="glossaryToolSelect">Tool:</label>
+      <select id="glossaryToolSelect" class="input pm-modal-tool-select"></select>
+    </div>
+    <p class="pm-modal-desc">Der <strong>Schlüssel</strong> ist die exakte Schreibweise, die in der PDF-Vorlage als Feldname eingetragen werden muss. Das Beispiel stammt aus einem echten Messprotokoll-Log.</p>
+    <div id="glossaryBody" class="pm-modal-body"></div>
   </div>
+</div>
 
-  <div id="stageContextMenu" class="ctx-menu" hidden>
-    <button id="ctxAddToggle" class="ctx-item ctx-expand" type="button">Hinzufuegen</button>
-    <div id="ctxAddSub" class="ctx-submenu">
-      <button class="ctx-item" type="button" data-add-type="text">Textfeld</button>
-      <button class="ctx-item" type="button" data-add-type="line">Linie</button>
-      <button class="ctx-item" type="button" data-add-type="rect">Rechteck (Linie)</button>
-      <button class="ctx-item" type="button" data-add-type="rect_fill">Rechteck (gefuellt)</button>
-      <button class="ctx-item" type="button" data-add-type="image">Bild</button>
-      <button class="ctx-item" type="button" data-add-type="chart">Diagramm</button>
-    </div>
-    <button id="ctxDelete" class="ctx-item" type="button">Entfernen</button>
-    <button id="ctxGroup" class="ctx-item" type="button">Gruppieren</button>
-    <button id="ctxUngroup" class="ctx-item" type="button">Gruppe loesen</button>
-    <button id="ctxBindToggle" class="ctx-item ctx-expand" type="button">Binding</button>
-    <div id="ctxBindSub" class="ctx-submenu"></div>
-    <button id="ctxToolToggle" class="ctx-item ctx-expand" type="button">Tool-Zuordnung</button>
-    <div id="ctxToolSub" class="ctx-submenu"></div>
-    <label class="ctx-check" for="ctxSnap">
-      <input id="ctxSnap" type="checkbox">
-      Raster Lock
-    </label>
-  </div>
+<script>
+(function () {
+  'use strict';
 
-  <dialog id="assignDialog" class="confirm-dialog">
-    <h3>Tool-Zuordnung aendern</h3>
-    <p id="assignDialogBody"></p>
-    <div class="dialog-warn">
-      Bestehende Bindings in Elementen, die im neuen Tool nicht existieren, werden auf leer gesetzt.
-    </div>
-    <div class="dialog-actions">
-      <button id="btnAssignCancel" class="btn" type="button">Abbrechen</button>
-      <button id="btnAssignConfirm" class="btn btn-primary" type="button">Zuordnung bestaetigen</button>
-    </div>
-  </dialog>
+  const API = '/pdf_template_api.php';
+  const state = {
+    csrf: '',
+    templates: [],
+    toolKeys: [],
+    fieldCatalog: {},
+    activeId: null,
+    currentItem: null,
+  };
 
-  <dialog id="helpDialog" class="help-dialog">
-    <h3>So nutzt du den PDF Template Builder</h3>
-    <ol>
-      <li>Lade links eine bestehende Vorlage oder starte mit <em>Neu</em> eine leere.</li>
-      <li>Fuege Elemente ueber die Werkzeugbuttons hinzu und waehle sie direkt auf der Seite oder in der Ebenenliste aus.</li>
-      <li>Nutze die Mehrfachauswahl-Toolbar fuer Ausrichten, Verteilen und Seitenausrichtung.</li>
-      <li>Im Inspector rechts bearbeitest du Einzel- oder Sammelwerte fuer die aktuelle Auswahl.</li>
-      <li>Die Tool-Zuordnung bestimmt die verfuegbaren Datenfelder und wird im Vorlagenbereich bestaetigt.</li>
-      <li>Mit <em>Export</em> und <em>Import</em> kannst du Vorlagen portabel sichern und uebernehmen.</li>
-      <li>Mit <em>PDF Vorschau</em> pruefst du jederzeit das serverseitig gerenderte Ergebnis.</li>
-    </ol>
-    <div class="help-actions">
-      <button id="btnHelpClose" class="btn btn-primary" type="button">Verstanden</button>
-    </div>
-  </dialog>
+  // ---------------------------------------------------------------------------
+  // DOM-Helfer
+  // ---------------------------------------------------------------------------
 
-  <div id="message" class="message"></div>
+  function el(id) { return document.getElementById(id); }
 
-  <script src="/toolserve.php?name=pdf_template_builder&amp;file=app.js"></script>
+  function showMsg(containerId, text, type) {
+    const el2 = el(containerId);
+    if (!el2) return;
+    el2.textContent = text;
+    el2.className = 'pm-msg pm-msg-' + (type || 'ok');
+    el2.hidden = false;
+    setTimeout(function () { el2.hidden = true; }, 4000);
+  }
+
+  function clearMsg(containerId) {
+    const el2 = el(containerId);
+    if (el2) el2.hidden = true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // API-Aufrufe
+  // ---------------------------------------------------------------------------
+
+  function apiGet(action, params) {
+    var url = API + '?action=' + encodeURIComponent(action);
+    if (params) {
+      Object.keys(params).forEach(function (k) {
+        url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+      });
+    }
+    return fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); });
+  }
+
+  function apiPost(action, body) {
+    body.csrf = state.csrf;
+    return fetch(API + '?action=' + encodeURIComponent(action), {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function (r) { return r.json(); });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init: CSRF + Vorlagen laden
+  // ---------------------------------------------------------------------------
+
+  function init() {
+    loadList();
+    loadToolKeys();
+    wireButtons();
+  }
+
+  function loadList() {
+    apiGet('list').then(function (data) {
+      if (data.ok) {
+        state.csrf = data.csrf || state.csrf;
+        state.templates = data.items || [];
+        renderList();
+      }
+    });
+  }
+
+  function loadToolKeys() {
+    apiGet('tool_keys').then(function (data) {
+      if (!data.ok) return;
+      state.toolKeys = data.tool_keys || [];
+      state.fieldCatalog = data.field_catalog || {};
+      var sel = el('assignToolKey');
+      while (sel.options.length > 1) sel.remove(1);
+      state.toolKeys.forEach(function (key) {
+        var opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Template-Liste rendern
+  // ---------------------------------------------------------------------------
+
+  function renderList() {
+    var list = el('templateList');
+    list.innerHTML = '';
+
+    if (!state.templates.length) {
+      var hint = document.createElement('div');
+      hint.className = 'pm-empty-hint';
+      hint.textContent = 'Noch keine Vorlagen hochgeladen.';
+      list.appendChild(hint);
+      return;
+    }
+
+    state.templates.forEach(function (tpl) {
+      var card = document.createElement('div');
+      card.className = 'pm-tpl-card' + (tpl.id === state.activeId ? ' pm-tpl-card--active' : '');
+      card.dataset.id = String(tpl.id);
+
+      var name = document.createElement('div');
+      name.className = 'pm-tpl-name';
+      name.textContent = tpl.title;
+
+      var meta = document.createElement('div');
+      meta.className = 'pm-tpl-meta';
+      meta.textContent = fmtDate(tpl.created_at) + ' · ' + (tpl.owner_username || '—');
+
+      card.appendChild(name);
+      card.appendChild(meta);
+
+      if (tpl.assigned_tool_key) {
+        var chip = document.createElement('span');
+        chip.className = 'pm-chip pm-chip--inline';
+        chip.textContent = tpl.assigned_tool_key;
+        card.appendChild(chip);
+      }
+
+      card.addEventListener('click', function () { selectTemplate(tpl.id); });
+      list.appendChild(card);
+    });
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch (e) { return iso; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Template auswählen
+  // ---------------------------------------------------------------------------
+
+  function selectTemplate(id) {
+    state.activeId = id;
+    renderList();
+    apiGet('get_meta', { id: id }).then(function (data) {
+      if (!data.ok) { return; }
+      state.currentItem = data.item;
+      renderDetail(data.item);
+    });
+  }
+
+  function renderDetail(item) {
+    el('detailEmpty').hidden = true;
+    el('detailContent').hidden = false;
+
+    el('detailTitle').value = item.title || '';
+    el('detailOwner').textContent = item.owner_username || '—';
+    el('detailCreatedAt').textContent = fmtDate(item.created_at);
+
+    clearMsg('metaMsg');
+    clearMsg('assignMsg');
+    clearMsg('fieldsMsg');
+
+    // Aktuelle Zuweisung anzeigen.
+    var tpl = state.templates.find(function (t) { return t.id === item.id; });
+    var assignedKey = tpl ? tpl.assigned_tool_key : null;
+    var chip = el('assignedChip');
+    if (assignedKey) {
+      chip.textContent = 'Aktuell zugewiesen: ' + assignedKey;
+      chip.hidden = false;
+      el('assignToolKey').value = assignedKey;
+    } else {
+      chip.hidden = true;
+      el('assignToolKey').value = '';
+    }
+
+    // Felder rendern.
+    renderFields(item.fields || []);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Felder-Tabelle
+  // ---------------------------------------------------------------------------
+
+  function buildFieldOptions(toolKey) {
+    var catalog = state.fieldCatalog[toolKey] || [];
+    // Alle Felder aus allen Tools zusammenfassen, wenn kein Tool zugewiesen.
+    if (!catalog.length) {
+      Object.values(state.fieldCatalog).forEach(function (fields) {
+        fields.forEach(function (f) {
+          if (!catalog.some(function (c) { return c.key === f.key; })) {
+            catalog.push(f);
+          }
+        });
+      });
+    }
+    return catalog;
+  }
+
+  function renderFields(fields) {
+    var tbody = el('fieldsBody');
+    tbody.innerHTML = '';
+
+    var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+    var assignedKey = tpl ? tpl.assigned_tool_key : null;
+    var catalog = buildFieldOptions(assignedKey || '');
+
+    (fields || []).forEach(function (f) {
+      tbody.appendChild(makeFieldRow(f, catalog));
+    });
+  }
+
+  function makeFieldRow(f, catalog) {
+    var tr = document.createElement('tr');
+
+    // Feld-Dropdown.
+    var tdField = document.createElement('td');
+    var selField = document.createElement('select');
+    selField.className = 'input pm-small-input';
+    var optEmpty = document.createElement('option');
+    optEmpty.value = '';
+    optEmpty.textContent = '— Feld —';
+    selField.appendChild(optEmpty);
+
+    var groups = {};
+    (catalog || []).forEach(function (c) {
+      if (!groups[c.group]) groups[c.group] = [];
+      groups[c.group].push(c);
+    });
+    Object.keys(groups).forEach(function (groupName) {
+      var optgrp = document.createElement('optgroup');
+      optgrp.label = groupName;
+      groups[groupName].forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c.key;
+        opt.textContent = c.label;
+        if (f && f.field === c.key) opt.selected = true;
+        optgrp.appendChild(opt);
+      });
+      selField.appendChild(optgrp);
+    });
+    tdField.appendChild(selField);
+    tr.appendChild(tdField);
+
+    // Seite, X, Y, Größe.
+    [
+      { key: 'page',   val: f ? f.page   : 1,   type: 'number', min: 1,   step: 1,    cls: 'pm-num-input' },
+      { key: 'x_mm',  val: f ? f.x_mm   : 0,   type: 'number', min: 0,   step: 0.5,  cls: 'pm-num-input' },
+      { key: 'y_mm',  val: f ? f.y_mm   : 0,   type: 'number', min: 0,   step: 0.5,  cls: 'pm-num-input' },
+      { key: 'size_pt',val: f ? f.size_pt : 10,  type: 'number', min: 1,   step: 0.5,  cls: 'pm-num-input' },
+    ].forEach(function (col) {
+      var td = document.createElement('td');
+      var inp = document.createElement('input');
+      inp.type = col.type;
+      inp.className = 'input ' + col.cls;
+      inp.value = String(col.val !== undefined ? col.val : '');
+      inp.min = String(col.min);
+      inp.step = String(col.step);
+      inp.dataset.col = col.key;
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+
+    // Ausrichtung.
+    var tdAlign = document.createElement('td');
+    var selAlign = document.createElement('select');
+    selAlign.className = 'input pm-small-input';
+    ['left', 'center', 'right'].forEach(function (a) {
+      var opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = a === 'left' ? 'Links' : (a === 'center' ? 'Mitte' : 'Rechts');
+      if (f && f.align === a) opt.selected = true;
+      selAlign.appendChild(opt);
+    });
+    tdAlign.appendChild(selAlign);
+    tr.appendChild(tdAlign);
+
+    // Farbe.
+    var tdColor = document.createElement('td');
+    var inpColor = document.createElement('input');
+    inpColor.type = 'color';
+    inpColor.className = 'pm-color-input';
+    inpColor.value = (f && f.color) ? f.color : '#000000';
+    tdColor.appendChild(inpColor);
+    tr.appendChild(tdColor);
+
+    // Entfernen.
+    var tdDel = document.createElement('td');
+    var btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'btn btn-danger pm-del-btn';
+    btnDel.textContent = '✕';
+    btnDel.addEventListener('click', function () { tr.remove(); });
+    tdDel.appendChild(btnDel);
+    tr.appendChild(tdDel);
+
+    return tr;
+  }
+
+  function collectFields() {
+    var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+    var assignedKey = tpl ? tpl.assigned_tool_key : null;
+    var catalog = buildFieldOptions(assignedKey || '');
+    var rows = el('fieldsBody').querySelectorAll('tr');
+    var fields = [];
+    rows.forEach(function (tr) {
+      var selField = tr.querySelector('select');
+      var inputs = tr.querySelectorAll('input[data-col]');
+      var selAlign = tr.querySelectorAll('select')[1];
+      var colorInp = tr.querySelector('input[type="color"]');
+
+      var field = selField ? selField.value : '';
+      var vals = {};
+      inputs.forEach(function (inp) { vals[inp.dataset.col] = inp.value; });
+
+      fields.push({
+        field:   field,
+        page:    parseInt(vals['page'] || '1', 10),
+        x_mm:    parseFloat(vals['x_mm'] || '0'),
+        y_mm:    parseFloat(vals['y_mm'] || '0'),
+        size_pt: parseFloat(vals['size_pt'] || '10'),
+        align:   selAlign ? selAlign.value : 'left',
+        color:   colorInp ? colorInp.value : '#000000',
+      });
+    });
+    return fields;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Button-Listener verdrahten
+  // ---------------------------------------------------------------------------
+
+  function wireButtons() {
+    // Upload-Panel.
+    el('btnShowUpload').addEventListener('click', function () {
+      el('uploadPanel').hidden = false;
+      el('uploadTitle').focus();
+    });
+    el('btnUploadCancel').addEventListener('click', function () {
+      el('uploadPanel').hidden = true;
+      el('uploadForm').reset();
+    });
+
+    el('uploadForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      doUpload();
+    });
+
+    // Navigation Home.
+    // (Das Home-Menü wird von tool.php injiziert)
+
+    // Titel speichern.
+    el('btnSaveTitle').addEventListener('click', function () {
+      if (!state.activeId) return;
+      var title = el('detailTitle').value.trim();
+      if (!title) { showMsg('metaMsg', 'Bitte einen Titel eingeben.', 'warn'); return; }
+      apiPost('update_title', { id: state.activeId, title: title }).then(function (data) {
+        if (data.ok) {
+          var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+          if (tpl) tpl.title = title;
+          if (state.currentItem) state.currentItem.title = title;
+          renderList();
+          showMsg('metaMsg', 'Titel gespeichert.', 'ok');
+        } else {
+          showMsg('metaMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+        }
+      });
+    });
+
+    // Löschen.
+    el('btnDelete').addEventListener('click', function () {
+      if (!state.activeId) return;
+      var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+      var name = tpl ? tpl.title : 'diese Vorlage';
+      if (!confirm('Wirklich "' + name + '" löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+      apiPost('delete', { id: state.activeId }).then(function (data) {
+        if (data.ok) {
+          state.templates = state.templates.filter(function (t) { return t.id !== state.activeId; });
+          state.activeId = null;
+          state.currentItem = null;
+          el('detailContent').hidden = true;
+          el('detailEmpty').hidden = false;
+          renderList();
+        } else {
+          showMsg('metaMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+        }
+      });
+    });
+
+    // Vorschau.
+    el('btnPreview').addEventListener('click', function () {
+      if (!state.activeId) return;
+      var url = API + '?action=get_pdf&id=' + state.activeId;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+
+    // Tool zuweisen.
+    el('btnAssign').addEventListener('click', function () {
+      if (!state.activeId) return;
+      var toolKey = el('assignToolKey').value;
+      if (!toolKey) { showMsg('assignMsg', 'Bitte ein Tool auswählen.', 'warn'); return; }
+      apiPost('assign_tool', { id: state.activeId, tool_key: toolKey }).then(function (data) {
+        if (data.ok) {
+          // Alle anderen Vorlagen mit diesem Tool-Key zurücksetzen.
+          state.templates.forEach(function (t) {
+            if (t.assigned_tool_key === toolKey) t.assigned_tool_key = null;
+          });
+          var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+          if (tpl) tpl.assigned_tool_key = toolKey;
+          renderList();
+          var chip = el('assignedChip');
+          chip.textContent = 'Aktuell zugewiesen: ' + toolKey;
+          chip.hidden = false;
+          showMsg('assignMsg', 'Vorlage "' + toolKey + '" zugewiesen.', 'ok');
+          // Feldkatalog für dieses Tool neu laden.
+          renderFields((state.currentItem || {}).fields || []);
+        } else {
+          showMsg('assignMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+        }
+      });
+    });
+
+    // Zuweisung entfernen.
+    el('btnUnassign').addEventListener('click', function () {
+      if (!state.activeId) return;
+      var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+      var toolKey = tpl ? tpl.assigned_tool_key : null;
+      if (!toolKey) { showMsg('assignMsg', 'Keine Zuweisung vorhanden.', 'warn'); return; }
+      apiPost('unassign_tool', { tool_key: toolKey }).then(function (data) {
+        if (data.ok) {
+          if (tpl) tpl.assigned_tool_key = null;
+          el('assignedChip').hidden = true;
+          el('assignToolKey').value = '';
+          renderList();
+          showMsg('assignMsg', 'Zuweisung entfernt.', 'ok');
+        } else {
+          showMsg('assignMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+        }
+      });
+    });
+
+    // Feld hinzufügen.
+    el('btnAddField').addEventListener('click', function () {
+      var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+      var assignedKey = tpl ? tpl.assigned_tool_key : null;
+      var catalog = buildFieldOptions(assignedKey || '');
+      el('fieldsBody').appendChild(makeFieldRow(null, catalog));
+    });
+
+    // Felder speichern.
+    el('btnSaveFields').addEventListener('click', function () {
+      if (!state.activeId) return;
+      var fields = collectFields();
+      apiPost('save_fields', { id: state.activeId, fields: fields }).then(function (data) {
+        if (data.ok) {
+          if (state.currentItem) state.currentItem.fields = fields;
+          showMsg('fieldsMsg', 'Feldkonfiguration gespeichert.', 'ok');
+        } else {
+          showMsg('fieldsMsg', 'Fehler: ' + (data.error || 'unbekannt') + (data.key ? ' (' + data.key + ')' : ''), 'bad');
+        }
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Upload
+  // ---------------------------------------------------------------------------
+
+  function doUpload() {
+    var title = el('uploadTitle').value.trim();
+    var fileInput = el('uploadFile');
+    if (!title || !fileInput.files || !fileInput.files.length) {
+      showMsg('uploadMsg', 'Bitte Titel und Datei angeben.', 'warn');
+      return;
+    }
+    var file = fileInput.files[0];
+    if (file.size > 15 * 1024 * 1024) {
+      showMsg('uploadMsg', 'Datei zu groß (max. 15 MB).', 'bad');
+      return;
+    }
+
+    el('btnUploadSubmit').disabled = true;
+    var fd = new FormData();
+    fd.append('csrf', state.csrf);
+    fd.append('title', title);
+    fd.append('pdf_file', file, file.name);
+
+    fetch(API + '?action=upload', {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: fd,
+    }).then(function (r) { return r.json(); })
+      .then(function (data) {
+        el('btnUploadSubmit').disabled = false;
+        if (data.ok) {
+          el('uploadPanel').hidden = true;
+          el('uploadForm').reset();
+          loadList();
+          // Direkt die neue Vorlage auswählen.
+          setTimeout(function () { selectTemplate(data.id); }, 200);
+        } else {
+          var msgs = {
+            missing_title: 'Bitte einen Titel angeben.',
+            upload_error: 'Upload-Fehler (Code ' + (data.code || '?') + ').',
+          };
+          showMsg('uploadMsg', msgs[data.error] || ('Fehler: ' + (data.error || 'unbekannt')), 'bad');
+        }
+      })
+      .catch(function () {
+        el('btnUploadSubmit').disabled = false;
+        showMsg('uploadMsg', 'Netzwerkfehler beim Upload.', 'bad');
+      });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Variablen-Glossar
+  // ---------------------------------------------------------------------------
+
+  function openGlossary() {
+    // Falls loadToolKeys() noch nicht abgeschlossen ist, zuerst nachladen.
+    var doOpen = function () {
+      var sel = el('glossaryToolSelect');
+
+      // Select immer neu befüllen.
+      sel.innerHTML = '';
+      var catalog = state.fieldCatalog || {};
+      var toolKeys = Object.keys(catalog).filter(function (k) {
+        return catalog[k] && catalog[k].length;
+      });
+      if (!toolKeys.length) toolKeys = state.toolKeys || [];
+      toolKeys.forEach(function (key) {
+        var opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key;
+        sel.appendChild(opt);
+      });
+
+      // Aktuell zugewiesenen Tool-Key vorauswählen.
+      var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+      var preferred = tpl && tpl.assigned_tool_key ? tpl.assigned_tool_key : '';
+      if (preferred && sel.querySelector('option[value="' + preferred + '"]')) {
+        sel.value = preferred;
+      } else if (sel.options.length) {
+        sel.value = sel.options[0].value;
+      }
+
+      renderGlossary(sel.value);
+      el('glossaryOverlay').hidden = false;
+      document.body.style.overflow = 'hidden';
+    };
+
+    if (state.toolKeys.length || Object.keys(state.fieldCatalog).length) {
+      doOpen();
+    } else {
+      // API noch nicht fertig – nachladen, dann öffnen.
+      apiGet('tool_keys').then(function (data) {
+        if (data.ok) {
+          state.toolKeys = data.tool_keys || [];
+          state.fieldCatalog = data.field_catalog || {};
+        }
+        doOpen();
+      }).catch(doOpen);
+    }
+  }
+
+  function closeGlossary() {
+    el('glossaryOverlay').hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  function renderGlossary(toolKey) {
+    var body = el('glossaryBody');
+    body.innerHTML = '';
+
+    var entries = (state.fieldCatalog && state.fieldCatalog[toolKey]) ? state.fieldCatalog[toolKey] : [];
+    if (!entries.length) {
+      body.innerHTML = '<p class="pm-hint">Keine Variablen f\u00fcr dieses Tool verf\u00fcgbar.</p>';
+      return;
+    }
+
+    // Gruppieren – Reihenfolge der Gruppen wie im Katalog erhalten.
+    var groupOrder = [];
+    var groups = {};
+    entries.forEach(function (f) {
+      var g = f.group || 'Allgemein';
+      if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+      groups[g].push(f);
+    });
+
+    groupOrder.forEach(function (groupName) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'pm-glossary-group';
+
+      var heading = document.createElement('h4');
+      heading.className = 'pm-glossary-heading';
+      heading.textContent = groupName;
+      wrapper.appendChild(heading);
+
+      var table = document.createElement('table');
+      table.className = 'pm-table pm-glossary-table';
+
+      var thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>Name</th><th>Schl\u00fcssel (exakte Schreibweise)</th><th>Beispiel</th></tr>';
+      table.appendChild(thead);
+
+      var tbody = document.createElement('tbody');
+      groups[groupName].forEach(function (f) {
+        var tr = document.createElement('tr');
+
+        var tdLabel = document.createElement('td');
+        tdLabel.textContent = f.label || f.key;
+        tr.appendChild(tdLabel);
+
+        var tdKey = document.createElement('td');
+        var kbd = document.createElement('kbd');
+        kbd.className = 'pm-glossary-key';
+        kbd.textContent = f.key;
+        tdKey.appendChild(kbd);
+        tdKey.title = 'Klicken zum Kopieren';
+        tdKey.className = 'pm-glossary-key-cell';
+        tdKey.addEventListener('click', function () {
+          copyToClipboard(f.key, tdKey);
+        });
+        tr.appendChild(tdKey);
+
+        var tdExample = document.createElement('td');
+        tdExample.textContent = f.example || '\u2014';
+        tdExample.className = 'pm-glossary-example';
+        tr.appendChild(tdExample);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      wrapper.appendChild(table);
+      body.appendChild(wrapper);
+    });
+  }
+
+  function copyToClipboard(text, triggerEl) {
+    var done = function () {
+      if (!triggerEl) return;
+      triggerEl.classList.add('pm-copied');
+      setTimeout(function () { triggerEl.classList.remove('pm-copied'); }, 1200);
+    };
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(done).catch(done);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) { /* silent */ }
+      document.body.removeChild(ta);
+      done();
+    }
+  }
+
+  function wireGlossary() {
+    el('btnGlossary').addEventListener('click', openGlossary);
+    el('btnGlossaryClose').addEventListener('click', closeGlossary);
+    el('glossaryOverlay').addEventListener('click', function (e) {
+      if (e.target === el('glossaryOverlay')) closeGlossary();
+    });
+    el('glossaryToolSelect').addEventListener('change', function () {
+      renderGlossary(this.value);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !el('glossaryOverlay').hidden) closeGlossary();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Start
+  // ---------------------------------------------------------------------------
+
+  init();
+  wireGlossary();
+
+}());
+</script>
+
 </body>
 </html>
