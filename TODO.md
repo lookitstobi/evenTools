@@ -73,3 +73,10 @@ Folgende Verbesserungen wurden implementiert:
 - [ ] Containergrenzen: Matrix-Container endet nicht sauber am unteren Rand, Scrolling-Container müssen besser definiert werden
 - [ ] Matrix durch X-Beschriftung teilweise sichtbar: X-Achsen-Label clippen nicht korrekt, Matrix scheint darunter durch
 - [ ] Abstände der Panels: Inkonsistente Abstände/Padding in Verwaltungs-View (Manage) und Matrix-View, müssen standardisiert werden
+
+## PDF-Template-Builder – Nächste Schritte
+
+- [ ] Alle Variablen zerstückeln: Messergebnisse einzeln als separate Variablen verfügbar machen (statt zusammengefasst)
+- [ ] Diagramme als Variable: Messdaten-Diagramme im pegelTool und als Bild-Variable in PDFs einfügbar machen
+- [ ] UI aufräumen: Felder-Zuweisung nach oben schieben, Sektionen „Vorlage" und „Tool-Zuweisung" einklappbar oder kompakter gestalten
+- [ ] Herausfinden, warum die PDF-Vorschau im Template-Builder nicht funktioniert
