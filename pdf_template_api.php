@@ -168,6 +168,8 @@ if ($action === 'get_pdf') {
     exit;
   }
 
+  // PDF darf im gleichen Ursprung in einem iframe angezeigt werden (Builder-Vorschau).
+  header('Content-Security-Policy: frame-ancestors \'self\';');
   header('Content-Type: application/pdf');
   header('Content-Disposition: inline; filename="vorlage-' . $id . '.pdf"');
   header('Content-Length: ' . strlen($pdfBytes));

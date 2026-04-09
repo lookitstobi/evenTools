@@ -169,9 +169,15 @@ function pdf_template_field_catalog(): array {
       ['key' => 'measurement_position', 'label' => 'Messposition',         'group' => 'Messung',    'example' => 'Reihe 15, Mittelachse'],
       ['key' => 'loudest_position',     'label' => 'Lauteste Position',    'group' => 'Messung',    'example' => 'Front-of-House'],
       // Ergebnisse
-      ['key' => 'result_laeq',          'label' => 'Ergebnis LAeq',        'group' => 'Ergebnisse', 'example' => '77.4 dB(A)'],
-      ['key' => 'result_laeq_g30',      'label' => 'Ergebnis LAeq,30min',  'group' => 'Ergebnisse', 'example' => '77.4 dB'],
-      ['key' => 'result_peak',          'label' => 'Ergebnis LCpeak',      'group' => 'Ergebnisse', 'example' => '114.7 dB(C)'],
+      ['key' => 'result_laeq',          'label' => 'Ergebnis LAeq',               'group' => 'Ergebnisse', 'example' => '77.4 dB(A)'],
+      ['key' => 'result_laeq_g30',      'label' => 'Ergebnis LAeq,30min',         'group' => 'Ergebnisse', 'example' => '77.4 dB'],
+      ['key' => 'result_peak',          'label' => 'Ergebnis LCpeak',             'group' => 'Ergebnisse', 'example' => '114.7 dB(C)'],
+      // Compliance-Status (OK = grün, NEGATIV = rot im Koordinaten-Modus)
+      ['key' => 'result_laeq_status',   'label' => 'LAeq Compliance',             'group' => 'Ergebnisse', 'example' => 'OK'],
+      ['key' => 'result_peak_status',   'label' => 'LCpeak Compliance',           'group' => 'Ergebnisse', 'example' => 'NEGATIV'],
+      // Diagramme – AcroForm-Modus (Feldrechteck) und Koordinaten-Modus
+      ['key' => 'chart_laeq_image',     'label' => 'Diagramm LAeq (Bild)',        'group' => 'Diagramme',  'example' => '(PNG-Bild, 16:10)'],
+      ['key' => 'chart_lcpeak_image',   'label' => 'Diagramm LCpeak (Bild)',      'group' => 'Diagramme',  'example' => '(PNG-Bild, 16:10)'],
       // Beteiligte
       ['key' => 'operator_name',        'label' => 'Operator / Prüfer',    'group' => 'Beteiligte', 'example' => 'Max Muster'],
       ['key' => 'customer',             'label' => 'Kunde / FOH',          'group' => 'Beteiligte', 'example' => 'Mustage GmbH'],
@@ -191,7 +197,15 @@ function pdf_template_field_catalog(): array {
       ['key' => 'correction_k1',        'label' => 'Korrekturwert k1',     'group' => 'Korrektur',  'example' => '-11,0 dB'],
       ['key' => 'correction_k2',        'label' => 'Korrekturwert k2',     'group' => 'Korrektur',  'example' => '-10,2 dB'],
       // Anlage
-      ['key' => 'pa_setup',             'label' => 'Anlagen-Setup',        'group' => 'Anlage',     'example' => 'L-ACOUSTIC KARA II × 24 | L-ACOUSTIC KS21 × 4'],
+      ['key' => 'pa_setup',             'label' => 'Anlagen-Setup (komplett)', 'group' => 'Anlage',  'example' => 'L-ACOUSTIC KARA II × 24 | L-ACOUSTIC KS21 × 4'],
+      ['key' => 'pa_item_1',            'label' => 'Anlage Position 1',    'group' => 'Anlage',     'example' => '24 × L-ACOUSTIC KARA II'],
+      ['key' => 'pa_item_2',            'label' => 'Anlage Position 2',    'group' => 'Anlage',     'example' => '4 × L-ACOUSTIC KS21'],
+      ['key' => 'pa_item_3',            'label' => 'Anlage Position 3',    'group' => 'Anlage',     'example' => ''],
+      ['key' => 'pa_item_4',            'label' => 'Anlage Position 4',    'group' => 'Anlage',     'example' => ''],
+      ['key' => 'pa_item_5',            'label' => 'Anlage Position 5',    'group' => 'Anlage',     'example' => ''],
+      ['key' => 'pa_item_6',            'label' => 'Anlage Position 6',    'group' => 'Anlage',     'example' => ''],
+      ['key' => 'pa_item_7',            'label' => 'Anlage Position 7',    'group' => 'Anlage',     'example' => ''],
+      ['key' => 'pa_item_8',            'label' => 'Anlage Position 8',    'group' => 'Anlage',     'example' => ''],
     ],
   ];
 }
@@ -338,6 +352,19 @@ function pdf_upload_save_fields(PDO $db, int $id, array $fields): void {
         'mode'           => 'acro',
         'field'          => (string)($f['field'] ?? ''),
         'acro_field_name' => (string)($f['acro_field_name'] ?? ''),
+      ];
+      continue;
+    }
+    // Bild-Modus: Koordinaten + Größe, kein Text.
+    if (($f['mode'] ?? '') === 'image') {
+      $clean[] = [
+        'mode'  => 'image',
+        'field' => (string)($f['field'] ?? ''),
+        'page'  => max(1, (int)($f['page'] ?? 1)),
+        'x_mm'  => (float)($f['x_mm'] ?? 0),
+        'y_mm'  => (float)($f['y_mm'] ?? 0),
+        'w_mm'  => max(1.0, (float)($f['w_mm'] ?? 80)),
+        'h_mm'  => max(1.0, (float)($f['h_mm'] ?? 50)),
       ];
       continue;
     }

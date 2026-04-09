@@ -56,53 +56,37 @@
           <span class="pm-preview-title">Vorschau</span>
           <button id="btnReloadPreview" class="btn pm-preview-reload-btn" type="button" title="Vorschau neu laden">&#8635;</button>
         </div>
-        <div id="previewPlaceholder" class="pm-preview-placeholder">
-          <span>Vorlage auswählen</span>
-        </div>
-        <iframe id="previewFrame" class="pm-preview-frame" title="PDF-Vorschau" hidden></iframe>
+        <iframe id="previewFrame" class="pm-preview-frame" title="PDF-Vorschau"></iframe>
       </div>
 
       <!-- Rechte Spalte: Eingaben -->
       <div class="pm-fields-pane">
 
-        <!-- Vorlage (Metadaten) -->
-        <section class="pm-section card">
-          <h3 class="pm-section-title">Vorlage</h3>
-          <div class="pm-meta-grid">
-            <div class="field">
-              <label class="label" for="detailTitle">Titel</label>
-              <input id="detailTitle" class="input" type="text">
-            </div>
-            <div class="pm-meta-info">
-              <span class="pm-meta-label">Hochgeladen von</span>
-              <span id="detailOwner" class="pm-meta-value">&#8212;</span>
-              <span class="pm-meta-label">Am</span>
-              <span id="detailCreatedAt" class="pm-meta-value">&#8212;</span>
-            </div>
+        <!-- Kompakte Vorlage-Metaleiste -->
+        <div class="pm-meta-bar" id="metaBar">
+          <div class="pm-meta-bar-title-row">
+            <input id="detailTitle" class="input pm-meta-title-input" type="text" placeholder="Titel der Vorlage">
+            <button id="btnSaveTitle" class="btn btn-primary pm-meta-action-btn" type="button" title="Titel speichern">&#10003;</button>
+            <button id="btnDelete" class="btn btn-danger pm-meta-action-btn" type="button" title="Vorlage l&#246;schen">&#128465;</button>
           </div>
-          <div class="pm-meta-actions">
-            <button id="btnSaveTitle" class="btn btn-primary" type="button">Titel speichern</button>
-            <button id="btnDelete" class="btn btn-danger" type="button">Vorlage löschen</button>
+          <div class="pm-meta-bar-assign-row">
+            <select id="assignToolKey" class="input pm-assign-select pm-meta-assign-select">
+              <option value="">&#8212; Tool zuweisen &#8212;</option>
+            </select>
+            <button id="btnAssign" class="btn btn-primary pm-meta-action-btn" type="button" title="Zuweisen">&#10003;</button>
+            <button id="btnUnassign" class="btn pm-meta-action-btn" type="button" title="Zuweisung entfernen">&#10007;</button>
+          </div>
+          <div class="pm-meta-bar-info">
+            <span id="detailOwner" class="pm-meta-value"></span>
+            <span class="pm-meta-sep" id="metaInfoSep" hidden>&#183;</span>
+            <span id="detailCreatedAt" class="pm-meta-value"></span>
+            <span id="assignedChip" class="pm-chip pm-chip--inline" hidden></span>
           </div>
           <div id="metaMsg" class="pm-msg" hidden></div>
-        </section>
-
-        <!-- Tool-Zuweisung -->
-        <section class="pm-section card">
-          <h3 class="pm-section-title">Tool-Zuweisung</h3>
-          <p class="pm-hint">Legt fest, für welches Tool diese Vorlage als Standard-Template verwendet wird. Jedes Tool kann nur eine aktive Vorlage haben.</p>
-          <div class="pm-assign-row">
-            <select id="assignToolKey" class="input pm-assign-select">
-              <option value="">&#8212; Tool auswählen &#8212;</option>
-            </select>
-            <button id="btnAssign" class="btn btn-primary" type="button">Zuweisen</button>
-            <button id="btnUnassign" class="btn" type="button">Zuweisung entfernen</button>
-          </div>
-          <div id="assignedChip" class="pm-chip" hidden></div>
           <div id="assignMsg" class="pm-msg" hidden></div>
-        </section>
+        </div>
 
-        <!-- Felder-Zuweisung -->
+        <!-- Felder-Zuweisung (zuerst, da häufigster Arbeitsschritt) -->
         <section class="pm-section card" id="acroSection">
           <div class="pm-section-header">
             <h3 class="pm-section-title" id="acroSectionTitle">Felder-Zuweisung</h3>
@@ -128,6 +112,37 @@
           </div>
           <div id="acroMsg" class="pm-msg" hidden></div>
         </section>
+
+        <!-- Bild-Felder (Koordinaten-Modus für Diagramme) -->
+        <section class="pm-section card" id="imageFieldsSection">
+          <div class="pm-section-header">
+            <h3 class="pm-section-title">Bild-Felder</h3>
+            <button id="btnAddImageField" class="btn" type="button">+ Bild hinzufügen</button>
+          </div>
+          <p class="pm-hint">Platziere Diagramme oder andere Bild-Variablen per Koordinaten im PDF. Werte in <strong>mm</strong> ab der oberen linken Ecke der Seite.</p>
+          <div id="imageFieldsTable" class="pm-table-wrap" hidden>
+            <table class="pm-table pm-image-table" id="imageTable">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Seite</th>
+                  <th>X (mm)</th>
+                  <th>Y (mm)</th>
+                  <th>Breite (mm)</th>
+                  <th>Höhe (mm)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="imageBody"></tbody>
+            </table>
+          </div>
+          <div id="imageActions" class="pm-meta-actions" hidden>
+            <button id="btnSaveImageFields" class="btn btn-primary" type="button">Speichern</button>
+          </div>
+          <div id="imageMsg" class="pm-msg" hidden></div>
+        </section>
+
+
 
       </div><!-- /pm-fields-pane -->
 
@@ -318,6 +333,7 @@
     el('detailTitle').value = item.title || '';
     el('detailOwner').textContent = item.owner_username || '—';
     el('detailCreatedAt').textContent = fmtDate(item.created_at);
+    el('metaInfoSep').hidden = false;
 
     clearMsg('metaMsg');
     clearMsg('assignMsg');
@@ -325,10 +341,7 @@
 
     // PDF-Vorschau setzen.
     var frame = el('previewFrame');
-    var placeholder = el('previewPlaceholder');
     frame.src = API + '?action=get_pdf&id=' + item.id;
-    frame.hidden = false;
-    placeholder.hidden = true;
 
     // Aktuelle Zuweisung anzeigen.
     var tpl = state.templates.find(function (t) { return t.id === item.id; });
@@ -345,6 +358,7 @@
 
     // Felder-Zuweisung rendern.
     renderAcroMapping(item);
+    renderImageFields(item);
   }
 
   function collectAcroFields() {
@@ -620,17 +634,152 @@
 
     el('btnSaveAcro').addEventListener('click', function () {
       if (!state.activeId) return;
-      var acroFields  = collectAcroFields();
-      var coordFields = ((state.currentItem || {}).fields || []).filter(function (f) { return (f.mode || '') !== 'acro'; });
-      var allFields   = coordFields.concat(acroFields);
-      apiPost('save_fields', { id: state.activeId, fields: allFields }).then(function (data) {
-        if (data.ok) {
-          if (state.currentItem) state.currentItem.fields = allFields;
-          showMsg('acroMsg', 'Mapping gespeichert.', 'ok');
-        } else {
-          showMsg('acroMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+      saveAllFields('acroMsg');
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bild-Felder (Koordinaten-Modus für Diagramme)
+  // ---------------------------------------------------------------------------
+
+  function buildImageVarOptions() {
+    var vars = [];
+    Object.values(state.fieldCatalog).forEach(function (catalog) {
+      (catalog || []).forEach(function (c) {
+        if (c.group === 'Diagramme' && !vars.some(function (v) { return v.key === c.key; })) {
+          vars.push(c);
         }
       });
+    });
+    return vars;
+  }
+
+  function collectImageFields() {
+    var rows = el('imageBody').querySelectorAll('tr');
+    var fields = [];
+    rows.forEach(function (tr) {
+      var varSel  = tr.querySelector('.pm-img-var-select');
+      var pageSel = tr.querySelector('.pm-img-page');
+      var xIn = tr.querySelector('.pm-img-x');
+      var yIn = tr.querySelector('.pm-img-y');
+      var wIn = tr.querySelector('.pm-img-w');
+      var hIn = tr.querySelector('.pm-img-h');
+      var fieldKey = varSel ? varSel.value : '';
+      if (!fieldKey) return;
+      fields.push({
+        mode:  'image',
+        field: fieldKey,
+        page:  parseInt(pageSel ? pageSel.value : '1', 10) || 1,
+        x_mm:  parseFloat(xIn ? xIn.value : '0') || 0,
+        y_mm:  parseFloat(yIn ? yIn.value : '0') || 0,
+        w_mm:  parseFloat(wIn ? wIn.value : '80') || 80,
+        h_mm:  parseFloat(hIn ? hIn.value : '50') || 50,
+      });
+    });
+    return fields;
+  }
+
+  function renderImageFields(item) {
+    if (!item) return;
+    var imageFields = (item.fields || []).filter(function (f) { return f.mode === 'image'; });
+    var tbody = el('imageBody');
+    tbody.innerHTML = '';
+    if (imageFields.length) {
+      el('imageFieldsTable').hidden = false;
+      el('imageActions').hidden = false;
+      imageFields.forEach(function (f) {
+        tbody.appendChild(makeImageFieldRow(
+          f.field, f.page || 1, f.x_mm || 0, f.y_mm || 0, f.w_mm || 100, f.h_mm || 70
+        ));
+      });
+    } else {
+      el('imageFieldsTable').hidden = true;
+      el('imageActions').hidden = true;
+    }
+  }
+
+  function makeImageFieldRow(fieldKey, page, xMm, yMm, wMm, hMm) {
+    var tr = document.createElement('tr');
+
+    var tdVar = document.createElement('td');
+    var selVar = document.createElement('select');
+    selVar.className = 'input pm-small-input pm-img-var-select';
+    var optEmpty = document.createElement('option');
+    optEmpty.value = '';
+    optEmpty.textContent = '\u2014 auswählen \u2014';
+    selVar.appendChild(optEmpty);
+    buildImageVarOptions().forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.label;
+      if (c.key === fieldKey) opt.selected = true;
+      selVar.appendChild(opt);
+    });
+    tdVar.appendChild(selVar);
+    tr.appendChild(tdVar);
+
+    var tdPage = document.createElement('td');
+    var inPage = document.createElement('input');
+    inPage.type = 'number'; inPage.min = '1'; inPage.step = '1';
+    inPage.value = String(page);
+    inPage.className = 'input pm-small-input pm-img-page';
+    tdPage.appendChild(inPage);
+    tr.appendChild(tdPage);
+
+    [['pm-img-x', xMm], ['pm-img-y', yMm], ['pm-img-w', wMm], ['pm-img-h', hMm]].forEach(function (pair) {
+      var td = document.createElement('td');
+      var inp = document.createElement('input');
+      inp.type = 'number'; inp.step = '0.5'; inp.min = '0';
+      inp.value = String(pair[1]);
+      inp.className = 'input pm-small-input ' + pair[0];
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+
+    var tdDel = document.createElement('td');
+    var btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'btn btn-danger pm-img-del-btn';
+    btnDel.textContent = '\u00d7';
+    btnDel.addEventListener('click', function () {
+      tr.remove();
+      var anyLeft = el('imageBody').querySelectorAll('tr').length > 0;
+      el('imageFieldsTable').hidden = !anyLeft;
+      el('imageActions').hidden = !anyLeft;
+    });
+    tdDel.appendChild(btnDel);
+    tr.appendChild(tdDel);
+
+    return tr;
+  }
+
+  function saveAllFields(msgId) {
+    if (!state.activeId) return;
+    var acroFields  = collectAcroFields();
+    var imageFields = collectImageFields();
+    var otherFields = ((state.currentItem || {}).fields || []).filter(function (f) {
+      return (f.mode || '') !== 'acro' && (f.mode || '') !== 'image';
+    });
+    var allFields = otherFields.concat(acroFields).concat(imageFields);
+    apiPost('save_fields', { id: state.activeId, fields: allFields }).then(function (data) {
+      if (data.ok) {
+        if (state.currentItem) state.currentItem.fields = allFields;
+        showMsg(msgId || 'acroMsg', 'Gespeichert.', 'ok');
+      } else {
+        showMsg(msgId || 'acroMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+      }
+    });
+  }
+
+  function wireImageFields() {
+    el('btnAddImageField').addEventListener('click', function () {
+      if (!state.activeId) return;
+      el('imageBody').appendChild(makeImageFieldRow('', 1, 10, 10, 100, 70));
+      el('imageFieldsTable').hidden = false;
+      el('imageActions').hidden = false;
+    });
+    el('btnSaveImageFields').addEventListener('click', function () {
+      saveAllFields('imageMsg');
     });
   }
 
@@ -849,6 +998,7 @@
   init();
   wireGlossary();
   wireAcro();
+  wireImageFields();
 
 }());
 </script>

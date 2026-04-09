@@ -76,7 +76,7 @@ Folgende Verbesserungen wurden implementiert:
 
 ## PDF-Template-Builder – Nächste Schritte
 
-- [ ] Alle Variablen zerstückeln: Messergebnisse einzeln als separate Variablen verfügbar machen (statt zusammengefasst)
-- [ ] Diagramme als Variable: Messdaten-Diagramme im pegelTool und als Bild-Variable in PDFs einfügbar machen
-- [ ] UI aufräumen: Felder-Zuweisung nach oben schieben, Sektionen „Vorlage" und „Tool-Zuweisung" einklappbar oder kompakter gestalten
-- [ ] Herausfinden, warum die PDF-Vorschau im Template-Builder nicht funktioniert
+- [x] Alle Variablen zerstückeln: Messergebnisse einzeln als separate Variablen verfügbar machen (statt zusammengefasst)
+- [x] Diagramme als Variable: Messdaten-Diagramme im pegelTool und als Bild-Variable in PDFs einfügbar machen
+- [x] UI aufräumen: Felder-Zuweisung nach oben schieben, Sektionen „Vorlage" und „Tool-Zuweisung" einklappbar oder kompakter gestalten
+- [x] Herausfinden, warum die PDF-Vorschau im Template-Builder nicht funktioniert
