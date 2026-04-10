@@ -331,6 +331,8 @@ Intendanz Philharmonie Essen: Babette Nierenz</textarea>
       <h3>Unterschrift</h3>
       <div class="grid-2">
         <div>
+          <label>Berichtsort</label>
+          <input id="berichtsort" placeholder="z.B. Essen" />
           <label>Datum</label>
           <input id="berichtDatum" />
         </div>
@@ -374,7 +376,8 @@ const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
 const FORM_FIELD_IDS = [
   'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
-  'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN'
+  'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN',
+  'berichtsort'
 ];
 let recoverySaveTimer = null;
 let recoveryFallbackNotified = false;
@@ -442,7 +445,7 @@ function makeEmptyHeader(){
 }
 
 function makeEmptySummary(){
-  return { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null };
+  return { source:"", laeq_total:null, laeq_g30:null, lcpeak_max:null, lafmax_dt:null };
 }
 
 let header = makeEmptyHeader();
@@ -944,7 +947,8 @@ function setUsedColumns(col){
   const idxLAeqDT = findCol(col.map, ['laeqdtk1','laeqdt','laeqk1','laeq']);
   const idxG30    = findCol(col.map, ['laeqg30k1','laeqg30','g30']);
   const idxLCpk   = findCol(col.map, ['lcpkmaxdtk2','lcpkmaxdt','lcpkmax','lcpeak','lcpk']);
-  parsedColumns.used = { date:idxDate, time:idxTime, timer:idxTimer, laeq_dt:idxLAeqDT, laeq_g30:idxG30, lcpkmax:idxLCpk };
+  const idxLAFmax = findCol(col.map, ['lafmaxdtk1','lafmaxdt','lafmax']);
+  parsedColumns.used = { date:idxDate, time:idxTime, timer:idxTimer, laeq_dt:idxLAeqDT, laeq_g30:idxG30, lcpkmax:idxLCpk, lafmax:idxLAFmax };
 }
 
 function parseHeaderAndMeta(text){
@@ -1131,7 +1135,7 @@ function parseBroadbandTimeSeries(text){
   }
 
   setText('parseInfo',
-    `Erkannte Spalten: ${col.colsRaw.length}. Genutzt: Date=${u.date ?? '—'}, Time=${u.time ?? '—'}, Timer=${u.timer ?? '—'}, LAeq_dt=${u.laeq_dt ?? '—'}, LAeq_g30=${u.laeq_g30 ?? '—'}, LCpeak=${u.lcpkmax ?? '—'}. Samples=${samples.length.toLocaleString()}.`
+    `Erkannte Spalten: ${col.colsRaw.length}. Genutzt: Date=${u.date ?? '—'}, Time=${u.time ?? '—'}, Timer=${u.timer ?? '—'}, LAeq_dt=${u.laeq_dt ?? '—'}, LAeq_g30=${u.laeq_g30 ?? '—'}, LAFmax=${u.lafmax ?? '—'}, LCpeak=${u.lcpkmax ?? '—'}. Samples=${samples.length.toLocaleString()}.`
   );
 
   if(samples.length){
@@ -1168,9 +1172,10 @@ function parseBroadbandSummary(text){
   const parts = String(lines[dataIdx]||"").replace(/\t/g,' ').trim().split(/\s+/).filter(Boolean);
 
   summary.source = '# Broadband Log Results over whole log period';
-  summary.laeq_total = parseNumber((u.laeq_dt != null && u.laeq_dt < parts.length) ? parts[u.laeq_dt] : null);
+  summary.laeq_total = parseNumber((u.laeq_dt  != null && u.laeq_dt  < parts.length) ? parts[u.laeq_dt]  : null);
   summary.laeq_g30   = parseNumber((u.laeq_g30 != null && u.laeq_g30 < parts.length) ? parts[u.laeq_g30] : null);
-  summary.lcpeak_max = parseNumber((u.lcpkmax != null && u.lcpkmax < parts.length) ? parts[u.lcpkmax] : null);
+  summary.lcpeak_max = parseNumber((u.lcpkmax  != null && u.lcpkmax  < parts.length) ? parts[u.lcpkmax]  : null);
+  summary.lafmax_dt  = parseNumber((u.lafmax   != null && u.lafmax   < parts.length) ? parts[u.lafmax]   : null);
 
   return { ok:true };
 }
@@ -1740,6 +1745,14 @@ async function generateTemplatePDF(){
 
   const paItems = collectPAItems();
 
+  // Überschreitungsdauern und lauteste Werte für Template-Variablen
+  const excLAeqDtSec  = samples.length ? countExceedDuration(samples.map(s => s.LAeq_dt).filter(v => v != null), LIMIT_LAEQ_30) : 0;
+  const excLAeqG30Sec = samples.length ? countExceedDuration(samples.map(s => s.LAeq_g30).filter(v => v != null), LIMIT_LAEQ_30) : 0;
+  const excLCpeakSec  = samples.length ? countExceedDuration(samples.map(s => s.LCpk).filter(v => v != null), LIMIT_LCPEAK) : 0;
+  const laeqMaxVal = (summary && summary.lafmax_dt != null)
+    ? summary.lafmax_dt
+    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAeq_dt).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
+
   const data = {
     project_name:         getVal('eventName').trim(),
     measurement_date:     getVal('datumMessung').trim() || getVal('berichtDatum').trim(),
@@ -1758,6 +1771,7 @@ async function generateTemplatePDF(){
     description:          getVal('beschreibung').trim(),
     report_date:          getVal('berichtDatum').trim(),
     report_name:          getVal('berichtName').trim(),
+    report_city:          getVal('berichtsort').trim(),
     device_model:         getVal('messgeraet').trim(),
     device_sn:            getVal('messgeraetSN').trim(),
     calibrator_model:     getVal('kalibratorModell').trim(),
@@ -1767,10 +1781,25 @@ async function generateTemplatePDF(){
     start_measurement:    getVal('startMessung').trim(),
     end_measurement:      getVal('endeMessung').trim(),
     kset_date:            getVal('kset').trim(),
-    correction_k1:        getVal('k1').trim(),
-    correction_k2:        getVal('k2').trim(),
+    correction_k1:        getVal('k1').trim() ? getVal('k1').trim() + ' dB(A)' : '',
+    correction_k2:        getVal('k2').trim() ? getVal('k2').trim() + ' dB(C)' : '',
     pa_setup:             getPASetupInline(),
     microphone:           getVal('mikrofon').trim(),
+    mic_type:             header.micType || '',
+    mic_sn:               header.micSN || '',
+    mic_sensitivity:      getVal('mikroSens').trim(),
+    mic_calibration_date: getVal('micCal').trim(),
+    param_name_1:         'LAeq',
+    param_name_2:         'LAeq(g30)',
+    param_name_3:         'LCpeak',
+    limit_laeq:           LIMIT_LAEQ_30 + ' dB(A)',
+    limit_laeq_g30:       LIMIT_LAEQ_30 + ' dB(A)',
+    limit_lcpeak:         LIMIT_LCPEAK  + ' dB(C)',
+    exceedance_laeq:      secondsToHMS(excLAeqDtSec),
+    exceedance_laeq_g30:  secondsToHMS(excLAeqG30Sec),
+    exceedance_lcpeak:    secondsToHMS(excLCpeakSec),
+    result_laeq_max:      formatLevel(laeqMaxVal, 'dB(A)'),
+    result_lcpeak_max:    formatLevel(summary?.lcpeak_max, 'dB(C)'),
   };
 
   // PA-Einzelpositionen (bis zu 8)
