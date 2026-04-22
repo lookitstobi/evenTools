@@ -1,5 +1,6 @@
 {
   "name": "Toolsapp",
+  "postStartCommand": "bash -lc 'cd /workspaces/toolsapp && ./sync_pdf_templates.sh auto --quiet || true'",
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {

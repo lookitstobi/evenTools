@@ -110,6 +110,23 @@ cd /workspaces/toolsapp
 
 - Das Skript ermittelt den lokalen Zielpfad über `app/config.php` (inklusive `APP_DATA_DIR`-Logik) und legt vor dem Überschreiben automatisch ein Backup an.
 
+## Preview/Production Sync der PDF-Vorlagen (bidirektional)
+
+Für die PDF-Vorlagen gibt es einen eigenen Zwei-Wege-Sync:
+
+```bash
+cd /workspaces/toolsapp
+./sync_pdf_templates.sh auto
+```
+
+- `auto`: vergleicht lokale und produktive `pdf_templates.sqlite` per Inhalt + semantischem Stand (`updated_at`/`assigned_at`) und synchronisiert in die neuere Richtung.
+- `pull`: erzwingt Produktion -> Lokal.
+- `push`: erzwingt Lokal -> Produktion.
+- `status`: zeigt nur Vergleichsinfos, ohne Änderungen.
+
+Zusätzlich ist im Devcontainer ein `postStartCommand` gesetzt, der beim Öffnen des Codespace automatisch `./sync_pdf_templates.sh auto --quiet` ausführt.
+Dadurch liegt beim Start des Codespace automatisch der neueste Vorlagenstand vor. Wenn lokal neuer gearbeitet wurde, wird entsprechend zur Produktion synchronisiert.
+
 ## Häufige Fehlerbilder und Lösung
 
 ### 1) Doppelte Ordnerstruktur (`.../toolsapp/HTML_Tools/toolsapp`)
