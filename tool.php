@@ -23,7 +23,7 @@ if (!$path || !$base || strncmp($path, $base, strlen($base)) !== 0) {
 }
 
 $nonce = csp_nonce();
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'nonce-{$nonce}'; script-src 'self' 'nonce-{$nonce}'; connect-src 'self'; font-src 'self' data:; worker-src blob:; frame-ancestors 'self';");
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'nonce-{$nonce}'; script-src 'self' 'nonce-{$nonce}'; connect-src 'self'; font-src 'self' data:; worker-src blob:; frame-src 'self' blob: data:; object-src 'self' blob: data:; frame-ancestors 'self';");
 
 $html = file_get_contents($path);
 // Nonce zu vorhandenen inline <script>- und <style>-Tags im Tool-HTML hinzufügen
@@ -33,6 +33,7 @@ $runtimeScript = '<script nonce="' . $nonce . '">window.TOOLSAPP_RUNTIME=' . jso
   'pdf_mode' => get_pdf_runtime_mode(),
   'can_switch_pdf_mode' => is_pdf_mode_switch_user(),
   'username' => (string)($_SESSION['username'] ?? ''),
+  'csrf' => csrf_token(),
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
 
 $style = '<style nonce="' . $nonce . '">' .

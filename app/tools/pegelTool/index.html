@@ -157,34 +157,18 @@ label.label-required::after{
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messbericht mit der Vorlage aus dem pdfTool rendern">PDF aus Vorlage</button>
+      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messbericht als PDF mit der aktuellen Vorlage exportieren">PDF exportieren</button>
+      <button id="btnRecover" class="icon-btn subtle" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung laden</button>
     </div>
     <div class="header-secondary-actions">
       <details class="header-menu">
-        <summary class="icon-btn subtle menu-trigger" title="PDF-Aktionen anzeigen">PDF</summary>
+        <summary class="icon-btn subtle menu-trigger" title="Erweiterte Export- und Projektaktionen anzeigen">Erweitert</summary>
         <div class="header-dropdown">
           <div class="menu-list">
-            <button id="btnPdf" class="menu-item-btn" type="button" disabled title="Messbericht mit dem Legacy-PDF-Generator oeffnen">Legacy-PDF oeffnen</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="header-menu">
-        <summary class="icon-btn subtle menu-trigger" title="Speicheroptionen fuer lokale Dateien und HTML-Export anzeigen">Speichern</summary>
-        <div class="header-dropdown">
-          <div class="menu-list">
-            <button id="btnSaveState" class="menu-item-btn" type="button" title="Speichert Log, Diagramme und Eingaben als bearbeitbare Projektdatei fuer spaeteres Weiterarbeiten.">Projektdatei speichern (.json)</button>
-            <button id="btnExportHtml" class="menu-item-btn" type="button" title="Erstellt eine lokal oeffenbare HTML-Datei mit dem aktuellen Stand, die spaeter auch wieder geladen werden kann.">HTML-Datei speichern</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="header-menu">
-        <summary class="icon-btn subtle menu-trigger" title="Optionen zum Laden gespeicherter Staende oder zum Wiederherstellen der letzten Sitzung anzeigen">Laden</summary>
-        <div class="header-dropdown">
-          <div class="menu-list">
-            <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Gespeicherten Stand laden</button>
-            <button id="btnRecover" class="menu-item-btn hidden-file" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung wiederherstellen</button>
+            <button id="btnPdf" class="menu-item-btn" type="button" disabled title="Messbericht mit dem Legacy-PDF-Generator exportieren">PDF exportieren (Legacy)</button>
+            <button id="btnExportHtml" class="menu-item-btn" type="button" title="Erstellt eine lokal oeffenbare HTML-Datei mit dem aktuellen Stand, die spaeter auch wieder geladen werden kann.">Projekt speichern (HTML)</button>
+            <button id="btnSaveState" class="menu-item-btn" type="button" title="Speichert Log, Diagramme und Eingaben als bearbeitbare Projektdatei fuer spaeteres Weiterarbeiten.">Projekt speichern (JSON)</button>
+            <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Projekt laden (JSON)</button>
           </div>
         </div>
       </details>
@@ -367,6 +351,7 @@ let chartLCpeak = null;
 let lastLogText = '';
 let lastLogFileName = '';
 let logLoaded = false;
+let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
@@ -714,23 +699,79 @@ function triggerDownload(blob, fileName, openInNewTab){
   setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
 }
 
-function openPdfPreview(blob, fileName){
-  const url = URL.createObjectURL(blob);
+function reservePdfPreviewWindow(){
+  if(reservedPdfPreviewWindow && !reservedPdfPreviewWindow.closed){
+    return reservedPdfPreviewWindow;
+  }
+  try{
+    const w = window.open('/toolserve.php?name=pegelTool&file=pdf_loading.html', '_blank');
+    if(!w) return null;
+    try{ w.opener = null; }catch(_err){}
+
+    reservedPdfPreviewWindow = w;
+    return w;
+  }catch(_err){
+    return null;
+  }
+}
+
+function consumeReservedPdfPreviewWindow(){
+  if(reservedPdfPreviewWindow && !reservedPdfPreviewWindow.closed){
+    const w = reservedPdfPreviewWindow;
+    reservedPdfPreviewWindow = null;
+    return w;
+  }
+  reservedPdfPreviewWindow = null;
+  return null;
+}
+
+async function createServerPreviewUrl(blob, fileName){
+  const csrf = (window.TOOLSAPP_RUNTIME && window.TOOLSAPP_RUNTIME.csrf) ? String(window.TOOLSAPP_RUNTIME.csrf) : '';
+  if(!csrf) throw new Error('Fehlender CSRF-Token für PDF-Vorschau.');
+
+  const safeFileName = String(fileName || 'Messprotokoll.pdf')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .trim() || 'Messprotokoll.pdf';
+
+  const form = new FormData();
+  form.append('csrf', csrf);
+  form.append('filename', safeFileName);
+  form.append('pdf_file', new File([blob], safeFileName, { type: 'application/pdf' }));
+
+  const res = await fetch('/pdf_preview_api.php?action=create', {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: form,
+  });
+
+  const payload = await res.json().catch(() => null);
+  if(!res.ok || !payload || !payload.ok || !payload.url){
+    throw new Error('Server-Vorschau konnte nicht erzeugt werden.');
+  }
+  return String(payload.url);
+}
+
+async function openPdfPreview(blob, fileName){
+  let previewUrl = '';
+  try{
+    previewUrl = await createServerPreviewUrl(blob, fileName);
+  }catch(err){
+    console.error(err);
+    setText('parseInfo', 'PDF wurde erzeugt, aber die Vorschau konnte nicht vorbereitet werden.');
+    return;
+  }
+
   try {
-    const previewWindow = window.open(url, '_blank', 'noopener');
-    if(previewWindow) return;
+    let previewWindow = consumeReservedPdfPreviewWindow();
+    if(previewWindow){
+      previewWindow.location.replace(previewUrl);
+      return;
+    }
   } catch(err) {
     console.warn('Could not open PDF preview tab', err);
   }
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 8000);
+  setText('parseInfo', 'PDF wurde erzeugt, aber die reservierte Vorschau war nicht mehr verfügbar. Bitte erneut auf "PDF aus Vorlage" klicken.');
 }
 
 function parseDownloadFilenameFromContentDisposition(headerValue){
@@ -762,7 +803,7 @@ function parseDownloadFilenameFromContentDisposition(headerValue){
 function sanitizeBaseName(){
   const datum = getVal('datumMessung').trim() || 'kein-datum';
   const ev = getVal('eventName').trim() || 'unbenannt';
-  return `${datum} - ${ev} - Messprotokoll`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
+  return `${datum} - ${ev} - Messprotokoll`.replace(/[^a-z0-9\-_. ]/gi,'').replace(/\s+/g,' ').trim();
 }
 
 function saveStateFile(){
@@ -1862,6 +1903,8 @@ async function generateTemplatePDF(){
           try{
             const field = form.getTextField(f.acro_field_name);
             field.setText(value);
+            const rawSz = Number(f.size_pt) || 10;
+            field.setFontSize(Math.max(1, rawSz - 2));
           }catch(e){ /* Feld nicht vorhanden oder falscher Typ – ignorieren */ }
         }
         form.flatten();
@@ -1893,7 +1936,7 @@ async function generateTemplatePDF(){
       if(!value) continue;
 
       // Farbe: Status-Felder automatisch einfärben, neutrale Texte etwas weicher setzen.
-      let color = PDFLib.rgb(74 / 255, 74 / 255, 74 / 255);
+      let color = PDFLib.rgb(96 / 255, 96 / 255, 96 / 255);
       if(f.field && f.field.endsWith('_status')){
         if(value === 'OK')           color = PDFLib.rgb(0.08, 0.65, 0.42); // grün
         else if(value === 'NEGATIV') color = PDFLib.rgb(1.0,  0.39, 0.18); // rot
@@ -1904,7 +1947,7 @@ async function generateTemplatePDF(){
           const g = parseInt(hex.slice(3, 5), 16) / 255;
           const b = parseInt(hex.slice(5, 7), 16) / 255;
           const isNearBlack = r <= 0.08 && g <= 0.08 && b <= 0.08;
-          color = isNearBlack ? PDFLib.rgb(74 / 255, 74 / 255, 74 / 255) : PDFLib.rgb(r, g, b);
+          color = isNearBlack ? PDFLib.rgb(96 / 255, 96 / 255, 96 / 255) : PDFLib.rgb(r, g, b);
         }
       }
 
@@ -1914,7 +1957,7 @@ async function generateTemplatePDF(){
       else if(f.align === 'right')  textAlign = PDFLib.TextAlignment.Right;
 
       const rawSizePt = Number(f.size_pt) || 10;
-      const sizePt = Math.max(1, rawSizePt - 0.5);
+      const sizePt = Math.max(1, rawSizePt - 2);
       const xPt = mmToPt(Number(f.x_mm) || 0);
       // PDF-Koordinatenursprung ist unten-links; Y von oben umrechnen.
       const yPt = pageHeight - mmToPt(Number(f.y_mm) || 0) - sizePt;
@@ -2093,7 +2136,7 @@ async function generateTemplatePDF(){
     const mergedBytes = await mergePdfBuffers(mainBytes, secondPdfBuffer);
     const blob = new Blob([mergedBytes], { type: 'application/pdf' });
     const fallbackName = `${sanitizeBaseName()}.pdf`;
-    openPdfPreview(blob, fallbackName);
+    await openPdfPreview(blob, fallbackName);
   }catch(e){
     console.error('Template-PDF Fehler:', e);
     alert('Fehler beim Erstellen des Template-PDFs: ' + e.message);
@@ -2475,14 +2518,11 @@ async function generateLegacyPDF(){
   applyChartTheme('dark');
   drawAllFooters();
 
-  const datum = getVal('datumMessung').trim() || 'kein-datum';
-  const veranstaltung = ev || 'unbenannt';
-  const fname = `${datum} - ${veranstaltung} - Messprotokoll nach DIN 15905-5`.replace(/[^a-z0-9\-_. ]/gi,'').trim().replace(/\s+/g,'_');
+  const fname = `${sanitizeBaseName()} nach DIN 15905-5`;
 
   try {
     const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    await openPdfPreview(blob, `${fname}.pdf`);
   } catch (e) {
     doc.save(`${fname}.pdf`);
   }
@@ -2565,9 +2605,13 @@ document.querySelectorAll('.header-menu').forEach(menu => {
 });
 
 // wire import button to hidden file input
-el('btnPdfTemplate').addEventListener('click', generatePDF);
+el('btnPdfTemplate').addEventListener('click', async ()=>{
+  reservePdfPreviewWindow();
+  await generatePDF();
+});
 el('btnPdf').addEventListener('click', ()=>{
   closeHeaderMenus();
+  reservePdfPreviewWindow();
   generateLegacyPDF();
 });
 el('btnImport').addEventListener('click', ()=>{

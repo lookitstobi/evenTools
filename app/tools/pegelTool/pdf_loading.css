@@ -1,0 +1,9 @@
+:root{color-scheme:dark}
+html,body{height:100%;margin:0}
+body{display:grid;place-items:center;background:radial-gradient(1300px 640px at 12% -8%,#21406e 0%,transparent 56%),radial-gradient(900px 540px at 100% 100%,#0f2b4a 0%,transparent 52%),#0b1119;color:#e7ecf3;font-family:"Segoe UI",Arial,sans-serif}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:26px 24px 22px;min-width:min(86vw,430px);border-radius:16px;border:1px solid rgba(146,183,236,.24);background:linear-gradient(180deg,rgba(23,33,47,.92),rgba(13,21,31,.9));box-shadow:0 18px 50px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06)}
+.brand{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:#9fc3ff;opacity:.9}
+.spinner{width:46px;height:46px;border-radius:50%;border:5px solid rgba(114,145,197,.34);border-top-color:#62a2ff;animation:spin .9s linear infinite;filter:drop-shadow(0 0 10px rgba(97,161,255,.45))}
+.msg{font-size:20px;font-weight:600;letter-spacing:.01em}
+.hint{font-size:12px;line-height:1.45;color:#b7c8df;opacity:.86;max-width:38ch}
+@keyframes spin{to{transform:rotate(360deg)}}

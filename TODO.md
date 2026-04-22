@@ -80,3 +80,23 @@ Folgende Verbesserungen wurden implementiert:
 - [x] Diagramme als Variable: Messdaten-Diagramme im pegelTool und als Bild-Variable in PDFs einfügbar machen
 - [x] UI aufräumen: Felder-Zuweisung nach oben schieben, Sektionen „Vorlage" und „Tool-Zuweisung" einklappbar oder kompakter gestalten
 - [x] Herausfinden, warum die PDF-Vorschau im Template-Builder nicht funktioniert
+
+## pegelTool – PDF-Vorlage neu erstellen
+
+- [ ] **Bestehende Vorlage „pegelTools Vorlage" durch Koordinaten-Modus-Version ersetzen**
+  - Aktuelle Vorlage verwendet AcroForm-Felder (`mode: acro`) → Schriftgröße ist im PDF hart kodiert, nicht steuerbar
+  - Neuerstellen mit Hintergrund-PDF (ohne interaktive Felder, nur grafisches Layout)
+  - Alle Felder im **Koordinaten-Modus** platzieren (Standard, nicht `acro`)
+  - `size_pt` auf ca. **8** setzen → dann volle Kontrolle über Größe, Farbe, Position
+  - Danach: Schriftgröße und -farbe über Code einheitlich anpassbar
+
+## Projekt-Housekeeping – Dateien aufräumen
+
+- [ ] **Debug-Dateien entfernen oder archivieren** – folgende Root-Dateien sind nur temporäre Hilfsskripte:
+  - `debug_login_test.php`, `debug_migration_fixup.php`, `debug_missing_cards.php`
+  - `debug_patch_ids.php`, `debug_patchmatrix_import.php`, `debug_ports.php`, `debug_users.php`
+- [ ] **Doppelte SQLite-Backups bereinigen** – `app/users.sqlite.bak_*` (3 Stück) können in ein Backup-Verzeichnis oder entfernt werden
+- [ ] **`assets/`-Verzeichnis sortieren** – enthält Log-Dateien und Textdateien, die nicht zu Web-Assets gehören
+- [ ] **`apply_fixes.py` und `diagnose.php` prüfen** – ob noch benötigt oder entfernbar
+- [ ] **README / Projektdokumentation anlegen** – derzeit nur `DEPLOY.md` und einzelne Markdown-Notizen, keine zentrale Übersicht
+
