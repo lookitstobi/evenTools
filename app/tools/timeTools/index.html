@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/assets/app.css">
   <link rel="stylesheet" href="/toolserve.php?name=timeTools&file=style.css">
 </head>
-<body class="state-idle">
+<body class="state-idle" data-theme="classic">
   <div class="corner-controls" aria-label="Seitensteuerung">
     <a class="icon-link" href="/index.php" aria-label="Zum Dashboard" title="Home">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -19,6 +19,9 @@
         <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
       </svg>
     </button>
+    <button id="themeToggleBtn" class="icon-button icon-button-theme" type="button" aria-label="Dashboard Theme aktivieren" title="Theme wechseln">
+      <span id="themeToggleText" class="theme-toggle-text" aria-hidden="true">LCD</span>
+    </button>
   </div>
 
   <main class="stage" role="main">
@@ -26,8 +29,12 @@
       <div id="clock" class="clock" aria-label="Aktuelle Uhrzeit">00:00:00</div>
       <div class="timer-zone" id="timerZone" aria-live="polite">
         <div id="countdown" class="countdown">00:00</div>
+          <div id="dashboardStatus" class="dashboard-status" aria-live="polite" aria-label="Dashboard Statusanzeige">
+            <div id="statusText" class="status-lcd">RUN</div>
+          </div>
         <div class="progress-bar" id="progressBar" role="progressbar" aria-label="Countdown Fortschritt">
           <div class="progress-fill" id="progressFill"></div>
+            <div id="progressSegments" class="progress-segments" aria-hidden="true"></div>
         </div>
         <div id="pauseUntil" class="pause-until">Pause bis --:--</div>
       </div>

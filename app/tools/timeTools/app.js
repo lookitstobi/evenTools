@@ -12,6 +12,16 @@
   const resetControls = document.getElementById("resetControls");
   const fullscreenBtn = document.getElementById("fullscreenBtn");
   const progressFill = document.getElementById("progressFill");
+  const progressSegmentsEl = document.getElementById("progressSegments");
+  const dashboardStatusEl = document.getElementById("dashboardStatus");
+  const statusTextEl = document.getElementById("statusText");
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
+  const themeToggleText = document.getElementById("themeToggleText");
+
+  const THEME_KEY = "timeTools.theme";
+  const CLASSIC_THEME = "classic";
+  const DASHBOARD_THEME = "dashboard";
+  const DASHBOARD_PROGRESS_SEGMENTS = 24;
 
   let state = "idle";
   let countdownSeconds = 0;
@@ -30,7 +40,81 @@
     return [pad2(date.getHours()), pad2(date.getMinutes()), pad2(date.getSeconds())].join(":");
   }
 
+  function getTheme() {
+    return body.getAttribute("data-theme") === DASHBOARD_THEME ? DASHBOARD_THEME : CLASSIC_THEME;
+  }
+
+  function isDashboardTheme() {
+    return getTheme() === DASHBOARD_THEME;
+  }
+
+  function createSegmentDigit(value) {
+    const digit = document.createElement("span");
+    digit.className = "segment-slot";
+
+    if (value === ":") {
+      const separator = document.createElement("span");
+      separator.className = "segment-separator";
+      digit.appendChild(separator);
+      return digit;
+    }
+
+    const shell = document.createElement("span");
+    shell.className = "segment-digit";
+    shell.setAttribute("data-digit", value);
+
+    ["a", "b", "c", "d", "e", "f", "g"].forEach((segmentName) => {
+      const segment = document.createElement("span");
+      segment.className = "segment seg-" + segmentName;
+      segment.setAttribute("data-seg", segmentName);
+      shell.appendChild(segment);
+    });
+
+    digit.appendChild(shell);
+    return digit;
+  }
+
+  function applyDigitSegments(shell, value) {
+    const map = {
+      "0": ["a", "b", "c", "d", "e", "f"],
+      "1": ["b", "c"],
+      "2": ["a", "b", "d", "e", "g"],
+      "3": ["a", "b", "c", "d", "g"],
+      "4": ["b", "c", "f", "g"],
+      "5": ["a", "c", "d", "f", "g"],
+      "6": ["a", "c", "d", "e", "f", "g"],
+      "7": ["a", "b", "c"],
+      "8": ["a", "b", "c", "d", "e", "f", "g"],
+      "9": ["a", "b", "c", "d", "f", "g"]
+    };
+    const active = map[value] || [];
+
+    Array.from(shell.children).forEach((segment) => {
+      const segName = segment.getAttribute("data-seg") || "";
+      segment.classList.toggle("on", active.includes(segName));
+    });
+  }
+
+  function renderSegmentText(target, value, labelPrefix) {
+    target.setAttribute("aria-label", labelPrefix + " " + value);
+    target.textContent = "";
+
+    value.split("").forEach((character) => {
+      const node = createSegmentDigit(character);
+      const shell = node.firstElementChild;
+      if (character !== ":" && shell) {
+        applyDigitSegments(shell, character);
+      }
+      target.appendChild(node);
+    });
+  }
+
   function renderClockText(value) {
+    if (isDashboardTheme()) {
+      renderSegmentText(clockEl, value, "Aktuelle Uhrzeit");
+      return;
+    }
+
     clockEl.setAttribute("aria-label", "Aktuelle Uhrzeit " + value);
     clockEl.textContent = "";
 
@@ -57,6 +141,7 @@
     body.classList.add("state-" + nextState);
     state = nextState;
     resetControls.setAttribute("aria-hidden", nextState === "idle" ? "true" : "false");
+    updateDashboardStatus();
 
     if (nextState === "idle" && previousState !== "idle") {
       body.classList.add("clock-stabilize");
@@ -87,9 +172,14 @@
     const total = countdownTotalSeconds;
     const remaining = Math.max(0, countdownSeconds);
 
+    body.classList.remove("status-ok", "status-warn", "status-bad");
+
     if (state === "idle" || !total) {
       progressFill.style.width = "100%";
       countdownEl.style.color = "";
+      body.classList.add("status-ok");
+      updateDashboardStatus();
+      renderDashboardProgressSegments(1);
       return;
     }
 
@@ -98,11 +188,21 @@
 
     if (remaining > 300) {
       countdownEl.style.color = "#14a76c";
+      body.classList.add("status-ok");
     } else if (remaining > 30) {
       countdownEl.style.color = "#E9B63B";
+      body.classList.add("status-warn");
     } else {
       countdownEl.style.color = "#DC2525";
+      body.classList.add("status-bad");
     }
+
+    if (isDashboardTheme()) {
+      countdownEl.style.color = "";
+    }
+
+    renderDashboardProgressSegments(pct / 100);
+    updateDashboardStatus();
   }
 
   function renderClock() {
@@ -111,7 +211,93 @@
   }
 
   function renderCountdown() {
-    countdownEl.textContent = formatCountdown(countdownSeconds);
+    const value = formatCountdown(countdownSeconds);
+
+    if (isDashboardTheme()) {
+      renderSegmentText(countdownEl, value, "Countdown");
+      return;
+    }
+
+    countdownEl.textContent = value;
+  }
+
+  function ensureDashboardProgressSegments() {
+    if (!progressSegmentsEl || progressSegmentsEl.childElementCount === DASHBOARD_PROGRESS_SEGMENTS) {
+      return;
+    }
+
+    progressSegmentsEl.textContent = "";
+    for (let i = 0; i < DASHBOARD_PROGRESS_SEGMENTS; i += 1) {
+      const segment = document.createElement("span");
+      segment.className = "progress-segment";
+      progressSegmentsEl.appendChild(segment);
+    }
+  }
+
+  function renderDashboardProgressSegments(progressRatio) {
+    ensureDashboardProgressSegments();
+    if (!progressSegmentsEl) {
+      return;
+    }
+
+    const safeRatio = Math.max(0, Math.min(1, Number(progressRatio) || 0));
+    const activeCount = Math.round(safeRatio * DASHBOARD_PROGRESS_SEGMENTS);
+    Array.from(progressSegmentsEl.children).forEach((segment, index) => {
+      segment.classList.toggle("active", index < activeCount);
+    });
+  }
+
+  function updateThemeToggleLabel() {
+    if (!themeToggleText || !themeToggleBtn) {
+      return;
+    }
+    const nextTheme = isDashboardTheme() ? "Klassik" : "Dashboard";
+    themeToggleText.textContent = isDashboardTheme() ? "STD" : "LCD";
+    themeToggleBtn.setAttribute("aria-label", nextTheme + " Theme aktivieren");
+    themeToggleBtn.setAttribute("title", "Theme wechseln zu " + nextTheme);
+  }
+
+  function updateDashboardStatus() {
+    if (!dashboardStatusEl || !statusTextEl) {
+      return;
+    }
+
+    statusTextEl.textContent = "RUN";
+    statusTextEl.classList.toggle("run-active", state === "running");
+  }
+
+  function applyTheme(nextTheme) {
+    const resolved = nextTheme === DASHBOARD_THEME ? DASHBOARD_THEME : CLASSIC_THEME;
+    body.setAttribute("data-theme", resolved);
+    updateThemeToggleLabel();
+    renderClock();
+    renderCountdown();
+    renderProgressBar();
+    scheduleClockFit();
+  }
+
+  function loadThemePreference() {
+    let storedTheme = CLASSIC_THEME;
+    try {
+      const candidate = window.localStorage.getItem(THEME_KEY);
+      if (candidate === DASHBOARD_THEME || candidate === CLASSIC_THEME) {
+        storedTheme = candidate;
+      }
+    } catch (error) {
+      // Continue with default theme when storage access is unavailable.
+    }
+
+    applyTheme(storedTheme);
+  }
+
+  function toggleTheme() {
+    const nextTheme = isDashboardTheme() ? CLASSIC_THEME : DASHBOARD_THEME;
+    applyTheme(nextTheme);
+    try {
+      window.localStorage.setItem(THEME_KEY, nextTheme);
+    } catch (error) {
+      // Continue without persistence when storage is blocked.
+    }
   }
 
   function renderPauseUntil() {
@@ -370,12 +556,17 @@
     });
 
     fullscreenBtn.addEventListener("click", toggleFullscreen);
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener("click", toggleTheme);
+    }
     document.addEventListener("fullscreenchange", updateFullscreenClass);
     window.addEventListener("pageshow", updateFullscreenClass);
     window.addEventListener("resize", scheduleClockFit);
   }
 
   function init() {
+    ensureDashboardProgressSegments();
+    loadThemePreference();
     renderClock();
     renderCountdown();
     renderPauseUntil();

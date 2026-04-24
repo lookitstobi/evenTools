@@ -14,6 +14,13 @@
   --ease-enter: cubic-bezier(0.2, 0.9, 0.2, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --controls-lift: clamp(56px, 8.8vh, 98px);
+  --lcd-on: #ff3b30;
+  --lcd-off: rgba(255, 59, 48, 0.06);
+  --lcd-frame: #231212;
+  --lcd-glass: #120909;
+  --dash-warn: #ff3b30;
+  --dash-bad: #ff3b30;
+  --dash-ok: #ff3b30;
 }
 
 * {
@@ -106,6 +113,13 @@ body {
   transition: color var(--timing-fast) linear;
 }
 
+.theme-toggle-text {
+  font-family: "Courier New", "Consolas", monospace;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: currentColor;
+}
+
 .clock-wrap {
   width: min(98vw, 2200px);
   min-height: min(76vh, 76dvh);
@@ -186,6 +200,33 @@ body {
   letter-spacing: 0.02em;
 }
 
+.dashboard-status {
+  display: none;
+  width: min(88vw, 500px);
+  justify-content: center;
+}
+
+.status-lcd {
+  min-width: 190px;
+  padding: 8px 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 59, 48, 0.28);
+  background:
+    linear-gradient(180deg, rgba(29, 8, 8, 0.98), rgba(14, 4, 4, 0.99)),
+    repeating-linear-gradient(90deg, rgba(255, 59, 48, 0.06) 0 2px, rgba(255, 59, 48, 0) 2px 7px);
+  color: rgba(255, 59, 48, 0.34);
+  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
+  font-size: clamp(20px, 3vw, 30px);
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 128, 118, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.65);
+}
+
 .pause-until {
   color: var(--gray-soft);
   font-size: clamp(24px, min(5.2vw, 6.2vh), 72px);
@@ -212,6 +253,29 @@ body {
   border-radius: 9px;
   background: var(--gray-soft);
   transition: width 1s linear;
+}
+
+.progress-segments {
+  display: none;
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 3px;
+  bottom: 3px;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+}
+
+.progress-segment {
+  border-radius: 2px;
+  background: var(--lcd-off);
+  box-shadow: inset 0 0 0 1px rgba(20, 5, 5, 0.82);
+  transition: background-color 150ms linear, box-shadow 150ms linear;
+}
+
+.progress-segment.active {
+  background: rgba(255, 59, 48, 0.95);
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.45);
 }
 
 .controls {
@@ -369,6 +433,238 @@ body {
   animation: timer-blink 1s steps(1, end) infinite;
 }
 
+body[data-theme="dashboard"] {
+  background: #000000 !important;
+}
+
+body[data-theme="dashboard"] .clock,
+body[data-theme="dashboard"] .countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08em;
+  color: var(--lcd-on);
+  text-shadow: 0 0 8px rgba(255, 59, 48, 0.2);
+  font-family: "Courier New", "Consolas", monospace;
+}
+
+body[data-theme="dashboard"].state-idle .clock {
+  opacity: 1;
+}
+
+body[data-theme="dashboard"].state-running .clock,
+body[data-theme="dashboard"].state-finished .clock {
+  opacity: 0.58;
+}
+
+body[data-theme="dashboard"] .countdown {
+  opacity: 0.95;
+}
+
+body[data-theme="dashboard"].state-running .countdown,
+body[data-theme="dashboard"].state-finished .countdown {
+  opacity: 1;
+}
+
+.segment-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.6em;
+  height: 1em;
+}
+
+.segment-separator {
+  width: 0.2em;
+  height: 1em;
+  position: relative;
+}
+
+.segment-separator::before,
+.segment-separator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0.09em;
+  height: 0.09em;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(255, 59, 48, 0.85);
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.36);
+}
+
+.segment-separator::before {
+  top: 0.3em;
+}
+
+.segment-separator::after {
+  top: 0.62em;
+}
+
+.segment-digit {
+  position: relative;
+  width: 0.6em;
+  height: 1em;
+}
+
+.segment {
+  position: absolute;
+  background: var(--lcd-off);
+  border-radius: 0.05em;
+  box-shadow: inset 0 0 0 1px rgba(19, 5, 5, 0.82);
+  transition: background-color 120ms linear, box-shadow 120ms linear;
+}
+
+.segment.on {
+  background: rgba(255, 59, 48, 0.97);
+  box-shadow:
+    inset 0 0 0 1px rgba(52, 10, 10, 0.44),
+    0 0 10px rgba(255, 59, 48, 0.52);
+}
+
+.seg-a,
+.seg-d,
+.seg-g {
+  left: 0.11em;
+  width: 0.38em;
+  height: 0.05em;
+}
+
+.seg-a {
+  top: 0.04em;
+}
+
+.seg-g {
+  top: 0.46em;
+}
+
+.seg-d {
+  top: 0.88em;
+}
+
+.seg-b,
+.seg-c,
+.seg-e,
+.seg-f {
+  width: 0.05em;
+  height: 0.36em;
+}
+
+.seg-b {
+  top: 0.09em;
+  left: 0.47em;
+}
+
+.seg-c {
+  top: 0.51em;
+  left: 0.47em;
+}
+
+.seg-e {
+  top: 0.51em;
+  left: 0.03em;
+}
+
+.seg-f {
+  top: 0.09em;
+  left: 0.03em;
+}
+
+body[data-theme="dashboard"] .clock-slot {
+  width: auto;
+}
+
+body[data-theme="dashboard"] .clock-slot.separator {
+  width: auto;
+}
+
+body[data-theme="dashboard"] .dashboard-status {
+  display: grid;
+}
+
+body[data-theme="dashboard"] .pause-until {
+  min-width: 380px;
+  padding: 8px 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 59, 48, 0.28);
+  background:
+    linear-gradient(180deg, rgba(29, 8, 8, 0.98), rgba(14, 4, 4, 0.99)),
+    repeating-linear-gradient(90deg, rgba(255, 59, 48, 0.06) 0 2px, rgba(255, 59, 48, 0) 2px 7px);
+  color: rgba(255, 59, 48, 0.8);
+  letter-spacing: 0.2em;
+  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
+  font-size: clamp(20px, 2.9vw, 30px);
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.05;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 128, 118, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.65);
+}
+
+body[data-theme="dashboard"].state-running .pause-until,
+body[data-theme="dashboard"].state-finished .pause-until {
+  font-size: clamp(16px, min(3.2vw, 4.2vh), 36px);
+}
+
+body[data-theme="dashboard"].state-running .timer-zone,
+body[data-theme="dashboard"].state-finished .timer-zone {
+  max-height: 700px;
+}
+
+body[data-theme="dashboard"] .progress-bar {
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 59, 48, 0.18);
+  background: linear-gradient(180deg, rgba(20, 7, 7, 0.94), rgba(10, 4, 4, 0.98));
+}
+
+body[data-theme="dashboard"] .progress-fill {
+  display: none;
+}
+
+body[data-theme="dashboard"] .progress-segments {
+  display: grid;
+}
+
+body[data-theme="dashboard"] .status-lcd.run-active {
+  color: rgba(255, 82, 70, 0.96);
+  text-shadow:
+    0 0 7px rgba(255, 59, 48, 0.45),
+    0 0 16px rgba(255, 59, 48, 0.2);
+  animation: run-blink 780ms steps(1, end) infinite;
+}
+
+body[data-theme="dashboard"] .clock .segment.on {
+  box-shadow:
+    inset 0 0 0 1px rgba(52, 10, 10, 0.44),
+    0 0 7px rgba(255, 59, 48, 0.34);
+}
+
+body[data-theme="dashboard"] .countdown .segment.on {
+  box-shadow:
+    inset 0 0 0 1px rgba(52, 10, 10, 0.46),
+    0 0 12px rgba(255, 59, 48, 0.62);
+}
+
+body[data-theme="dashboard"] .countdown .segment-separator::before,
+body[data-theme="dashboard"] .countdown .segment-separator::after {
+  box-shadow: 0 0 10px rgba(255, 59, 48, 0.48);
+}
+
+@keyframes run-blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .fullscreen-active #fullscreenIcon {
   color: #8a8a8a;
 }
@@ -436,5 +732,34 @@ body {
   .state-running .clock-wrap,
   .state-finished .clock-wrap {
     transform: translateY(-0.2vh);
+  }
+
+  .dashboard-status {
+    width: min(94vw, 500px);
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .status-lcd {
+    min-width: 110px;
+    font-size: clamp(14px, 3.8vw, 18px);
+    padding: 4px 7px;
+    letter-spacing: 0.18em;
+  }
+
+  body[data-theme="dashboard"] .pause-until {
+    min-width: min(92vw, 380px);
+    font-size: clamp(14px, 4vw, 20px);
+    padding: 6px 10px;
+    letter-spacing: 0.14em;
+  }
+
+  body[data-theme="dashboard"].state-running .timer-zone,
+  body[data-theme="dashboard"].state-finished .timer-zone {
+    max-height: 560px;
+  }
+
+  .progress-segments {
+    gap: 2px;
   }
 }
