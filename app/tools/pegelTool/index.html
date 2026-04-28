@@ -206,7 +206,7 @@ label.label-required::after{
       <h3>Diagramme (Vorschau)</h3>
       <div class="grid-2 panel-grid-spaced">
         <div>
-          <div class="small" id="laeqChartLabel">LAeq mit Grenzwert 99 dB(A)</div>
+          <div class="small" id="laeqChartLabel">LAeq_g30 mit Grenzwert 99 dB(A)</div>
           <canvas id="chartLAeq"></canvas>
         </div>
         <div>
@@ -1254,7 +1254,7 @@ function downsampleForDisplay(raw, maxPoints=900){
     sourceIndex: idx,
     date: s.date,
     time: s.time,
-    LAeq: (s.LAeq_g30 ?? s.LAeq_dt),
+    LAeq_g30: s.LAeq_g30,
     LC: s.LCpk
   }));
 
@@ -1275,7 +1275,7 @@ function downsampleForDisplay(raw, maxPoints=900){
   const n = normalized.length;
   if(n<=maxPoints){
     return {
-      data: normalized.map(s=>({date:s.date, time:s.time, LAeq:s.LAeq, LC:s.LC})),
+      data: normalized.map(s=>({date:s.date, time:s.time, LAeq_g30:s.LAeq_g30, LC:s.LC})),
       bucketSize:1,
       injectedPeaks:0
     };
@@ -1285,15 +1285,15 @@ function downsampleForDisplay(raw, maxPoints=900){
   const out=[];
   for(let i=0;i<n;i+=bucketSize){
     const chunk = normalized.slice(i, i+bucketSize);
-    const laVals = chunk.map(s => s.LAeq).filter(v=>v!=null && Number.isFinite(v));
+    const laVals = chunk.map(s => s.LAeq_g30).filter(v=>v!=null && Number.isFinite(v));
     const lcVals = chunk.map(s => s.LC).filter(v=>v!=null && Number.isFinite(v));
-    const LAeq = calcEnergyAvgDb(laVals);
+    const LAeq_g30 = calcEnergyAvgDb(laVals);
     const LC   = lcVals.length ? Math.max(...lcVals) : null;
-    out.push({ sourceIndex: chunk[0].sourceIndex, date: chunk[0].date, time: chunk[0].time, LAeq, LC });
+    out.push({ sourceIndex: chunk[0].sourceIndex, date: chunk[0].date, time: chunk[0].time, LAeq_g30, LC });
   }
 
   const mustKeep = new Set();
-  const maxLAIdx = maxIndexByKey(normalized, 'LAeq');
+  const maxLAIdx = maxIndexByKey(normalized, 'LAeq_g30');
   const maxLCIdx = maxIndexByKey(normalized, 'LC');
   if(maxLAIdx >= 0) mustKeep.add(maxLAIdx);
   if(maxLCIdx >= 0) mustKeep.add(maxLCIdx);
@@ -1307,7 +1307,7 @@ function downsampleForDisplay(raw, maxPoints=900){
       sourceIndex: s.sourceIndex,
       date: s.date,
       time: s.time,
-      LAeq: s.LAeq,
+      LAeq_g30: s.LAeq_g30,
       LC: s.LC,
       _forcedPeak: true
     });
@@ -1316,7 +1316,7 @@ function downsampleForDisplay(raw, maxPoints=900){
 
   out.sort((a,b)=>a.sourceIndex - b.sourceIndex);
   return {
-    data: out.map(({date,time,LAeq,LC})=>({date,time,LAeq,LC})),
+    data: out.map(({date,time,LAeq_g30,LC})=>({date,time,LAeq_g30,LC})),
     bucketSize,
     injectedPeaks
   };
@@ -1535,9 +1535,9 @@ function renderCharts(){
   if(!chartSamples.length) return;
   const laeqCanvas = resetChartCanvas('chartLAeq');
   const lcpeakCanvas = resetChartCanvas('chartLCpeak');
-  const la = chartSamples.map(s=>s.LAeq);
+  const la = chartSamples.map(s=>s.LAeq_g30);
   const lc = chartSamples.map(s=>s.LC);
-  chartLAeq = mkChart(laeqCanvas, 'LAeq', la, LIMIT_LAEQ_30, `Grenzwert ${LIMIT_LAEQ_30} dB(A)`);
+  chartLAeq = mkChart(laeqCanvas, 'LAeq_g30', la, LIMIT_LAEQ_30, `Grenzwert ${LIMIT_LAEQ_30} dB(A)`);
   chartLCpeak = mkChart(lcpeakCanvas, 'LCpeak', lc, LIMIT_LCPEAK, `Grenzwert ${LIMIT_LCPEAK} dB(C)`);
   refreshChartLayout();
 }
@@ -1555,15 +1555,15 @@ function calculateAndRender(){
   const durLA = countExceedDuration(samples.map(s=> s.LAeq_g30).filter(v=>v!=null), LIMIT_LAEQ_30);
   const durLC = countExceedDuration(samples.map(s=> s.LCpk).filter(v=>v!=null), LIMIT_LCPEAK);
 
-  addRow('LAeq,30min (g30)', laeqG30, LIMIT_LAEQ_30, durLA);
+  addRow('LAeq_g30', laeqG30, LIMIT_LAEQ_30, durLA);
   addRow('LCpeak (max)', lcPeakMax, LIMIT_LCPEAK, durLC);
-  addRow('LAf (max)', lafMax, LIMIT_LAEQ_30, null);
+  addRow('LAF (max)', lafMax, LIMIT_LAEQ_30, null);
 
   const ds = downsampleForDisplay(samples, 900);
   chartSamples = ds.data;
   const peakInfo = ds.injectedPeaks ? ` inkl. ${ds.injectedPeaks} echtem Spitzenwert-Punkt` : '';
   setText('chartInfo', `Diagramme: ${samples.length.toLocaleString()} Originalpunkte → ${chartSamples.length.toLocaleString()} Punkte${peakInfo} (je Punkt ~${ds.bucketSize*(header.logIntervalSec||1)}s).`);
-  setText('laeqChartLabel', 'LAeq,30min (g30) Verlauf mit Grenzwert 99 dB(A)');
+  setText('laeqChartLabel', 'LAeq_g30 Verlauf mit Grenzwert 99 dB(A)');
 
   renderCharts();
 
@@ -1788,15 +1788,22 @@ async function generateTemplatePDF(){
   const paItems = collectPAItems();
 
   // Überschreitungsdauern und lauteste Werte für Template-Variablen
+  const excLAeqSec    = samples.length ? countExceedDuration(samples.map(s => s.LAeq_dt).filter(v => v != null), LIMIT_LAEQ_30) : 0;
   const excLAfSec     = samples.length ? countExceedDuration(samples.map(s => s.LAFmax).filter(v => v != null), LIMIT_LAEQ_30) : 0;
   const excLAeqG30Sec = samples.length ? countExceedDuration(samples.map(s => s.LAeq_g30).filter(v => v != null), LIMIT_LAEQ_30) : 0;
   const excLCpeakSec  = samples.length ? countExceedDuration(samples.map(s => s.LCpk).filter(v => v != null), LIMIT_LCPEAK) : 0;
+  const laeqTotalVal = (summary && summary.laeq_total != null)
+    ? summary.laeq_total
+    : calcEnergyAvgDb(samples.map(s=>s.LAeq_dt));
   const lafMaxVal = (summary && summary.lafmax_dt != null)
     ? summary.lafmax_dt
     : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAFmax).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
   const laeqG30Val = (summary && summary.laeq_g30 != null)
     ? summary.laeq_g30
     : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAeq_g30).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
+  const laeqMaxVal = samples.length
+    ? (()=>{ const vals = samples.map(s=>s.LAeq_dt).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })()
+    : null;
   const lcPeakVal = (summary && summary.lcpeak_max != null)
     ? summary.lcpeak_max
     : (samples.length ? (()=>{ const vals = samples.map(s=>s.LCpk).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
@@ -1805,11 +1812,11 @@ async function generateTemplatePDF(){
     project_name:         getVal('eventName').trim(),
     measurement_date:     getVal('datumMessung').trim() || getVal('berichtDatum').trim(),
     operator_name:        getVal('messungVon').trim() || getVal('berichtName').trim(),
-    result_laeq:          formatLevel(laeqG30Val, 'dB(A)'),
+    result_laeq:          formatLevel(laeqTotalVal, 'dB(A)'),
     result_laeq_g30:      formatLevel(laeqG30Val, 'dB(A)'),
     result_laf:           formatLevel(lafMaxVal, 'dB(A)'),
     result_peak:          formatLevel(lcPeakVal, 'dB(C)'),
-    result_laeq_status:   complianceStatus(laeqG30Val, 99),
+    result_laeq_status:   complianceStatus(laeqTotalVal, 99),
     result_laf_status:    complianceStatus(lafMaxVal, 99),
     result_laeq_g30_status: complianceStatus(laeqG30Val, 99),
     result_peak_status:   complianceStatus(lcPeakVal, 135),
@@ -1840,17 +1847,17 @@ async function generateTemplatePDF(){
     mic_sn:               header.micSN || '',
     mic_sensitivity:      getVal('mikroSens').trim(),
     mic_calibration_date: getVal('micCal').trim(),
-    param_name_1:         'LAeq',
+    param_name_1:         'LAeq_g30',
     param_name_2:         'LAF',
     param_name_3:         'LCpeak',
     limit_laeq:           LIMIT_LAEQ_30 + ' dB(A)',
     limit_laeq_g30:       LIMIT_LAEQ_30 + ' dB(A)',
     limit_lcpeak:         LIMIT_LCPEAK  + ' dB(C)',
-    exceedance_laeq:      secondsToHMS(excLAeqG30Sec),
+    exceedance_laeq:      secondsToHMS(excLAeqSec),
     exceedance_laeq_g30:  secondsToHMS(excLAeqG30Sec),
     exceedance_laf:       secondsToHMS(excLAfSec),
     exceedance_lcpeak:    secondsToHMS(excLCpeakSec),
-    result_laeq_max:      formatLevel(laeqG30Val, 'dB(A)'),
+    result_laeq_max:      formatLevel(laeqMaxVal, 'dB(A)'),
     result_laf_max:       formatLevel(lafMaxVal, 'dB(A)'),
     result_lcpeak_max:    formatLevel(lcPeakVal, 'dB(C)'),
   };
@@ -1872,7 +1879,7 @@ async function generateTemplatePDF(){
     const imageFields     = allFields.filter(f => f.mode === 'image');
     const coordFields     = allFields.filter(f => (f.mode || '') !== 'acro' && (f.mode || '') !== 'image');
 
-    const CHART_VAR_KEYS  = new Set(['chart_laeq_image', 'chart_lcpeak_image']);
+    const CHART_VAR_KEYS  = new Set(['chart_laeq_image', 'chart_laeq_g30_image', 'chart_lcpeak_image']);
     const acroTextFields  = acroFields.filter(f => !CHART_VAR_KEYS.has(f.field));
     const acroChartFields = acroFields.filter(f =>  CHART_VAR_KEYS.has(f.field));
 
@@ -1986,6 +1993,7 @@ async function generateTemplatePDF(){
     // Bild-Felder einblenden (Koordinaten-Modus und AcroForm-Positionen).
     const chartCanvasMap = {
       chart_laeq_image:   chartLAeq   ? document.getElementById('chartLAeq')   : null,
+      chart_laeq_g30_image: chartLAeq ? document.getElementById('chartLAeq')   : null,
       chart_lcpeak_image: chartLCpeak ? document.getElementById('chartLCpeak') : null,
     };
 
@@ -2088,7 +2096,7 @@ async function generateTemplatePDF(){
       doc.setFontSize(12);
       doc.setFont(undefined, 'bold');
       doc.setTextColor(40, 40, 40);
-      doc.text('LAeq mit Grenzwert 99 dB(A)', M, y);
+      doc.text('LAeq_g30 mit Grenzwert 99 dB(A)', M, y);
       const h = addChartImage(doc, chartLAeq, M, y + 5, pageW, 96, 2);
       y += h + 14;
     }
@@ -2502,6 +2510,23 @@ async function generateLegacyPDF(){
     }
   }
 
+  const loudestDbA = (summary && summary.lafmax_dt != null)
+    ? summary.lafmax_dt
+    : (() => {
+        const values = samples.map(s => s.LAFmax).filter(v => v != null && Number.isFinite(v));
+        return values.length ? Math.max(...values) : null;
+      })();
+  const loudestDbC = (summary && summary.lcpeak_max != null)
+    ? summary.lcpeak_max
+    : (() => {
+        const values = samples.map(s => s.LCpk).filter(v => v != null && Number.isFinite(v));
+        return values.length ? Math.max(...values) : null;
+      })();
+  const formatLevelForChartTitle = (value, unit) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? `${n.toFixed(1)} ${unit}` : '—';
+  };
+
   applyChartTheme('light');
   doc.addPage();
   await drawHeader();
@@ -2514,7 +2539,11 @@ async function generateLegacyPDF(){
     doc.setFontSize(12);
     doc.setFont(undefined,'bold');
     doc.setTextColor(40, 40, 40);
-    doc.text('LAeq mit Grenzwert 99 dB(A)', M, y);
+    doc.text('LAeq_g30 mit Grenzwert 99 dB(A)', M, y);
+    doc.setFontSize(10);
+    doc.setFont(undefined,'normal');
+    const loudestAText = `Lautester Wert dB(A): ${formatLevelForChartTitle(loudestDbA, 'dB(A)')}`;
+    doc.text(loudestAText, M + pageW - doc.getTextWidth(loudestAText), y);
     const chartH = addChartImage(doc, chartLAeq, M, y+5, pageW, 95, 2);
     y += chartH + 12;
   }
@@ -2524,6 +2553,10 @@ async function generateLegacyPDF(){
     doc.setFont(undefined,'bold');
     doc.setTextColor(40, 40, 40);
     doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
+    doc.setFontSize(10);
+    doc.setFont(undefined,'normal');
+    const loudestCText = `Lautester Wert dB(C): ${formatLevelForChartTitle(loudestDbC, 'dB(C)')}`;
+    doc.text(loudestCText, M + pageW - doc.getTextWidth(loudestCText), y);
     addChartImage(doc, chartLCpeak, M, y+5, pageW, 95, 2);
   }
 
