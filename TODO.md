@@ -2,11 +2,11 @@
 
 ## ✅ LOGIN-FEHLER FIXES (März 26, 2026)
 
-**Status: Repariert und getestet lokal**
+## **Status: Repariert und getestet lokal**
 
 Folgende Verbesserungen wurden implementiert:
 
-### Durchgeführte Fixes:
+### Durchgeführte Fixes
 
 1. **config.php - Intelligente DB-Auswahl** ✅
    - Priorisiert `data/users.sqlite` wenn Daten existieren (Production-Szenario)
@@ -36,7 +36,7 @@ Folgende Verbesserungen wurden implementiert:
    - Automatische Überprüfung aller kritischen Punkte
    - Empfehlungen für Production Setup
 
-### Ursprüngliche Problem-Ursachen (für Reference):
+### Ursprüngliche Problem-Ursachen (für Reference)
 
 - [x] **A · Zwei parallele users.sqlite** — FIXED via config.php Logik
 - [x] **B · Migration nie ausgeführt** — DIAGNOSTIZIERBAR via diagnose.php
@@ -47,7 +47,7 @@ Folgende Verbesserungen wurden implementiert:
 - [x] **G · Keine Nutzer auf Produktion** — DIAGNOSTIZIERBAR via diagnose.php
 - [x] **H · PHP-Version unterscheidet sich** — DIAGNOSTIZIERBAR (gezeigt im diagnose.php)
 
-### Nächste Schritte für Production:
+### Nächste Schritte für Production
 
 ```bash
 # 1. Code deployen (Pull/git pull)
@@ -99,4 +99,3 @@ Folgende Verbesserungen wurden implementiert:
 - [x] **`assets/`-Verzeichnis sortieren** – Legacy-Logos und Log-Dateien aus dem aktiven Asset-Pfad entfernt/verschoben
 - [x] **`apply_fixes.py` und `diagnose.php` prüfen** – `apply_fixes.py` entfernt, `diagnose.php` als Diagnose-Werkzeug behalten
 - [ ] **README / Projektdokumentation anlegen** – derzeit nur `DEPLOY.md` und einzelne Markdown-Notizen, keine zentrale Übersicht
-
