@@ -195,6 +195,12 @@
   flex-shrink: 0;
 }
 
+.pm-preview-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .pm-preview-title {
   font-size: 12px;
   font-weight: 700;

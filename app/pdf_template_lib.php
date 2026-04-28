@@ -157,26 +157,26 @@ function pdf_template_field_catalog(): array {
   return [
     'pegelTool' => [
       // Projekt
-      ['key' => 'project_name',         'label' => 'Projektname',          'group' => 'Projekt',    'example' => 'Classic Night Philharmonie'],
-      ['key' => 'location',             'label' => 'Location',             'group' => 'Projekt',    'example' => 'Philharmonie Essen, Alfried-Krupp-Saal'],
-      ['key' => 'environment',          'label' => 'Umgebung',             'group' => 'Projekt',    'example' => 'Innenraum, vollbesetzt'],
-      ['key' => 'description',          'label' => 'Beschreibung',         'group' => 'Projekt',    'example' => 'Orchesterkonzert mit Verstärkung, ca. 2800 Besucher'],
+      ['key' => 'project_name',         'label' => 'Projektname',          'group' => 'Projekt',    'example' => 'Classic Night Philharmonie', 'aliases' => ['projekt', 'veranstaltung', 'event_name', 'eventname']],
+      ['key' => 'location',             'label' => 'Location',             'group' => 'Projekt',    'example' => 'Philharmonie Essen, Alfried-Krupp-Saal', 'aliases' => ['ort', 'venue', 'veranstaltungsort', 'lokation']],
+      ['key' => 'environment',          'label' => 'Umgebung',             'group' => 'Projekt',    'example' => 'Innenraum, vollbesetzt', 'aliases' => ['rahmenbedingungen', 'conditions']],
+      ['key' => 'description',          'label' => 'Beschreibung',         'group' => 'Projekt',    'example' => 'Orchesterkonzert mit Verstärkung, ca. 2800 Besucher', 'aliases' => ['kommentar', 'bemerkung', 'notes']],
       // Messung
-      ['key' => 'measurement_date',     'label' => 'Messdatum',            'group' => 'Messung',    'example' => '2025-03-14'],
-      ['key' => 'start_measurement',    'label' => 'Messstart',            'group' => 'Messung',    'example' => '2025-03-14 19:40:06'],
-      ['key' => 'end_measurement',      'label' => 'Messende',             'group' => 'Messung',    'example' => '2025-03-14 22:00:47'],
+      ['key' => 'measurement_date',     'label' => 'Messdatum',            'group' => 'Messung',    'example' => '2025-03-14', 'aliases' => ['datum', 'date', 'mess_datum']],
+      ['key' => 'start_measurement',    'label' => 'Messstart',            'group' => 'Messung',    'example' => '2025-03-14 19:40:06', 'aliases' => ['start', 'startzeit', 'start_time', 'beginn']],
+      ['key' => 'end_measurement',      'label' => 'Messende',             'group' => 'Messung',    'example' => '2025-03-14 22:00:47', 'aliases' => ['ende', 'endzeit', 'end_time', 'stopp']],
       ['key' => 'log_interval',         'label' => 'Log-Intervall',        'group' => 'Messung',    'example' => '00:00:01,0'],
-      ['key' => 'measurement_position', 'label' => 'Messposition',         'group' => 'Messung',    'example' => 'Reihe 15, Mittelachse'],
-      ['key' => 'loudest_position',     'label' => 'Lauteste Position',    'group' => 'Messung',    'example' => 'Front-of-House'],
+      ['key' => 'measurement_position', 'label' => 'Messposition',         'group' => 'Messung',    'example' => 'Reihe 15, Mittelachse', 'aliases' => ['position', 'messort', 'measuring_position']],
+      ['key' => 'loudest_position',     'label' => 'Lauteste Position',    'group' => 'Messung',    'example' => 'Front-of-House', 'aliases' => ['hotspot', 'lautester_punkt', 'max_position']],
       // Ergebnisse
-      ['key' => 'result_laeq',          'label' => 'Ergebnis LAeq',               'group' => 'Ergebnisse', 'example' => '77.4 dB(A)'],
-      ['key' => 'result_laeq_g30',      'label' => 'Ergebnis LAeq,30min',         'group' => 'Ergebnisse', 'example' => '77.4 dB'],
-      ['key' => 'result_peak',          'label' => 'Ergebnis LCpeak',             'group' => 'Ergebnisse', 'example' => '114.7 dB(C)'],
+      ['key' => 'result_laeq',          'label' => 'Ergebnis LAeq',               'group' => 'Ergebnisse', 'example' => '77.4 dB(A)', 'aliases' => ['laeq', 'messwert_laeq', 'value_laeq']],
+      ['key' => 'result_laeq_g30',      'label' => 'Ergebnis LAeq,30min',         'group' => 'Ergebnisse', 'example' => '77.4 dB', 'aliases' => ['laeq30', 'laeq_30min', 'laeqg30']],
+      ['key' => 'result_peak',          'label' => 'Ergebnis LCpeak',             'group' => 'Ergebnisse', 'example' => '114.7 dB(C)', 'aliases' => ['lcpeak', 'peak', 'spitzenwert']],
       ['key' => 'result_laeq_max',      'label' => 'Lautester LAeq (LAFmax)',     'group' => 'Ergebnisse', 'example' => '96.6 dB(A)'],
       ['key' => 'result_lcpeak_max',    'label' => 'Lautester LCpeak',            'group' => 'Ergebnisse', 'example' => '114.7 dB(C)'],
       // Compliance-Status (OK = grün, NEGATIV = rot im Koordinaten-Modus)
-      ['key' => 'result_laeq_status',   'label' => 'LAeq Compliance',             'group' => 'Ergebnisse', 'example' => 'OK'],
-      ['key' => 'result_peak_status',   'label' => 'LCpeak Compliance',           'group' => 'Ergebnisse', 'example' => 'NEGATIV'],
+      ['key' => 'result_laeq_status',   'label' => 'LAeq Compliance',             'group' => 'Ergebnisse', 'example' => 'OK', 'aliases' => ['laeq_status', 'laeq_ok', 'laeq_ampel']],
+      ['key' => 'result_peak_status',   'label' => 'LCpeak Compliance',           'group' => 'Ergebnisse', 'example' => 'NEGATIV', 'aliases' => ['lcpeak_status', 'peak_status', 'peak_ampel']],
       // Parameter-Namen und Grenzwerte (DIN 15905-5 – absolut, nicht editierbar)
       ['key' => 'param_name_1',         'label' => 'Parameter 1 Bezeichnung',     'group' => 'Parameter',  'example' => 'LAeq'],
       ['key' => 'param_name_2',         'label' => 'Parameter 2 Bezeichnung',     'group' => 'Parameter',  'example' => 'LAeq(g30)'],
@@ -191,13 +191,13 @@ function pdf_template_field_catalog(): array {
       ['key' => 'chart_laeq_image',     'label' => 'Diagramm LAeq (Bild)',        'group' => 'Diagramme',  'example' => '(PNG-Bild, 16:10)'],
       ['key' => 'chart_lcpeak_image',   'label' => 'Diagramm LCpeak (Bild)',      'group' => 'Diagramme',  'example' => '(PNG-Bild, 16:10)'],
       // Beteiligte
-      ['key' => 'operator_name',        'label' => 'Messtechniker',        'group' => 'Beteiligte', 'example' => 'Max Muster'],
+      ['key' => 'operator_name',        'label' => 'Messtechniker',        'group' => 'Beteiligte', 'example' => 'Max Muster', 'aliases' => ['techniker', 'operator', 'pruefer', 'sachkundige_person']],
       ['key' => 'customer',             'label' => 'FoH-Techniker',        'group' => 'Beteiligte', 'example' => 'Mustage GmbH'],
       ['key' => 'organiser',            'label' => 'Organisator',          'group' => 'Beteiligte', 'example' => 'Philharmonie Essen GmbH'],
       // Bericht
-      ['key' => 'report_date',          'label' => 'Berichtdatum',         'group' => 'Bericht',    'example' => '2025-03-15'],
-      ['key' => 'report_name',          'label' => 'Berichtersteller',     'group' => 'Bericht',    'example' => 'Max Muster'],
-      ['key' => 'report_city',          'label' => 'Berichtsort',          'group' => 'Bericht',    'example' => 'Essen'],
+      ['key' => 'report_date',          'label' => 'Berichtdatum',         'group' => 'Bericht',    'example' => '2025-03-15', 'aliases' => ['datum_bericht', 'reporting_date']],
+      ['key' => 'report_name',          'label' => 'Berichtersteller',     'group' => 'Bericht',    'example' => 'Max Muster', 'aliases' => ['ersteller', 'author', 'report_author']],
+      ['key' => 'report_city',          'label' => 'Berichtsort',          'group' => 'Bericht',    'example' => 'Essen', 'aliases' => ['ort_bericht', 'city']],
       // Messgerät
       ['key' => 'device_model',         'label' => 'Messgerät Modell',     'group' => 'Gerät',      'example' => 'XL3'],
       ['key' => 'device_sn',            'label' => 'Messgerät S/N',        'group' => 'Gerät',      'example' => 'A3A-00805-D1'],
@@ -338,6 +338,13 @@ function pdf_upload_update_title(PDO $db, int $id, string $title): void {
     'UPDATE pdf_uploaded_templates SET title = ?, updated_at = ? WHERE id = ?'
   );
   $stmt->execute([$title, pdf_template_iso_now(), $id]);
+}
+
+function pdf_upload_replace_pdf(PDO $db, int $id, string $pdfBytes): void {
+  $stmt = $db->prepare(
+    'UPDATE pdf_uploaded_templates SET pdf_data = ?, updated_at = ? WHERE id = ?'
+  );
+  $stmt->execute([$pdfBytes, pdf_template_iso_now(), $id]);
 }
 
 function pdf_upload_save_detected_acro_fields(PDO $db, int $id, array $names): void {

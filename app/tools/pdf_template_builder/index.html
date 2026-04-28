@@ -54,7 +54,11 @@
       <div class="pm-preview-pane">
         <div class="pm-preview-toolbar">
           <span class="pm-preview-title">Vorschau</span>
-          <button id="btnReloadPreview" class="btn pm-preview-reload-btn" type="button" title="Vorschau neu laden">&#8635;</button>
+          <div class="pm-preview-toolbar-actions">
+            <input id="replacePdfFile" type="file" accept="application/pdf,.pdf" hidden>
+            <button id="btnReplacePdf" class="btn" type="button" title="PDF austauschen">PDF austauschen</button>
+            <button id="btnReloadPreview" class="btn pm-preview-reload-btn" type="button" title="Vorschau neu laden">&#8635;</button>
+          </div>
         </div>
         <iframe id="previewFrame" class="pm-preview-frame" title="PDF-Vorschau"></iframe>
       </div>
@@ -90,6 +94,7 @@
         <section class="pm-section card" id="acroSection">
           <div class="pm-section-header">
             <h3 class="pm-section-title" id="acroSectionTitle">Felder-Zuweisung</h3>
+            <button id="btnAutoAssignAcro" class="btn" type="button">Auto-Zuweisung</button>
             <button id="btnScanAcro" class="btn" type="button">Felder erkennen</button>
           </div>
           <p class="pm-hint">Weise den PDF-Formularfeldern Variablen zu. Klicke auf <strong>&#8222;Felder erkennen&#8220;</strong>, um die Felder aus dem PDF einzulesen.</p>
@@ -199,6 +204,46 @@
   function clearMsg(containerId) {
     const el2 = el(containerId);
     if (el2) el2.hidden = true;
+  }
+
+  function sortedCatalogByLabel(entries) {
+    return (entries || []).slice().sort(function (a, b) {
+      var labelA = String((a && (a.label || a.key)) || '');
+      var labelB = String((b && (b.label || b.key)) || '');
+      return labelA.localeCompare(labelB, 'de', { sensitivity: 'base' });
+    });
+  }
+
+  function normalizeFieldToken(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '');
+  }
+
+  function getCatalogTokens(entry) {
+    var tokens = [];
+    if (!entry) return tokens;
+
+    tokens.push(entry.key || '');
+    tokens.push(entry.label || '');
+
+    if (Array.isArray(entry.aliases)) {
+      entry.aliases.forEach(function (alias) {
+        tokens.push(alias || '');
+      });
+    }
+
+    var unique = [];
+    tokens.forEach(function (token) {
+      var norm = normalizeFieldToken(token);
+      if (!norm) return;
+      if (!unique.includes(norm)) unique.push(norm);
+    });
+    return unique;
   }
 
   // ---------------------------------------------------------------------------
@@ -443,6 +488,21 @@
       frame.src = API + '?action=get_pdf&id=' + state.activeId;
     });
 
+    // PDF ersetzen (Zuordnungen bleiben erhalten).
+    el('btnReplacePdf').addEventListener('click', function () {
+      if (!state.activeId) {
+        showMsg('metaMsg', 'Bitte zuerst eine Vorlage auswählen.', 'warn');
+        return;
+      }
+      var fileInput = el('replacePdfFile');
+      fileInput.value = '';
+      fileInput.click();
+    });
+    el('replacePdfFile').addEventListener('change', function () {
+      if (!state.activeId || !this.files || !this.files.length) return;
+      doReplacePdf(this.files[0]);
+    });
+
     // Tool zuweisen.
     el('btnAssign').addEventListener('click', function () {
       if (!state.activeId) return;
@@ -504,7 +564,65 @@
         });
       });
     }
-    return catalog;
+    return sortedCatalogByLabel(catalog);
+  }
+
+  function guessFieldKeyForAcroName(acroFieldName, catalog) {
+    var acroNorm = normalizeFieldToken(acroFieldName);
+    if (!acroNorm) return '';
+
+    var entries = (catalog || []).map(function (c) {
+      return {
+        key: c.key,
+        tokens: getCatalogTokens(c),
+      };
+    });
+
+    var exact = entries.find(function (entry) {
+      return entry.tokens.some(function (t) { return t === acroNorm; });
+    });
+    if (exact) return exact.key;
+
+    var contains = entries
+      .map(function (entry) {
+        var bestLen = 0;
+        entry.tokens.forEach(function (t) {
+          if (t.length >= 4 && acroNorm.indexOf(t) !== -1) {
+            if (t.length > bestLen) bestLen = t.length;
+          }
+        });
+        return { key: entry.key, score: bestLen };
+      })
+      .filter(function (row) { return row.score > 0; })
+      .sort(function (a, b) { return b.score - a.score; });
+
+    return contains.length ? contains[0].key : '';
+  }
+
+  function autoAssignAcroRows() {
+    if (!state.activeId) return;
+    var tpl = state.templates.find(function (t) { return t.id === state.activeId; });
+    var assignedKey = tpl ? tpl.assigned_tool_key : null;
+    var catalog = buildFieldOptions(assignedKey || '');
+    var rows = el('acroBody').querySelectorAll('tr');
+    var assigned = 0;
+
+    rows.forEach(function (tr) {
+      var nameInput = tr.querySelector('.pm-acro-name-input');
+      var varSelect = tr.querySelector('.pm-acro-var-select');
+      if (!nameInput || !varSelect || varSelect.value) return;
+      var guess = guessFieldKeyForAcroName(nameInput.value, catalog);
+      if (guess && varSelect.querySelector('option[value="' + guess + '"]')) {
+        varSelect.value = guess;
+        assigned += 1;
+      }
+    });
+
+    if (assigned > 0) {
+      showMsg('acroMsg', assigned + ' Feld(er) automatisch zugewiesen.', 'ok');
+    } else {
+      showMsg('acroMsg', 'Keine passenden automatischen Zuordnungen gefunden.', 'warn');
+    }
   }
 
   function renderAcroMapping(item) {
@@ -559,23 +677,12 @@
     optEmpty.textContent = '\u2014 nicht zuweisen \u2014';
     selVar.appendChild(optEmpty);
 
-    var groupOrder = [];
-    var groups = {};
     (catalog || []).forEach(function (c) {
-      if (!groups[c.group]) { groups[c.group] = []; groupOrder.push(c.group); }
-      groups[c.group].push(c);
-    });
-    groupOrder.forEach(function (groupName) {
-      var optgrp = document.createElement('optgroup');
-      optgrp.label = groupName;
-      groups[groupName].forEach(function (c) {
-        var opt = document.createElement('option');
-        opt.value = c.key;
-        opt.textContent = c.label;
-        if (assignedVarKey && c.key === assignedVarKey) opt.selected = true;
-        optgrp.appendChild(opt);
-      });
-      selVar.appendChild(optgrp);
+      var opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.label;
+      if (assignedVarKey && c.key === assignedVarKey) opt.selected = true;
+      selVar.appendChild(opt);
     });
     tdVar.appendChild(selVar);
     tr.appendChild(tdVar);
@@ -628,8 +735,12 @@
         })
         .finally(function () {
           btn.disabled = false;
-          btn.textContent = 'Formularfelder erkennen';
+          btn.textContent = 'Felder erkennen';
         });
+    });
+
+    el('btnAutoAssignAcro').addEventListener('click', function () {
+      autoAssignAcroRows();
     });
 
     el('btnSaveAcro').addEventListener('click', function () {
@@ -651,7 +762,7 @@
         }
       });
     });
-    return vars;
+    return sortedCatalogByLabel(vars);
   }
 
   function collectImageFields() {
@@ -831,6 +942,49 @@
         el('btnUploadSubmit').disabled = false;
         showMsg('uploadMsg', 'Netzwerkfehler beim Upload.', 'bad');
       });
+  }
+
+  function doReplacePdf(file) {
+    if (!state.activeId) return;
+    if (!file) {
+      showMsg('metaMsg', 'Bitte eine PDF-Datei auswählen.', 'warn');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      showMsg('metaMsg', 'Datei zu groß (max. 15 MB).', 'bad');
+      return;
+    }
+
+    var btn = el('btnReplacePdf');
+    var oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Tausche...';
+
+    var fd = new FormData();
+    fd.append('csrf', state.csrf);
+    fd.append('id', String(state.activeId));
+    fd.append('pdf_file', file, file.name || 'vorlage.pdf');
+
+    fetch(API + '?action=replace_pdf', {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: fd,
+    }).then(function (r) {
+      return r.json();
+    }).then(function (data) {
+      if (!data.ok) {
+        showMsg('metaMsg', 'Fehler: ' + (data.error || 'unbekannt'), 'bad');
+        return;
+      }
+      var frame = el('previewFrame');
+      frame.src = API + '?action=get_pdf&id=' + state.activeId + '&_ts=' + Date.now();
+      showMsg('metaMsg', 'PDF ausgetauscht. Bestehende Zuordnungen bleiben erhalten.', 'ok');
+    }).catch(function () {
+      showMsg('metaMsg', 'Netzwerkfehler beim PDF-Austausch.', 'bad');
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    });
   }
 
   // Variablen-Glossar

@@ -37,7 +37,7 @@ $action = trim((string)($_GET['action'] ?? ''));
 // Zugangskontrolle
 // ---------------------------------------------------------------------------
 
-$adminActions  = ['upload', 'save_fields', 'assign_tool', 'unassign_tool', 'delete', 'update_title', 'scan_acro_fields'];
+$adminActions  = ['upload', 'replace_pdf', 'save_fields', 'assign_tool', 'unassign_tool', 'delete', 'update_title', 'scan_acro_fields'];
 $builderActions = ['list', 'get_meta', 'get_pdf', 'get_active_template', 'field_catalog', 'tool_keys'];
 
 if (in_array($action, $adminActions, true)) {
@@ -62,8 +62,8 @@ if (in_array($action, $adminActions, true)) {
 if ($method === 'POST') {
   $input = pdf_api_read_json();
   $token = (string)($input['csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
-  if ($action !== 'upload') {
-    // upload nutzt multipart/form-data, Token kommt dort als Form-Feld.
+  if ($action !== 'upload' && $action !== 'replace_pdf') {
+    // upload/replace_pdf nutzen multipart/form-data, Token kommt dort als Form-Feld.
     require_csrf_token($token);
   }
 } else {
@@ -256,6 +256,58 @@ if ($action === 'upload' && $method === 'POST') {
   $user = pdf_template_current_username();
   $id   = pdf_upload_save($db, $title, $pdfBytes, $uid, $user);
 
+  pdf_api_json(['ok' => true, 'id' => $id]);
+}
+
+// ---------------------------------------------------------------------------
+// Action: replace_pdf — PDF-Binary einer bestehenden Vorlage ersetzen
+// ---------------------------------------------------------------------------
+
+if ($action === 'replace_pdf' && $method === 'POST') {
+  $csrfToken = (string)($_POST['csrf'] ?? '');
+  require_csrf_token($csrfToken);
+
+  $id = (int)($_POST['id'] ?? 0);
+  if ($id <= 0) {
+    pdf_api_json(['ok' => false, 'error' => 'missing_id'], 400);
+  }
+  if (pdf_upload_get($db, $id) === null) {
+    pdf_api_json(['ok' => false, 'error' => 'not_found'], 404);
+  }
+
+  $file = $_FILES['pdf_file'] ?? null;
+  if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+    $errCode = is_array($file) ? (int)($file['error'] ?? -1) : -1;
+    pdf_api_json(['ok' => false, 'error' => 'upload_error', 'code' => $errCode], 400);
+  }
+
+  $maxBytes = 15 * 1024 * 1024; // 15 MB
+  $size = (int)($file['size'] ?? 0);
+  if ($size > $maxBytes || $size === 0) {
+    pdf_api_json(['ok' => false, 'error' => 'file_too_large'], 400);
+  }
+
+  $tmpPath = (string)($file['tmp_name'] ?? '');
+  if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+    pdf_api_json(['ok' => false, 'error' => 'invalid_upload'], 400);
+  }
+
+  $fh = fopen($tmpPath, 'rb');
+  if ($fh === false) {
+    pdf_api_json(['ok' => false, 'error' => 'read_error'], 500);
+  }
+  $sig = fread($fh, 5);
+  fclose($fh);
+  if ($sig !== '%PDF-') {
+    pdf_api_json(['ok' => false, 'error' => 'not_a_pdf'], 400);
+  }
+
+  $pdfBytes = file_get_contents($tmpPath);
+  if ($pdfBytes === false) {
+    pdf_api_json(['ok' => false, 'error' => 'read_error'], 500);
+  }
+
+  pdf_upload_replace_pdf($db, $id, $pdfBytes);
   pdf_api_json(['ok' => true, 'id' => $id]);
 }
 
