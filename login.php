@@ -71,18 +71,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 page_start('Login', false);
 ?>
-<div class="login-shell">
-  <div class="card">
+<div class="login-view">
+  <div class="login-shell">
+  <div class="card login-card">
     <div class="login-logo-wrap">
       <img class="login-logo" src="/assets/Logos/evenTools%20Main%20Logo.png" alt="<?=$config['site_name']?> Logo">
     </div>
-    <div class="sep"></div>
-
     <div class="login-intro">
-      <div>
-        <div class="h1">Login</div>
-        <div class="small">Bitte anmelden, um Tools zu öffnen.</div>
-      </div>
+      <div class="login-title-spacer" aria-hidden="true"></div>
+      <div class="small login-subtitle">Melden Sie sich mit Ihrem Benutzerkonto an, um auf Ihre freigegebenen Tools zuzugreifen.</div>
     </div>
 
     <div class="sep"></div>
@@ -92,7 +89,7 @@ page_start('Login', false);
       <div class="spacer-10"></div>
     <?php endif; ?>
 
-    <form method="post" class="form-grid">
+    <form method="post" class="form-grid" aria-label="Login-Formular">
       <div class="field">
         <div class="label">Benutzername</div>
         <input class="input" name="username" autocomplete="username" required>
@@ -105,10 +102,11 @@ page_start('Login', false);
 
       <button class="btn btn-primary btn-fullwidth" type="submit">Einloggen</button>
 
-      <div class="help">
-        Tipp: Wenn du irgendwann “privat/beruflich” trennen willst, bauen wir das später über Rollen & Mandanten sauber ein.
+      <div class="login-note">
+        Bei Problemen mit dem Zugriff wenden Sie sich bitte an die Administration.
       </div>
     </form>
+  </div>
   </div>
 </div>
 <?php page_end(); ?>

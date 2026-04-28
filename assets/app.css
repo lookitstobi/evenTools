@@ -444,9 +444,45 @@ select optgroup{
 }
 
 .login-intro{
-  display:flex;
-  gap:12px;
-  align-items:center;
+  display:grid;
+  gap:6px;
+}
+
+.login-view{
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+  background: var(--bg);
+}
+
+.login-card{
+  position: relative;
+  width: min(520px, 100%);
+  border-color: rgba(255,255,255,.2);
+  box-shadow: 0 22px 52px rgba(0,0,0,.34);
+  background: var(--panel);
+}
+
+.login-title{
+  margin: 2px 0 2px;
+}
+
+.login-title-spacer{
+  height: 46px;
+}
+
+.login-subtitle{
+  color: var(--muted);
+  max-width: 48ch;
+}
+
+.login-note{
+  margin-top: 4px;
+  color: var(--faint);
+  font-size: 13px;
 }
 
 .form-grid{
@@ -791,8 +827,13 @@ select optgroup{
     max-width: 100%;
   }
 
-  .login-intro{
+  .login-view{
     align-items: flex-start;
+    padding-top: 42px;
+  }
+
+  .login-intro{
+    gap: 5px;
   }
 
   .admin-edit-actions .btn,

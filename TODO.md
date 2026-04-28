@@ -92,11 +92,11 @@ Folgende Verbesserungen wurden implementiert:
 
 ## Projekt-Housekeeping – Dateien aufräumen
 
-- [ ] **Debug-Dateien entfernen oder archivieren** – folgende Root-Dateien sind nur temporäre Hilfsskripte:
+- [x] **Debug-Dateien entfernen oder archivieren** – folgende Root-Dateien waren nur temporäre Hilfsskripte und wurden entfernt:
   - `debug_login_test.php`, `debug_migration_fixup.php`, `debug_missing_cards.php`
   - `debug_patch_ids.php`, `debug_patchmatrix_import.php`, `debug_ports.php`, `debug_users.php`
-- [ ] **Doppelte SQLite-Backups bereinigen** – `app/users.sqlite.bak_*` (3 Stück) können in ein Backup-Verzeichnis oder entfernt werden
-- [ ] **`assets/`-Verzeichnis sortieren** – enthält Log-Dateien und Textdateien, die nicht zu Web-Assets gehören
-- [ ] **`apply_fixes.py` und `diagnose.php` prüfen** – ob noch benötigt oder entfernbar
+- [x] **Doppelte SQLite-Backups bereinigen** – `app/users.sqlite.bak_*` wurden in ein Archiv-Verzeichnis verschoben (`archive/housekeeping_2026-04-28/`)
+- [x] **`assets/`-Verzeichnis sortieren** – Legacy-Logos und Log-Dateien aus dem aktiven Asset-Pfad entfernt/verschoben
+- [x] **`apply_fixes.py` und `diagnose.php` prüfen** – `apply_fixes.py` entfernt, `diagnose.php` als Diagnose-Werkzeug behalten
 - [ ] **README / Projektdokumentation anlegen** – derzeit nur `DEPLOY.md` und einzelne Markdown-Notizen, keine zentrale Übersicht
 
