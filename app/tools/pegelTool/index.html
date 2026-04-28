@@ -81,8 +81,8 @@ h3{font-size:18px;margin:0;font-weight:700}
 .compliance-dot{width:20px;height:20px;border-radius:50%;margin-left:10px;flex-shrink:0;margin-right:16px;align-self:center}
 .compliance-dot.status-empty{background:transparent;border:1px solid var(--border)}
 .compliance-dot.status-ok{background:var(--ok)}
-.status-bad{background:var(--danger)}
-.status-warn{background:var(--warn)}
+.compliance-dot.status-bad{background:var(--danger)}
+.compliance-dot.status-warn{background:var(--warn)}
 input.input-required,select.input-required,textarea.input-required{background:rgba(84,120,255,0.1);border-color:var(--accent)}
 #rightColumn{width:50%;overflow-y:auto;background:var(--primary-panel);padding:32px 24px;box-sizing:border-box}
 .section{background:var(--secondary-panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
@@ -901,7 +901,7 @@ function setDot(dotId, state){
 }
 
 function markRequiredFields(){
-  const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName'];
+  const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName','berichtsort'];
   for(const id of requiredIds){
     const field = el(id);
     const label = field ? field.previousElementSibling : null;
@@ -1654,7 +1654,7 @@ el('location').addEventListener('change', ()=> {
 el('paContainer').addEventListener('input', scheduleRecoverySave);
 el('paContainer').addEventListener('change', scheduleRecoverySave);
 
-const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName'];
+const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName','berichtsort'];
 for(const id of requiredIds){
   const field = el(id);
   if(field){
