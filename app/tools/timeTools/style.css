@@ -2,7 +2,7 @@
   /* IMPORTANT: This stage clock must always keep a pure black background (#000). */
   /* Do not change this in future updates, even when other theme colors evolve. */
   --bg: #000000;
-  --clock-red: #ff652f;
+  --clock-red: #ff0000;
   --gray-strong: #f0f0f0;
   --gray-soft: #b0b0b0;
   --gray-icon: #8d8d8d;
