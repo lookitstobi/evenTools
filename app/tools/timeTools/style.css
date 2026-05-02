@@ -9,13 +9,13 @@
   --gray-button: #747474;
   --gray-button-text: #1d1d1d;
   --gray-button-muted: #5e5e5e;
-  --timing-fast: 120ms;
-  --timing-main: 165ms;
+  --timing-fast: 90ms;
+  --timing-main: 135ms;
   --ease-enter: cubic-bezier(0.2, 0.9, 0.2, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --controls-lift: clamp(56px, 8.8vh, 98px);
-  --lcd-on: #ff3b30;
-  --lcd-off: rgba(255, 59, 48, 0.06);
+  --lcd-on: #ff0000;
+  --lcd-off: rgba(255, 0, 0, 0.06);
   --lcd-frame: #231212;
   --lcd-glass: #120909;
   --dash-warn: #ff3b30;
@@ -156,13 +156,13 @@ body {
 }
 
 .clock-settling .clock {
-  animation: clock-slide-settle 210ms cubic-bezier(0, 0, 0.25, 1) both;
+  animation: clock-slide-settle 140ms cubic-bezier(0.1, 0.2, 0.25, 1) both;
 }
 
 @keyframes clock-slide-settle {
   from {
-    transform: scale(var(--fit-scale)) translateY(18px);
-    opacity: 0.80;
+    transform: scale(var(--fit-scale)) translateY(8px);
+    opacity: 0.92;
   }
   to {
     transform: scale(var(--fit-scale)) translateY(0);
@@ -183,10 +183,17 @@ body {
 
 .timer-zone {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "countdown"
+    "pause"
+    "progress"
+    "status";
+  width: min(92vw, 620px);
   justify-items: center;
-  gap: clamp(8px, 1.6vh, 16px);
+  gap: clamp(10px, 1.8vh, 20px);
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(6px);
   transform-origin: center top;
   max-height: 0;
   overflow: hidden;
@@ -195,15 +202,17 @@ body {
 }
 
 .countdown {
+  grid-area: countdown;
   color: var(--gray-strong);
-  font-size: clamp(46px, min(14vw, 18vh), 230px);
+  font-size: clamp(36px, min(11vw, 14vh), 170px);
   line-height: 0.95;
   letter-spacing: 0.02em;
 }
 
 .dashboard-status {
+  grid-area: status;
   display: none;
-  width: min(88vw, 500px);
+  width: 100%;
   justify-content: center;
 }
 
@@ -211,11 +220,11 @@ body {
   min-width: 190px;
   padding: 8px 20px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 59, 48, 0.28);
+  border: 1px solid rgba(255, 0, 0, 0.28);
   background:
     linear-gradient(180deg, rgba(29, 8, 8, 0.98), rgba(14, 4, 4, 0.99)),
-    repeating-linear-gradient(90deg, rgba(255, 59, 48, 0.06) 0 2px, rgba(255, 59, 48, 0) 2px 7px);
-  color: rgba(255, 59, 48, 0.34);
+    repeating-linear-gradient(90deg, rgba(255, 0, 0, 0.06) 0 2px, rgba(255, 0, 0, 0) 2px 7px);
+  color: rgba(255, 0, 0, 0.34);
   font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
   font-size: clamp(20px, 3vw, 30px);
   font-weight: 900;
@@ -229,6 +238,7 @@ body {
 }
 
 .pause-until {
+  grid-area: pause;
   color: var(--gray-soft);
   font-size: clamp(24px, min(5.2vw, 6.2vh), 72px);
   letter-spacing: 0.04em;
@@ -236,8 +246,9 @@ body {
 }
 
 .progress-bar {
+  grid-area: progress;
   position: relative;
-  width: min(88vw, 500px);
+  width: 100%;
   height: 18px;
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.10);
@@ -275,8 +286,8 @@ body {
 }
 
 .progress-segment.active {
-  background: rgba(255, 59, 48, 0.95);
-  box-shadow: 0 0 8px rgba(255, 59, 48, 0.45);
+  background: rgba(255, 0, 0, 0.95);
+  box-shadow: 0 0 8px rgba(255, 0, 0, 0.45);
 }
 
 .controls {
@@ -324,13 +335,13 @@ body {
 .adjust-btn {
   border: 0;
   border-radius: 16px;
-  min-width: clamp(56px, 9vw, 94px);
-  min-height: clamp(56px, 8.8vh, 98px);
-  padding: 12px 14px;
+  min-width: clamp(44px, 7vw, 72px);
+  min-height: clamp(44px, 7vh, 76px);
+  padding: 8px 10px;
   background: var(--gray-button-muted);
   color: var(--gray-strong);
   font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
-  font-size: clamp(28px, 4.6vw, 56px);
+  font-size: clamp(22px, 3.6vw, 42px);
   line-height: 1;
   cursor: pointer;
   transition: transform 120ms var(--ease-enter), background-color 120ms linear, opacity var(--timing-fast) linear;
@@ -344,13 +355,13 @@ body {
 
 .reset-row {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(5px);
   pointer-events: none;
 }
 
 .state-idle .timer-zone {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(6px);
   max-height: 0;
 }
 
@@ -366,7 +377,7 @@ body {
 
 .state-idle #resetControls {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(5px);
   pointer-events: none;
 }
 
@@ -377,9 +388,9 @@ body {
 
 .state-running .clock-wrap,
 .state-finished .clock-wrap {
-  min-height: min(72vh, 72dvh);
-  gap: clamp(6px, 1.1vh, 12px);
-  transform: translateY(-0.08vh);
+  min-height: min(56vh, 56dvh);
+  gap: clamp(8px, 1.4vh, 16px);
+  transform: translateY(-1.2vh);
 }
 
 .state-running .timer-zone,
@@ -387,13 +398,13 @@ body {
   opacity: 1;
   transform: translateY(0);
   max-height: 520px;
-  margin-top: clamp(2px, 0.5vh, 6px);
+  margin-top: clamp(8px, 1.6vh, 18px);
 }
 
 .state-running #durationControls,
 .state-finished #durationControls {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(5px);
   pointer-events: none;
 }
 
@@ -418,7 +429,7 @@ body {
 
 .state-running .countdown,
 .state-finished .countdown {
-  font-size: clamp(60px, min(18vw, 24vh), 320px);
+  font-size: clamp(54px, min(14vw, 19vh), 250px);
 }
 
 .state-running .pause-until,
@@ -444,7 +455,7 @@ body[data-theme="dashboard"] .countdown {
   align-items: center;
   gap: 0.08em;
   color: var(--lcd-on);
-  text-shadow: 0 0 8px rgba(255, 59, 48, 0.2);
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.2);
   font-family: "Courier New", "Consolas", monospace;
 }
 
@@ -454,7 +465,7 @@ body[data-theme="dashboard"].state-idle .clock {
 
 body[data-theme="dashboard"].state-running .clock,
 body[data-theme="dashboard"].state-finished .clock {
-  opacity: 0.58;
+  opacity: 0.34;
 }
 
 body[data-theme="dashboard"] .countdown {
@@ -464,18 +475,21 @@ body[data-theme="dashboard"] .countdown {
 body[data-theme="dashboard"].state-running .countdown,
 body[data-theme="dashboard"].state-finished .countdown {
   opacity: 1;
+  text-shadow:
+    0 0 6px rgba(255, 0, 0, 0.36),
+    0 0 18px rgba(255, 0, 0, 0.22);
 }
 
 .segment-slot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.6em;
+  width: 0.46em;
   height: 1em;
 }
 
 .segment-separator {
-  width: 0.2em;
+  width: 0.16em;
   height: 1em;
   position: relative;
 }
@@ -485,89 +499,92 @@ body[data-theme="dashboard"].state-finished .countdown {
   content: "";
   position: absolute;
   left: 50%;
-  width: 0.09em;
-  height: 0.09em;
+  width: 0.07em;
+  height: 0.07em;
   transform: translateX(-50%);
   border-radius: 999px;
-  background: rgba(255, 59, 48, 0.85);
-  box-shadow: 0 0 8px rgba(255, 59, 48, 0.36);
+  background: rgba(255, 0, 0, 0.85);
+  box-shadow: 0 0 6px rgba(255, 0, 0, 0.36);
 }
 
 .segment-separator::before {
-  top: 0.3em;
+  top: 0.27em;
 }
 
 .segment-separator::after {
-  top: 0.62em;
+  top: 0.68em;
 }
 
 .segment-digit {
   position: relative;
-  width: 0.6em;
+  width: 0.46em;
   height: 1em;
 }
 
 .segment {
   position: absolute;
   background: var(--lcd-off);
-  border-radius: 0.05em;
+  border-radius: 0.02em;
   box-shadow: inset 0 0 0 1px rgba(19, 5, 5, 0.82);
   transition: background-color 120ms linear, box-shadow 120ms linear;
 }
 
 .segment.on {
-  background: rgba(255, 59, 48, 0.97);
+  background: rgba(255, 0, 0, 0.97);
   box-shadow:
     inset 0 0 0 1px rgba(52, 10, 10, 0.44),
-    0 0 10px rgba(255, 59, 48, 0.52);
+    0 0 10px rgba(255, 0, 0, 0.52);
 }
 
+/* Horizontal segments: T=0.04em, G=0.006em, W=0.46em
+   left = T+G = 0.046em, width = W-2*(T+G) = 0.368em → tighter segment gaps */
 .seg-a,
 .seg-d,
 .seg-g {
-  left: 0.11em;
-  width: 0.38em;
-  height: 0.05em;
+  left: 0.046em;
+  width: 0.368em;
+  height: 0.04em;
 }
 
 .seg-a {
-  top: 0.04em;
+  top: 0;
 }
 
 .seg-g {
-  top: 0.46em;
+  top: 0.48em;
 }
 
 .seg-d {
-  top: 0.88em;
+  top: 0.96em;
 }
 
+/* Vertical segments: height = 0.428em, positioned for 0.006em gaps to top/middle/bottom bars */
 .seg-b,
 .seg-c,
 .seg-e,
 .seg-f {
-  width: 0.05em;
-  height: 0.36em;
+  width: 0.04em;
+  height: 0.428em;
 }
 
 .seg-b {
-  top: 0.09em;
-  left: 0.47em;
+  top: 0.046em;
+  left: 0.42em;
 }
 
 .seg-c {
-  top: 0.51em;
-  left: 0.47em;
+  top: 0.526em;
+  left: 0.42em;
 }
 
 .seg-e {
-  top: 0.51em;
-  left: 0.03em;
+  top: 0.526em;
+  left: 0;
 }
 
 .seg-f {
-  top: 0.09em;
-  left: 0.03em;
+  top: 0.046em;
+  left: 0;
 }
 
 body[data-theme="dashboard"] .clock-slot {
@@ -578,47 +595,198 @@ body[data-theme="dashboard"] .clock-slot.separator {
   width: auto;
 }
 
+body[data-theme="dashboard"] .time-btn,
+body[data-theme="dashboard"] .reset-btn {
+  background: linear-gradient(180deg, rgba(29, 8, 8, 0.98), rgba(14, 4, 4, 0.99));
+  color: rgba(255, 0, 0, 0.9);
+  border: 1px solid rgba(255, 0, 0, 0.32);
+  border-radius: 4px;
+  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
+  font-size: clamp(18px, 3vw, 36px);
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 128, 118, 0.08),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(255, 0, 0, 0.1);
+}
+
+body[data-theme="dashboard"] .time-btn:active,
+body[data-theme="dashboard"] .reset-btn:active {
+  background: linear-gradient(180deg, rgba(50, 12, 12, 0.98), rgba(22, 6, 6, 0.99));
+  color: rgba(255, 80, 60, 1);
+  box-shadow:
+    inset 0 0 0 rgba(255, 128, 118, 0),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 14px rgba(255, 0, 0, 0.28);
+}
+
+body[data-theme="dashboard"] .adjust-btn {
+  background: linear-gradient(180deg, rgba(22, 6, 6, 0.98), rgba(10, 3, 3, 0.99));
+  color: rgba(255, 0, 0, 0.7);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  border-radius: 4px;
+  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
+  font-weight: bold;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 128, 118, 0.06),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.6);
+}
+
+body[data-theme="dashboard"] .adjust-btn:active {
+  color: rgba(255, 80, 60, 0.95);
+  box-shadow:
+    inset 0 0 0 rgba(0, 0, 0, 0),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(255, 0, 0, 0.2);
+}
+
 body[data-theme="dashboard"] .dashboard-status {
-  display: grid;
+  display: none;
+  width: 100%;
+  justify-items: center;
 }
 
 body[data-theme="dashboard"] .pause-until {
-  min-width: 380px;
-  padding: 8px 20px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 59, 48, 0.28);
-  background:
-    linear-gradient(180deg, rgba(29, 8, 8, 0.98), rgba(14, 4, 4, 0.99)),
-    repeating-linear-gradient(90deg, rgba(255, 59, 48, 0.06) 0 2px, rgba(255, 59, 48, 0) 2px 7px);
-  color: rgba(255, 59, 48, 0.8);
-  letter-spacing: 0.2em;
-  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
-  font-size: clamp(20px, 2.9vw, 30px);
-  font-weight: 900;
+  min-width: 540px;
+  padding: 14px 24px 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 0, 0, 0.8);
+  letter-spacing: 0.08em;
+  font-family: "Courier New", "Consolas", monospace;
+  font-size: clamp(19px, 3.8vw, 34px);
+  font-weight: 700;
   line-height: 1;
-  text-transform: uppercase;
   text-align: center;
-  line-height: 1.05;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 128, 118, 0.1),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.65);
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85em;
+  opacity: 0.96;
+}
+
+body[data-theme="dashboard"] .pause-until-label {
+  font-family: "Arial Black", "Franklin Gothic Heavy", "Impact", sans-serif;
+  font-size: 1.06em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 0, 0, 0.9);
+}
+
+body[data-theme="dashboard"] .pause-until-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.07em;
+  color: var(--lcd-on);
+  filter: drop-shadow(0 0 7px rgba(255, 0, 0, 0.26));
+}
+
+body[data-theme="dashboard"] .pause-until-time .segment-slot {
+  width: 0.5em;
+  height: 0.92em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .segment-digit {
+  width: 0.5em;
+  height: 0.92em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .segment-separator {
+  width: 0.16em;
+  height: 0.92em;
+}
+
+/* Slightly bolder custom geometry for the "Pause bis" time digits. */
+body[data-theme="dashboard"] .pause-until-time .seg-a,
+body[data-theme="dashboard"] .pause-until-time .seg-d,
+body[data-theme="dashboard"] .pause-until-time .seg-g {
+  left: 0.05em;
+  width: 0.4em;
+  height: 0.062em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-a {
+  top: 0;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-g {
+  top: 0.442em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-d {
+  top: 0.868em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-b,
+body[data-theme="dashboard"] .pause-until-time .seg-c,
+body[data-theme="dashboard"] .pause-until-time .seg-e,
+body[data-theme="dashboard"] .pause-until-time .seg-f {
+  width: 0.062em;
+  height: 0.386em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-b {
+  top: 0.04em;
+  left: 0.438em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-c {
+  top: 0.482em;
+  left: 0.438em;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-e {
+  top: 0.482em;
+  left: 0;
+}
+
+body[data-theme="dashboard"] .pause-until-time .seg-f {
+  top: 0.04em;
+  left: 0;
 }
 
 body[data-theme="dashboard"].state-running .pause-until,
 body[data-theme="dashboard"].state-finished .pause-until {
-  font-size: clamp(16px, min(3.2vw, 4.2vh), 36px);
+  font-size: clamp(20px, min(4.2vw, 5.6vh), 36px);
+}
+
+body[data-theme="dashboard"].state-running .clock-wrap,
+body[data-theme="dashboard"].state-finished .clock-wrap {
+  min-height: min(36vh, 36dvh);
+  gap: clamp(36px, 5.8vh, 72px);
+  transform: translateY(-5vh);
+}
+
+body[data-theme="dashboard"].state-running .clock,
+body[data-theme="dashboard"].state-finished .clock {
+  font-size: clamp(26px, min(7.4vw, 9vh), 108px);
+}
+
+body[data-theme="dashboard"].state-running .countdown,
+body[data-theme="dashboard"].state-finished .countdown {
+  font-size: clamp(66px, min(18vw, 24vh), 340px);
+  margin: 8px 0 18px;
 }
 
 body[data-theme="dashboard"].state-running .timer-zone,
 body[data-theme="dashboard"].state-finished .timer-zone {
-  max-height: 700px;
+  max-height: 760px;
+  gap: clamp(18px, 3vh, 34px);
 }
 
 body[data-theme="dashboard"] .progress-bar {
-  height: 20px;
+  margin-top: 6px;
+  height: 24px;
   border-radius: 5px;
-  border: 1px solid rgba(255, 59, 48, 0.18);
+  border: 1px solid rgba(255, 0, 0, 0.3);
   background: linear-gradient(180deg, rgba(20, 7, 7, 0.94), rgba(10, 4, 4, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 0, 0, 0.18),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.55);
 }
 
 body[data-theme="dashboard"] .progress-fill {
@@ -630,28 +798,26 @@ body[data-theme="dashboard"] .progress-segments {
 }
 
 body[data-theme="dashboard"] .status-lcd.run-active {
-  color: rgba(255, 82, 70, 0.96);
-  text-shadow:
-    0 0 7px rgba(255, 59, 48, 0.45),
-    0 0 16px rgba(255, 59, 48, 0.2);
-  animation: run-blink 780ms steps(1, end) infinite;
+  color: rgba(255, 0, 0, 0.96);
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.34);
+  animation: none;
 }
 
 body[data-theme="dashboard"] .clock .segment.on {
   box-shadow:
     inset 0 0 0 1px rgba(52, 10, 10, 0.44),
-    0 0 7px rgba(255, 59, 48, 0.34);
+    0 0 7px rgba(255, 0, 0, 0.34);
 }
 
 body[data-theme="dashboard"] .countdown .segment.on {
   box-shadow:
     inset 0 0 0 1px rgba(52, 10, 10, 0.46),
-    0 0 12px rgba(255, 59, 48, 0.62);
+    0 0 12px rgba(255, 0, 0, 0.62);
 }
 
 body[data-theme="dashboard"] .countdown .segment-separator::before,
 body[data-theme="dashboard"] .countdown .segment-separator::after {
-  box-shadow: 0 0 10px rgba(255, 59, 48, 0.48);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.48);
 }
 
 @keyframes run-blink {

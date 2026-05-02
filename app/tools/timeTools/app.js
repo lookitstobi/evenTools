@@ -85,7 +85,8 @@
       "6": ["a", "c", "d", "e", "f", "g"],
       "7": ["a", "b", "c"],
       "8": ["a", "b", "c", "d", "e", "f", "g"],
-      "9": ["a", "b", "c", "d", "f", "g"]
+      "9": ["a", "b", "c", "d", "f", "g"],
+      "-": ["g"]
     };
     const active = map[value] || [];
 
@@ -160,7 +161,7 @@
           idleSettleTimerId = window.setTimeout(() => {
             body.classList.remove("clock-settling");
             idleSettleTimerId = null;
-          }, 210);
+          }, 140);
           scheduleClockFit();
         });
       }
@@ -262,7 +263,7 @@
       return;
     }
 
-    statusTextEl.textContent = "RUN";
+    statusTextEl.textContent = "PAUSE";
     statusTextEl.classList.toggle("run-active", state === "running");
   }
 
@@ -272,6 +273,7 @@
     updateThemeToggleLabel();
     renderClock();
     renderCountdown();
+    renderPauseUntil();
     renderProgressBar();
     scheduleClockFit();
   }
@@ -301,19 +303,38 @@
   }
 
   function renderPauseUntil() {
-    if (!countdownEndAt) {
-      pauseUntilEl.textContent = "Pause bis --:--";
+    let pauseUntilValue = "--:--";
+
+    if (countdownEndAt) {
+      const rounded = new Date(countdownEndAt.getTime());
+      const seconds = rounded.getSeconds();
+
+      if (seconds > 20) {
+        rounded.setMinutes(rounded.getMinutes() + 1);
+      }
+
+      rounded.setSeconds(0, 0);
+      pauseUntilValue = [pad2(rounded.getHours()), pad2(rounded.getMinutes())].join(":");
+    }
+
+    if (isDashboardTheme()) {
+      pauseUntilEl.textContent = "";
+      pauseUntilEl.setAttribute("aria-label", "Pause bis " + pauseUntilValue);
+
+      const label = document.createElement("span");
+      label.className = "pause-until-label";
+      label.textContent = "Pause bis";
+
+      const value = document.createElement("span");
+      value.className = "pause-until-time";
+
+      pauseUntilEl.appendChild(label);
+      pauseUntilEl.appendChild(value);
+      renderSegmentText(value, pauseUntilValue, "Pause bis");
       return;
     }
-    const rounded = new Date(countdownEndAt.getTime());
-    const seconds = rounded.getSeconds();
 
-    if (seconds > 20) {
-      rounded.setMinutes(rounded.getMinutes() + 1);
-    }
-
-    rounded.setSeconds(0, 0);
-    pauseUntilEl.textContent = "Pause bis " + [pad2(rounded.getHours()), pad2(rounded.getMinutes())].join(":");
+    pauseUntilEl.textContent = "Pause bis " + pauseUntilValue;
   }
 
   function clearCountdownTimer() {
