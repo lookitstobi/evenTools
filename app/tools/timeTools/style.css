@@ -133,10 +133,11 @@ body {
 
 .clock {
   --fit-scale: 1;
-  color: var(--gray-strong);
+  color: var(--clock-red);
   line-height: 0.9;
   letter-spacing: 0;
   font-size: clamp(64px, min(24vw, 30vh), 420px);
+  font-weight: 600;
   width: max-content;
   max-width: none;
   white-space: nowrap;
