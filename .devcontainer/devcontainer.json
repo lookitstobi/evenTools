@@ -1,11 +1,11 @@
 {
   "name": "Toolsapp",
-  "postStartCommand": "bash -lc 'cd /workspaces/toolsapp && ./sync_pdf_templates.sh auto --quiet || true'",
+  "postStartCommand": "bash -lc 'nohup php -S 0.0.0.0:8080 -t /workspaces/toolsapp > /tmp/php-server.log 2>&1 & cd /workspaces/toolsapp && ./sync_pdf_templates.sh auto --quiet || true'",
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {
       "label": "Toolsapp",
-      "onAutoForward": "openPreview",
+      "onAutoForward": "silent",
       "protocol": "http"
     }
   },
