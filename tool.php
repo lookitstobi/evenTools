@@ -1,13 +1,20 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/_bootstrap.php';
-require_login();
 $config = require __DIR__ . '/app/config.php';
 
 $name = preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET['name'] ?? '');
-$allowed = $_SESSION['tools'] ?? [];
 
-if (!$name || !in_array($name, $allowed, true)) {
+if (!$name) {
+  http_response_code(403);
+  echo "403";
+  exit;
+}
+
+if (!can_access_tool($name)) {
+  if (empty($_SESSION['uid'])) {
+    redirect('/login.php');
+  }
   http_response_code(403);
   echo "403";
   exit;

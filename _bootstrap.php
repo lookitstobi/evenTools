@@ -73,6 +73,23 @@ function require_admin(): void {
   }
 }
 
+function has_public_pegel_access(): bool {
+  return !empty($_SESSION['public_pegel_access']);
+}
+
+function grant_public_pegel_access(): void {
+  $_SESSION['public_pegel_access'] = true;
+}
+
+function can_access_tool(string $toolName): bool {
+  if ($toolName === 'pegelTool' && has_public_pegel_access()) {
+    return true;
+  }
+
+  $allowed = $_SESSION['tools'] ?? [];
+  return in_array($toolName, $allowed, true);
+}
+
 function is_pdf_mode_switch_user(): bool {
   $username = (string)($_SESSION['username'] ?? '');
   return in_array($username, ['möhrchen', 'admin'], true);
