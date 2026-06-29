@@ -4,11 +4,16 @@ require __DIR__ . '/_bootstrap.php';
 $config = require __DIR__ . '/app/config.php';
 
 $name = preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET['name'] ?? '');
+$public = (string)($_GET['public'] ?? '');
 
 if (!$name) {
   http_response_code(403);
   echo "403";
   exit;
+}
+
+if ($name === 'pegelTool' && $public === '1') {
+  grant_public_pegel_access();
 }
 
 if (!can_access_tool($name)) {
