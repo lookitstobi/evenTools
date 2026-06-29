@@ -45,7 +45,9 @@ if (in_array($action, $adminActions, true)) {
 } elseif (in_array($action, $builderActions, true)) {
   // get_active_template und get_pdf können auch vom Ziel-Tool aus aufgerufen werden.
   if ($action === 'get_active_template' || $action === 'get_pdf') {
-    require_login();
+    if (empty($_SESSION['uid']) && !has_public_pegel_access()) {
+      require_login();
+    }
     // Weitere Tool-Prüfung erfolgt innerhalb der Action.
   } else {
     pdf_template_require_tool_access('pdf_template_builder');
@@ -142,8 +144,7 @@ if ($action === 'get_pdf') {
     // Admin darf immer.
   } elseif ($toolKey !== '') {
     // Prüfen ob Nutzer das Tool nutzen darf.
-    $allowed = $_SESSION['tools'] ?? [];
-    if (!is_array($allowed) || !in_array($toolKey, $allowed, true)) {
+    if (!can_access_tool($toolKey)) {
       http_response_code(403);
       exit;
     }
@@ -190,8 +191,7 @@ if ($action === 'get_active_template') {
 
   // Zugangscheck: Nutzer muss das Ziel-Tool nutzen dürfen.
   if (empty($_SESSION['is_admin'])) {
-    $allowed = $_SESSION['tools'] ?? [];
-    if (!is_array($allowed) || !in_array($toolKey, $allowed, true)) {
+    if (!can_access_tool($toolKey)) {
       http_response_code(403);
       pdf_api_json(['ok' => false, 'error' => 'forbidden'], 403);
     }

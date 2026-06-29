@@ -2,7 +2,9 @@
 declare(strict_types=1);
 
 require __DIR__ . '/_bootstrap.php';
-require_login();
+if (empty($_SESSION['uid']) && !has_public_pegel_access()) {
+  require_login();
+}
 
 header("Content-Security-Policy: default-src 'none'; frame-ancestors 'self';");
 
