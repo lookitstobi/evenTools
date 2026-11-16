@@ -68,7 +68,7 @@
     if (!cleaned.length) return {
       version: VERSION, ruleStatus: 'not-verified', normativeStatus: NOT_ASSESSABLE,
       quality: {status: 'no-data', warnings: warnings.concat([issue('NO_INTERVALS', 'Keine auswertbaren Messintervalle.')])},
-      blocks: [], overall: {laeqMaxDb: null, lcpeakMaxDb: null, comparisonLAeq: 'unknown', comparisonLCpeak: 'unknown'}
+      blocks: [], overall: {laeqMaxDb: null, lcpeakMaxDb: null, comparisonLAeq: 'unknown', comparisonLCpeak: 'unknown', normativeStatus: NOT_ASSESSABLE}
     };
 
     const first = cleaned.reduce((best, interval) => Math.min(best, interval.startMs), Infinity);
@@ -79,7 +79,7 @@
     if ((lastBlock - firstBlock) / BLOCK_MS > 10000) return {
       version: VERSION, ruleStatus: 'not-verified', normativeStatus: NOT_ASSESSABLE,
       quality: {status: 'no-data', warnings: warnings.concat([issue('TOO_MANY_BLOCKS', 'Zeitbereich überschreitet 10.000 Blöcke.')])},
-      blocks: [], overall: {laeqMaxDb: null, lcpeakMaxDb: null, comparisonLAeq: 'unknown', comparisonLCpeak: 'unknown'}
+      blocks: [], overall: {laeqMaxDb: null, lcpeakMaxDb: null, comparisonLAeq: 'unknown', comparisonLCpeak: 'unknown', normativeStatus: NOT_ASSESSABLE}
     };
 
     const blocks = [];
