@@ -175,6 +175,20 @@ test('PDF-Renderer gibt bei unbrauchbaren Daten konkrete Fehler aus',()=>{
   assert.throws(()=>pdf.create(null,FakePDF),/Berichtsdaten/);
   assert.throws(()=>pdf.create(makeReport(),null),/jsPDF/);
 });
+
+test('Echter lokaler jsPDF-Export erzeugt valide PDF-Bytes mit mehreren Seiten',()=>{
+  const {jsPDF}=require('../../../app/tools/pegelTool/vendor/jspdf.umd.min.js');
+  assert.equal(typeof jsPDF,'function');
+  const report=makeReport();
+  report.blocks=Array.from({length:45},(_,i)=>({...report.blocks[i%2],index:i+1}));
+  const doc=pdf.create(report,jsPDF);
+  assert.ok(doc.internal.getNumberOfPages()>1);
+  const bytes=Buffer.from(doc.output('arraybuffer'));
+  assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
+  assert.ok(bytes.length>1000);
+  assert.ok(bytes.toString('latin1').includes('%%EOF'));
+});
+
 test('Integration: ein Exportpfad, Bildschirmbericht, keine alten Generatoren',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../../../app/tools/pegelTool/index.html'),'utf8');
   assert.match(html,/file=report\/report\.js/);
