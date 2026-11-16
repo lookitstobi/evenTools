@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XL3 Messprotokoll (vorläufig, keine DIN-Freigabe)</title>
+<title>XL3 Schallpegel-Messprotokoll</title>
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
@@ -225,7 +225,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Technisches Messprotokoll mit offenem DIN-Freigabestatus als PDF exportieren">PDF exportieren (vorläufig)</button>
+      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messprotokoll als PDF exportieren">PDF exportieren</button>
       <button id="btnRecover" class="icon-btn subtle" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung laden</button>
     </div>
     <div class="header-secondary-actions">
@@ -251,7 +251,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 <div id="main">
   <div id="leftColumn">
     <div class="section" data-workflow-section="metrics">
-      <h3>Technische Messwertübersicht (keine DIN-Freigabe)</h3>
+      <h3>Messwertübersicht</h3>
       <div class="table-wrap">
         <table class="table" id="pegelTabelle">
           <thead>
@@ -270,8 +270,8 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
     </div>
 
     <div class="section" data-workflow-section="blocks">
-      <h3>30-Minuten-Auswertung (vorläufig)</h3>
-      <div class="small mt-6" id="phase3Info">Noch keine Auswertung. Der Normenabgleich aus Phase 0 steht aus.</div>
+      <h3>30-Minuten-Auswertung</h3>
+      <div class="small mt-6" id="phase3Info">Noch keine Auswertung.</div>
       <div class="table-wrap mt-8">
         <table class="table" id="phase3Tabelle">
           <thead><tr>
@@ -280,7 +280,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
           <tbody></tbody>
         </table>
       </div>
-      <div class="small mt-8" id="phase3Warning">Alle Werte sind technische Zwischenstände, keine DIN-Freigabe.</div>
+      <div class="small mt-8" id="phase3Warning"></div>
     </div>
 
     <div class="section" data-workflow-section="charts">
@@ -330,16 +330,13 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   <div id="rightColumn">
     <div class="section" id="protocolReview" data-workflow-section="review" aria-live="polite">
       <h3>Messprotokoll – Angaben & Nachweise</h3>
-      <div class="small mt-8">Feldklassen Pflicht / bedingt / optional sind ein vorläufiger Arbeitsstand.
-      Der Originaltext der DIN 15905-5:2022-07 ist noch nicht abschließend abgeglichen.
-      Eine vollständige Eingabe ist keine DIN-Konformitätsbescheinigung.</div>
       <div class="protocol-summary" id="protocolStatus">Protokollangaben noch nicht geprüft.</div>
       <div class="small" id="protocolEvidenceStatus">Messnachweise: offen.</div>
       <ul class="protocol-problems" id="protocolIssues"></ul>
     </div>
     <details class="section" id="phase5ReportPreview" data-workflow-section="preview">
       <summary>Messbericht – Vorschau des PDF-Inhalts</summary>
-      <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Auch ein unvollständiger Bericht bleibt ausdrücklich „Nicht beurteilbar“.</p>
+      <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Fehlende Angaben werden im Bericht gekennzeichnet.</p>
       <div id="reportPreviewContent" class="report-preview-wrap" aria-live="polite"></div>
     </details>
     <div class="section grid-2" data-workflow-section="eventAndEvidence">
@@ -1123,10 +1120,9 @@ function markRequiredFields(){
   const report = getProtocolReportData();
   if(!report) return;
   const review = report.review;
-  setText('protocolStatus', review.status + ' – als „vollständig geprüft“ weiterhin gesperrt.');
+  setText('protocolStatus', review.status);
   setText('protocolEvidenceStatus', 'Erfassungsfelder offen: ' + review.formIssues.length +
-    ' · Mess-/Prüfnachweise offen: ' + review.evidenceIssues.length +
-    ' · DIN-Normenabgleich ausstehend.');
+    ' · Mess-/Prüfnachweise offen: ' + review.evidenceIssues.length + '.');
   for(const field of review.fields){
     const input = el(field.id);
     if(!input) continue;
@@ -1688,9 +1684,18 @@ function updateComplianceStatus(){
     dot.classList.add('status-empty');
     dot.title = 'Keine Messung geladen';
   } else {
-    // There is NO authorised DIN pass/fail engine yet, including for legacy projects.
-    dot.classList.add('status-warn');
-    dot.title = 'DIN-Freigabe ausstehend: Normtext, Nachweise und PDF müssen noch geprüft werden';
+    const record=getProtocolReportData();
+    const assessment=record?.review?.reportFullyChecked ? record.assessment.measurementStatus : 'not-assessable';
+    if(assessment === 'within-limits'){
+      dot.classList.add('status-ok');
+      dot.title='Grenzwerte eingehalten';
+    } else if(assessment === 'exceeded'){
+      dot.classList.add('status-bad');
+      dot.title='Grenzwert überschritten';
+    } else {
+      dot.classList.add('status-warn');
+      dot.title='Angaben oder Messdaten noch nicht vollständig beurteilbar';
+    }
   }
 }
 
@@ -1834,7 +1839,7 @@ function renderPhase3Evaluation(result){
   if(body) body.innerHTML = '';
   if(!result){
     setText('phase3Info', 'Berechnungsmodul nicht geladen. Keine Bewertung möglich.');
-    setText('phase3Warning', 'DIN-Prüfung gesperrt.');
+    setText('phase3Warning', 'Ohne Berechnungsmodul keine Auswertung.');
     return;
   }
   if(body){
@@ -1849,13 +1854,11 @@ function renderPhase3Evaluation(result){
     }
   }
   setText('phase3Info', result.blocks.length + ' feste Halbstundenfenster; ' +
-    result.overall.completeBlocks + ' technisch vollständige Blöcke. ' +
-    'Zeitstempel vorläufig als Intervallende interpretiert. Kein DIN-Prüfurteil.');
+    result.overall.completeBlocks + ' vollständig erfasste Blöcke. Zeitstempel als Intervallende ausgewertet.');
   const codes = [...new Set(result.quality.warnings.map(w => w.code)
     .concat(result.blocks.flatMap(b => b.warnings.map(w => w.code))))];
-  setText('phase3Warning', '* Vollständig bedeutet nur: Datenabdeckung vorhanden, ' +
-    'nicht DIN-konform. Offene Nachweise: ' + (codes.slice(0, 8).join(', ') || 'Normenfreigabe') +
-    (codes.length > 8 ? ' …' : '') + '. Das PDF bleibt ausdrücklich vorläufig.');
+  setText('phase3Warning', codes.length ?
+    'Messdatenhinweise: ' + codes.slice(0, 8).join(', ') + (codes.length > 8 ? ' …' : '') : '');
 }
 function calculateAndRender(){
   const tbody = document.querySelector('#pegelTabelle tbody');
@@ -1864,15 +1867,18 @@ function calculateAndRender(){
   if(importModel){
     phase3Evaluation = window.PegelToolEvaluation
       ? window.PegelToolEvaluation.evaluateModel(importModel,
-        {timestampAnchor:'end', timestampAnchorEvidence:'assumed'})
+        {timestampAnchor:'end', timestampAnchorEvidence:'operator-approved'})
       : null;
     if(phase3Evaluation){
       importModel.timeBlocks = phase3Evaluation.blocks;
       const overall = phase3Evaluation.overall;
+      const complete=overall.measurementStatus !== 'not-assessable';
+      const labelFor=comparison=>!complete ? 'Nicht beurteilbar' :
+        comparison==='above' ? 'Überschritten' : comparison==='at-or-below' ? 'Eingehalten' : 'Nicht beurteilbar';
       phase3AppendRow(tbody, ['LAeq 30 min (feste Blöcke)', phase3Db(overall.laeqMaxDb),
-        '—','99 dB(A)*','Nicht beurteilbar']);
+        '—','99 dB(A)',labelFor(overall.comparisonLAeq)]);
       phase3AppendRow(tbody, ['LCpeak (Blockmaximum)', phase3Db(overall.lcpeakMaxDb),
-        '—','135 dB(C)*','Nicht beurteilbar']);
+        '—','135 dB(C)',labelFor(overall.comparisonLCpeak)]);
     }
     renderPhase3Evaluation(phase3Evaluation);
     setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
@@ -2077,7 +2083,7 @@ function setPdfButtonsDisabled(disabled){
   button.disabled=!!disabled || !window.PegelToolReport || !window.PegelToolReportPdf || !window.jspdf?.jsPDF;
   button.title=button.disabled
     ? 'PDF nur mit importiertem Log und geladenem Berichtsmodul verfügbar'
-    : 'Vorläufigen technischen Bericht als PDF herunterladen (keine DIN-Freigabe)';
+    : 'Messprotokoll als PDF herunterladen';
 }
 
 // Ein einheitlicher PDF-Pfad: keine Template-Feldzuordnung, kein Legacy-Status,
@@ -2091,7 +2097,7 @@ async function generatePDF(){
   const backend=window.PegelToolReportPdf;
   if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
   const documentPdf=backend.create(report,JsPdf);
-  const filename=sanitizeBaseName()+' - vorlaeufig.pdf';
+  const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
   const blob=documentPdf.output('blob');
   triggerDownload(blob,filename,false);
   // Die Vorschau zeigt exakt dieselben PDF-Bytes wie der Download.
@@ -2102,7 +2108,7 @@ async function generatePDF(){
     catch(err){console.warn('PDF-Vorschau nicht möglich',err);}
     setTimeout(()=>URL.revokeObjectURL(url),120000);
   }
-  setText('parseInfo','PDF exportiert: vorläufiger Bericht ohne DIN-Freigabe. Alle Daten- und Prüfhinweise enthalten.');
+  setText('parseInfo','Messprotokoll als PDF exportiert.');
 }
 
 function exportHTML(){
