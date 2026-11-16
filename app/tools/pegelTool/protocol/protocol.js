@@ -186,6 +186,8 @@
       paItems:Array.isArray(data && data.paItems) ? data.paItems.map(function (x) {return Object.assign({},x);}) : [],
       instrument:model && model.instrument || null,
       measurement:model && model.measurement || null,
+      sampleCount:model && Array.isArray(model.samples) ? model.samples.length : null,
+      importQuality:model && model.quality || null,
       calibration:{
         device:{model:values.kalibratorModell, serial:values.kalibratorSN},
         before:{at:values.kalVorZeit, displayedDb:number(values.kalVorWert), origin:trim(origins.kalVorWert) || 'unbekannt'},
@@ -207,6 +209,8 @@
       assessment:{
         periods:evaluation && Array.isArray(evaluation.blocks) ? evaluation.blocks : [],
         overall:evaluation && evaluation.overall || null,
+        quality:evaluation && evaluation.quality || null,
+        assumptions:evaluation && evaluation.assumptions || null,
         normativeStatus:'not-assessable'
       },
       review:review
