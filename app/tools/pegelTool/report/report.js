@@ -59,7 +59,10 @@
         row('Veranstaltungsbeginn',v.veranstaltungsBeginn,o.veranstaltungsBeginn),
         row('Veranstaltungsende',v.veranstaltungsEnde,o.veranstaltungsEnde)]},
       {title:'Messverfahren und Datenbasis',rows:[
-        row('Methode','Importierter NTi-XL3-Logdatensatz; 30-Minuten-Blöcke aus Zeitintervallen; vorläufige Auswertungsregel'),
+        row('Methode',num(record.sampleCount) !== null && record.sampleCount > 0 ? 'Importierter NTi-XL3-Logdatensatz; uhrzeitfeste 30-Minuten-Blöcke (Arbeitsannahme)' : 'Keine ausreichende importierte Messdatenbasis'),
+        row('LAeq-Berechnung','10 log10(Summe aus Intervallzeit mal 10^(LAeq/10), geteilt durch die gesamte bewertbare Intervallzeit); nur bei vollständiger, widerspruchsfreier Blockabdeckung'),
+        row('LCpeak-Berechnung','Höchster gültiger Intervall-Spitzenwert im Block, keine Mittelung'),
+        row('Regelstatus','Blockzeit und Grenzwertbewertung mangels vollständig verifizierter Originalnorm nicht freigegeben'),
         row('Quell-Logdatei',opts.sourceFileName || 'Nicht vermerkt'),
         row('Messbeginn laut Log',measurement.start),row('Messende laut Log',measurement.end),
         row('Logintervall',num(measurement.intervalSeconds) === null ? EMPTY : measurement.intervalSeconds + ' s'),
