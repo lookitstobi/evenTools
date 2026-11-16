@@ -37,7 +37,7 @@ test('an open original-norm gate blocks positive and negative DIN judgements',()
 test('hypothetical fully verified future status maps only from an authorised result',()=>{
   const s=imported({record:{normReview:'verified',assessment:{measurementStatus:'within-limits'}}});
   s.review={documentationComplete:true,evidenceComplete:true,reportFullyChecked:true};
-  assert.equal(UI.assessmentStatus(s),'Grenzwert eingehalten');
+  assert.equal(UI.assessmentStatus(s),'Grenzwerte eingehalten');
   s.record.assessment.measurementStatus='exceeded';
   assert.equal(UI.assessmentStatus(s),'Grenzwert überschritten');
   s.review.evidenceComplete=false;
