@@ -51,7 +51,7 @@ test('Pflichtfelder sauber erfasst, aber nie normative Freigabe ohne Originalnor
   assert.equal(r.evidenceComplete,true);
   assert.equal(r.reportFullyChecked,false);
   assert.equal(r.normativeStatus,'not-assessable');
-  assert.equal(r.status,'Angaben vollständig erfasst (vorläufig)');
+  assert.equal(r.status,'Angaben vollständig erfasst');
 });
 test('Fehlende Pflichteingaben und Kennzeichnung bleiben sichtbar',()=>{
   const r=protocol.validate(input({form:{eventName:'',messortLCpeak:'',ortBestaetigt:''}}));
