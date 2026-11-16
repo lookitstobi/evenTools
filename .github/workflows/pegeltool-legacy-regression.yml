@@ -27,3 +27,5 @@ jobs:
           node-version: '22'
       - name: Run pegelTool legacy regression
         run: node --test tests/pegelTool/regression/legacy.test.cjs
+      - name: Run pegelTool Phase 2 importer tests
+        run: node --test tests/pegelTool/phase2/import.test.cjs
