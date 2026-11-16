@@ -168,7 +168,7 @@ test('legacy state schema and form roundtrip (logic-only, no browser storage)', 
   const h=createHarness();
   h.document.getElementById('eventName').value='Test Event';
   const result=JSON.parse(h.run('JSON.stringify(normalizeState(buildStateObject()))'));
-  assert.equal(result.schemaVersion,1);
+  assert.equal(result.schemaVersion,2); // v1 import is migrated to the current project schema
   assert.equal(result.form.eventName,'Test Event');
   assert.ok(Array.isArray(result.samples));
 });
