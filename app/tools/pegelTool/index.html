@@ -516,6 +516,7 @@ let logLoaded = false;
 let importModel = null; // Versioned Phase-2 model; no normative judgement.
 let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
 let workflowController = null; // Phase 6 view controller; never changes normative results.
+let lastImportAttempt = null; // Ephemeral rejected-import feedback; never overwrites existing data.
 let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
 let reservedPdfPreviewWindow = null;
 
@@ -822,6 +823,7 @@ function applySavedState(rawState, options = {}){
   setFormState(state.form);
   restorePAItems(state.paItems);
   protocolOrigins = state.protocolMeta.origins;
+  lastImportAttempt = null;
 
   header = state.header;
   importModel = state.importModel;
@@ -2208,6 +2210,8 @@ el('fileInput').addEventListener('change', (e)=>{
     setDot('dotLog','bad');
     setText('chipLog', 'Log: Datei zu groß ('+f.name+')');
     setText('parseInfo', 'Logdatei über 8 MiB – nicht importiert.');
+    lastImportAttempt={errors:[{code:'TOO_LARGE',message:'Logdatei über 8 MiB – nicht importiert.'}]};
+    if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
     e.target.value = '';
     return;
   }
@@ -2219,10 +2223,14 @@ el('fileInput').addEventListener('change', (e)=>{
       const result = window.PegelToolImport.parse(text, {fileName:f.name});
       // Preserve previous project on rejected imports. No silent partial replacement.
       if(!result.ok){
+        lastImportAttempt=result.model && result.model.quality || {
+          errors:[{code:'REJECTED',message:'Import abgelehnt: Dateiformat oder Rohdaten nicht verwertbar.'}]};
         showImportQuality(result.model);
+        if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
         return;
       }
       const compat = window.PegelToolImport.toLegacy(result.model);
+      lastImportAttempt = null;
       importModel = result.model;
       header = compat.header;
       samples = compat.samples;
@@ -2246,6 +2254,8 @@ el('fileInput').addEventListener('change', (e)=>{
       setDot('dotLog','bad');
       setText('chipLog','Log: Importfehler');
       setText('parseInfo','Import fehlgeschlagen: '+String(err?.message || err));
+      lastImportAttempt={errors:[{code:'IMPORT_EXCEPTION',message:String(err?.message || err)}]};
+      if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
     }finally{
       if(e.target) e.target.value = '';
     }
@@ -2265,7 +2275,7 @@ el('fileInput').addEventListener('change', (e)=>{
       getSnapshot:()=>{
         const record=getProtocolReportData();
         return {importModel,evaluation:phase3Evaluation,record,review:record && record.review,
-          logFileName:lastLogFileName,
+          logFileName:lastLogFileName,lastImportAttempt,
           canExport:!!importModel && !!phase3Evaluation && !el('btnPdfTemplate').disabled};
       },
       onActivate:(step)=>{
