@@ -68,6 +68,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await page.locator('#fileInput').setInputFiles(path.join(ROOT,'tests/pegelTool/fixtures/invalid-not-xl3.txt'));
       await page.waitForFunction(()=>document.querySelector('#parseInfo')?.textContent.includes('rejected'));
       assert.equal(await page.evaluate(()=>JSON.stringify(buildStateObject().importModel.samples)),originalRows);
+      assert.match(await page.locator('#chipLog').innerText(),/vorherige Messung geladen/i);
 
       await page.locator('.workflow-nav button').filter({hasText:'Messaufbau'}).first().click();
       await page.locator('#eventName').fill('Phase 7 Browserprüfung');
