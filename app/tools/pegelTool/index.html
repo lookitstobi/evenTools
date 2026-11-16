@@ -9,6 +9,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
 <script src="/toolserve.php?name=pegelTool&file=import/nti-xl3.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=evaluation/engine.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=protocol/protocol.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -136,6 +137,13 @@ label.label-required::after{
   margin-left:4px;
 }
 
+.protocol-tag{display:inline-block;margin-left:7px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;font-size:10px;letter-spacing:0;text-transform:none;color:var(--text-secondary)}
+.protocol-tag[data-category="pflicht"]{border-color:var(--accent);color:#9aafff}
+.protocol-tag[data-category="bedingt"]{border-color:#aa9543}
+.protocol-problems{margin:10px 0 0;padding-left:20px;color:var(--text-secondary);font-size:13px}
+.protocol-problems li{margin:3px 0}
+.protocol-problems strong{color:var(--text)}
+.protocol-summary{margin:8px 0;color:var(--text)}
 .hidden-file{display:none}
 .chips-offset{margin-left:16px}
 .mt-6{margin-top:6px}
@@ -263,6 +271,15 @@ label.label-required::after{
 
   </div>
   <div id="rightColumn">
+    <div class="section" id="protocolReview" aria-live="polite">
+      <h3>Messprotokoll – Angaben & Nachweise</h3>
+      <div class="small mt-8">Feldklassen Pflicht / bedingt / optional sind ein vorläufiger Arbeitsstand.
+      Der Originaltext der DIN 15905-5:2022-07 ist noch nicht abschließend abgeglichen.
+      Eine vollständige Eingabe ist keine DIN-Konformitätsbescheinigung.</div>
+      <div class="protocol-summary" id="protocolStatus">Protokollangaben noch nicht geprüft.</div>
+      <div class="small" id="protocolEvidenceStatus">Messnachweise: offen.</div>
+      <ul class="protocol-problems" id="protocolIssues"></ul>
+    </div>
     <div class="section grid-2">
       <div>
         <label>Veranstaltung (Name)</label>
@@ -277,9 +294,20 @@ label.label-required::after{
           <option>Philharmonie Essen, Nationalbank-Pavillon</option>
           <option>Eigene Angabe</option>
         </select>
+        <label>Anschrift / konkrete Ortsangabe</label>
+        <input id="ortAdresse" placeholder="Straße, Hausnummer, PLZ, Ort" />
+        <label>Veranstaltungsort anhand der realen Veranstaltung geprüft?</label>
+        <select id="ortBestaetigt">
+          <option value="">Nicht bestätigt (Preset ist kein Nachweis)</option>
+          <option value="ja">Ja, manuell geprüft</option>
+        </select>
+        <label>Veranstaltungsbeginn (optional)</label>
+        <input id="veranstaltungsBeginn" placeholder="Datum / Uhrzeit" />
+        <label>Veranstaltungsende (optional)</label>
+        <input id="veranstaltungsEnde" placeholder="Datum / Uhrzeit" />
 
         <label>Umgebungsbedingungen</label>
-        <input id="umwelt" value="21°C, Indoor" />
+        <input id="umwelt" placeholder="Optional, z.B. Wetter / Umgebungseinflüsse" />
       </div>
 
       <div>
@@ -293,33 +321,57 @@ label.label-required::after{
           </div>
           <div>
             <label>Lauteste Position</label>
-            <input id="lautestePosition" tabindex="4" />
+            <input id="lautestePosition" tabindex="4" placeholder="Altfeld; nicht als Nachweis verwenden" />
           </div>
         </div>
 
-        <label>Zugeständiger FOH-Techniker</label>
+        <label>Maßgeblicher Immissionsort für LAeq</label>
+        <input id="messortLAeq" placeholder="Position im Publikum und Ermittlung" />
+        <label>Maßgeblicher Immissionsort für LCpeak</label>
+        <input id="messortLCpeak" placeholder="Kann vom LAeq-Ort abweichen" />
+        <label>Art des Messorts</label>
+        <select id="messortTyp">
+          <option value="">Bitte auswählen</option>
+          <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
+          <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
+        </select>
+
+        <label>Zuständiger FOH-Techniker</label>
         <input id="foh" tabindex="5" />
 
         <div class="grid-2">
           <div>
             <label>Kalibrator</label>
-            <input id="kalibratorModell" value="CENTER 326" />
+            <input id="kalibratorModell" placeholder="Typ / Hersteller" />
           </div>
           <div>
             <label>Kalibrator SN</label>
-            <input id="kalibratorSN" value="140408454" />
+            <input id="kalibratorSN" placeholder="Seriennummer" />
           </div>
         </div>
+        <div class="grid-2">
+          <div>
+            <label>Funktionsprüfung vor der Messung – Zeitpunkt</label>
+            <input id="kalVorZeit" placeholder="Datum, Uhrzeit" />
+            <label>Angezeigter Pegel vor der Messung (dB)</label>
+            <input id="kalVorWert" inputmode="decimal" placeholder="z.B. 94,0" />
+          </div>
+          <div>
+            <label>Funktionsprüfung nach der Messung – Zeitpunkt</label>
+            <input id="kalNachZeit" placeholder="Datum, Uhrzeit" />
+            <label>Angezeigter Pegel nach der Messung (dB)</label>
+            <input id="kalNachWert" inputmode="decimal" placeholder="z.B. 94,0" />
+          </div>
+        </div>
+        <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
+        Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
       </div>
     </div>
 
     <div class="section grid-2">
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
-        <textarea id="organisator" class="min-h-140">Theater und Philharmonie Essen GmbH
-Opernplatz 10, 45128 Essen
-Geschäftsführer: Fritz Frömming
-Intendanz Philharmonie Essen: Babette Nierenz</textarea>
+        <textarea id="organisator" class="min-h-140" placeholder="Veranstalter mit Ansprechpartner / Adresse"></textarea>
       </div>
       <div>
         <label>Beschreibung</label>
@@ -351,10 +403,42 @@ Intendanz Philharmonie Essen: Babette Nierenz</textarea>
         <div class="small" id="paPresetInfo"></div>
       </div>
       <div id="paContainer"></div>
+      <label>Aufstellung / Anordnung der Beschallungsanlage</label>
+      <textarea id="paAnordnung" placeholder="Positionen, Ausrichtung, Delays, Subs und weitere relevante Anlagenkomponenten"></textarea>
+      <label>Ist die PA-Konfiguration für diese Veranstaltung geprüft?</label>
+      <select id="paBestaetigt">
+        <option value="">Nein – ein Preset ist kein Messnachweis</option>
+        <option value="ja">Ja, vor Ort mit dem tatsächlichen Aufbau abgeglichen</option>
+      </select>
+      <label>Wurden Messbedingungen oder Abweichungen dokumentiert?</label>
+      <select id="abweichungVorhanden">
+        <option value="">Bitte auswählen</option>
+        <option value="nein">Keine dokumentierten Abweichungen</option>
+        <option value="ja">Ja – Beschreibung erforderlich</option>
+      </select>
+      <label>Abweichungen, besondere Ereignisse und Begründung (falls vorhanden)</label>
+      <textarea id="abweichungBeschreibung" placeholder="Nur wenn zutreffend; zeitlich und fachlich nachvollziehbar"></textarea>
+      <label>Altprojekt: Vorbelegte Angaben aus früherer Version überprüft?</label>
+      <select id="altBestaetigt">
+        <option value="">Nicht geprüft</option>
+        <option value="ja">Ja, sämtliche übernommenen Angaben geprüft</option>
+      </select>
       <div class="compact-row mt-8">
         <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
         <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
       </div>
+    </div>
+    <div class="section">
+      <h3>Ersatzmessort und Korrekturbestimmung</h3>
+      <div class="small mt-8">Bei Ersatzmessorten bedingt erforderlich. k1/k2 aus dem XL3-Log
+      werden unverändert übernommen; diese Angaben verändern die Berechnungsengine nicht.
+      Keine doppelte Anwendung der Korrekturwerte.</div>
+      <label>Beschreibung Ersatzmessort</label>
+      <input id="ersatzMessort" placeholder="Konkrete Messposition und Bezug zum Publikum" />
+      <label>Bestimmung / Herkunft k1 (LAeq)</label>
+      <textarea id="k1Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
+      <label>Bestimmung / Herkunft k2 (LCpeak)</label>
+      <textarea id="k2Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
     </div>
   </div>
 </div>
@@ -369,6 +453,7 @@ let lastLogFileName = '';
 let logLoaded = false;
 let importModel = null; // Versioned Phase-2 model; no normative judgement.
 let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
+let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
 let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
@@ -377,11 +462,7 @@ const MAX_LOG_BYTES = 8 * 1024 * 1024;
 const STATE_SCHEMA_VERSION = 2;
 const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
-const FORM_FIELD_IDS = [
-  'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
-  'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN',
-  'berichtsort'
-];
+const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD_IDS : [];
 let recoverySaveTimer = null;
 let recoveryFallbackNotified = false;
 
@@ -533,6 +614,7 @@ function buildStateObject(options = {}){
     summary: summary,
     logLoaded: !!logLoaded,
     form: getFormState(),
+    protocolMeta: { schemaVersion: 1, origins: {...protocolOrigins} },
     paItems: collectPAItems(),
     logText: includeLogText ? lastLogText : '',
     logFileName: lastLogFileName || ''
@@ -547,6 +629,16 @@ function normalizeState(raw){
   const normalizedForm = {};
   const srcForm = (raw.form && typeof raw.form === 'object') ? raw.form : {};
   for(const id of FORM_FIELD_IDS){ normalizedForm[id] = (srcForm[id] ?? '').toString(); }
+  const storedOrigins = raw.protocolMeta && raw.protocolMeta.schemaVersion === 1
+    && raw.protocolMeta.origins && typeof raw.protocolMeta.origins === 'object'
+    ? raw.protocolMeta.origins : null;
+  const normalizedOrigins = {};
+  for(const id of FORM_FIELD_IDS){
+    if(storedOrigins && typeof storedOrigins[id] === 'string') normalizedOrigins[id] = storedOrigins[id];
+    else if(String(srcForm[id] ?? '').trim()) normalizedOrigins[id] = 'legacy-unverified';
+  }
+  normalizedOrigins.paItems = (storedOrigins && typeof storedOrigins.paItems === 'string')
+    ? storedOrigins.paItems : 'legacy-unverified';
 
   const srcHeader = (raw.header && typeof raw.header === 'object') ? raw.header : {};
   const normalizedHeader = { ...makeEmptyHeader(), ...srcHeader };
@@ -578,6 +670,7 @@ function normalizeState(raw){
     chartSamples: Array.isArray(raw.chartSamples) ? raw.chartSamples : [],
     summary: normalizedSummary,
     form: normalizedForm,
+    protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
     logText: String(raw.logText || ''),
     logFileName: String(raw.logFileName || ''),
@@ -660,6 +753,7 @@ function applySavedState(rawState, options = {}){
 
   setFormState(state.form);
   restorePAItems(state.paItems);
+  protocolOrigins = state.protocolMeta.origins;
 
   header = state.header;
   importModel = state.importModel;
@@ -678,6 +772,7 @@ function applySavedState(rawState, options = {}){
     const tbody = document.querySelector('#pegelTabelle tbody');
     if(tbody) tbody.innerHTML = '';
     setText('chartInfo', '');
+    phase3Evaluation = null;
     if(chartLAeq){ chartLAeq.destroy(); chartLAeq = null; }
     if(chartLCpeak){ chartLCpeak.destroy(); chartLCpeak = null; }
     setPdfButtonsDisabled(true);
@@ -931,21 +1026,55 @@ function setDot(dotId, state){
   d.classList.add(state);
 }
 
+function getProtocolReportData(){
+  if(!window.PegelToolProtocol) return null;
+  return window.PegelToolProtocol.buildRecord({
+    form:getFormState(),
+    origins:protocolOrigins,
+    paItems:collectPAItems(),
+    importModel:importModel,
+    evaluation:phase3Evaluation
+  });
+}
 function markRequiredFields(){
-  const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName','berichtsort'];
-  for(const id of requiredIds){
-    const field = el(id);
-    const label = field ? field.previousElementSibling : null;
-    if(field){
-      const isEmpty = !field.value || field.value.trim() === '';
-      if(isEmpty){
-        // mark label and input for visual hint
-        field.classList.add('input-required');
-        if(label && label.tagName === 'LABEL') label.classList.add('label-required');
-      } else {
-        field.classList.remove('input-required');
-        if(label && label.tagName === 'LABEL') label.classList.remove('label-required');
+  const report = getProtocolReportData();
+  if(!report) return;
+  const review = report.review;
+  setText('protocolStatus', review.status + ' – als „vollständig geprüft“ weiterhin gesperrt.');
+  setText('protocolEvidenceStatus', 'Erfassungsfelder offen: ' + review.formIssues.length +
+    ' · Mess-/Prüfnachweise offen: ' + review.evidenceIssues.length +
+    ' · DIN-Normenabgleich ausstehend.');
+  for(const field of review.fields){
+    const input = el(field.id);
+    if(!input) continue;
+    input.classList.toggle('input-required', field.required && !field.valid);
+    const label = input.previousElementSibling;
+    if(label && label.tagName === 'LABEL'){
+      let tag = label.querySelector('.protocol-tag');
+      if(!tag){
+        tag=document.createElement('span');
+        tag.className='protocol-tag';
+        label.appendChild(tag);
       }
+      tag.dataset.category=field.category;
+      tag.textContent=field.category === 'pflicht' ? 'Pflicht*' :
+        (field.category === 'bedingt' ? 'bedingt*' : 'optional');
+      label.classList.toggle('label-required', field.required && !field.valid);
+    }
+  }
+  const issues = el('protocolIssues');
+  if(issues){
+    issues.replaceChildren();
+    const problems = [...review.formIssues, ...review.evidenceIssues];
+    for(const problem of problems.slice(0,9)){
+      const li=document.createElement('li');
+      li.textContent=problem.message;
+      issues.appendChild(li);
+    }
+    if(problems.length > 9){
+      const li=document.createElement('li');
+      li.textContent='… und ' + (problems.length-9) + ' weitere offene Punkte.';
+      issues.appendChild(li);
     }
   }
 }
@@ -1690,6 +1819,7 @@ function calculateAndRender(){
   // Existing PDFs still use the legacy, non-normative summary calculation.
   // Do not create a misleading DIN document before Phase 5 replaces this path.
   setPdfButtonsDisabled(true);
+  markRequiredFields();
 }
 
 function paRow(type="", qty=""){
@@ -1749,41 +1879,57 @@ function applyLocationPreset(loc){
     for(const it of preset){ container.appendChild(paRow(it.type, it.qty)); }
     setText('paPresetInfo', `Preset aktiv: ${loc}`);
   } else {
-    container.appendChild(paRow('L-ACOUSTIC KARA II', PA_DEFAULT_QTY['L-ACOUSTIC KARA II']));
-    setText('paPresetInfo', 'Preset aktiv: (nur Kara)');
+    container.appendChild(paRow('', ''));
+    setText('paPresetInfo', 'Kein gültiger Preset-Nachweis – PA manuell erfassen');
   }
 }
 
 el('btnAddPA').addEventListener('click', ()=> {
   el('paContainer').appendChild(paRow('', ''));
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields();
   scheduleRecoverySave();
 });
 el('btnClearPA').addEventListener('click', ()=> {
   applyLocationPreset(getVal('location'));
+  protocolOrigins.paItems='preset-unverified';
+  setVal('paBestaetigt','');
+  markRequiredFields();
   scheduleRecoverySave();
 });
 el('location').addEventListener('change', ()=> {
   applyLocationPreset(getVal('location'));
+  protocolOrigins.paItems='preset-unverified';
+  markRequiredFields();
   scheduleRecoverySave();
 });
 
-el('paContainer').addEventListener('input', scheduleRecoverySave);
-el('paContainer').addEventListener('change', scheduleRecoverySave);
-
-const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName','berichtsort'];
-for(const id of requiredIds){
-  const field = el(id);
-  if(field){
-    field.addEventListener('input', ()=>{ markRequiredFields(); scheduleRecoverySave(); });
-    field.addEventListener('change', ()=>{ markRequiredFields(); scheduleRecoverySave(); });
-  }
-}
-
+el('paContainer').addEventListener('input', ()=>{
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields(); scheduleRecoverySave();
+});
+el('paContainer').addEventListener('change', ()=>{
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields(); scheduleRecoverySave();
+});
 for(const id of FORM_FIELD_IDS){
   const field = el(id);
   if(!field) continue;
-  field.addEventListener('input', scheduleRecoverySave);
-  field.addEventListener('change', scheduleRecoverySave);
+  const changed = ()=>{
+    protocolOrigins[id] = id === 'location' ? 'preset-unverified' : 'manual';
+    if(id === 'location'){
+      setVal('ortBestaetigt','');
+      setVal('paBestaetigt','');
+      protocolOrigins.paItems='preset-unverified';
+    }
+    markRequiredFields();
+    scheduleRecoverySave();
+  };
+  field.addEventListener('input',changed);
+  field.addEventListener('change',changed);
 }
 
 function getPASetupInline(){
@@ -2833,7 +2979,7 @@ el('fileInput').addEventListener('change', (e)=>{
       writeHeaderToUI();
       if(!getVal('datumMessung').trim() && header.start){
         const m = String(header.start).match(/\d{4}-\d{2}-\d{2}/);
-        if(m) setVal('datumMessung', m[0]);
+        if(m){ setVal('datumMessung', m[0]); protocolOrigins.datumMessung='device-header'; }
       }
       markRequiredFields();
       calculateAndRender();
@@ -2852,8 +2998,7 @@ el('fileInput').addEventListener('change', (e)=>{
 });
 
 (function init(){
-  const today = new Date().toISOString().split('T')[0];
-  setVal('berichtDatum', today);
+  // No sample date or instrument/organiser defaults may become accidental evidence.
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
   setPdfButtonsDisabled(true);
   markRequiredFields();
