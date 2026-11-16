@@ -1,0 +1,29 @@
+name: pegelTool legacy regression (Phase 1)
+on:
+  push:
+    paths:
+      - 'app/tools/pegelTool/**'
+      - 'tests/pegelTool/**'
+      - '.github/workflows/pegeltool-legacy-regression.yml'
+  pull_request:
+    paths:
+      - 'app/tools/pegelTool/**'
+      - 'tests/pegelTool/**'
+      - '.github/workflows/pegeltool-legacy-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run pegelTool legacy regression
+        run: node --test tests/pegelTool/regression/legacy.test.cjs

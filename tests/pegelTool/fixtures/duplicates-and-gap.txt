@@ -1,0 +1,16 @@
+# SYNTHETIC NTi-style test data. NOT an instrument measurement.
+# Hardware Configuration
+Device Info: XL3, SNo. TEST-0001, FW1.00
+Mic Type: Test Mic, SNo. TEST-MIC, Calibrated 2026-11-15 10:00
+# Measurement Setup
+Log-Interval: 00:00:01,0
+k1: -3,0 dB
+k2: +2,0 dB
+# Time
+Start: 2026-11-16, 19:59:58
+# Broadband Log Results
+Date Time Timer LCPKmax_dt+k2 LAFmax_dt+k1 LAeq_dt+k1 LAeq_g30+k1 LAeq_g5+k1
+[YYYY-MM-DD] [hh:mm:ss] [hh:mm:ss] [dB] [dB] [dB] [dB] [dB]
+2026-11-16 19:59:58 00:00:01,0 80,0 80,0 80,0 80,0 80,0
+2026-11-16 19:59:58 00:00:02,0 81,0 81,0 81,0 81,0 81,0
+2026-11-16 20:01:00 00:01:03,0 82,0 82,0 82,0 82,0 82,0

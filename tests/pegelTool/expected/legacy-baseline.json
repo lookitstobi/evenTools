@@ -1,0 +1,49 @@
+{
+  "sourceCommit": "629ea5a75261894b8c741a4cdd5cb69d20f7efde",
+  "note": "Beobachtete Legacy-Parserwerte, KEINE DIN-Sollwerte. Synthetische Logs sind bewusst kürzer als 30 Minuten.",
+  "cases": {
+    "valid-with-summary": {
+      "samples": 4,
+      "laeq_dt_first": 90,
+      "laeq_g5_second": 97.40362689494243,
+      "summary_laeq_g30": 100,
+      "summary_lcpeak": 136,
+      "k1": "-3.0",
+      "k2": "+2.0"
+    },
+    "missing-g30": {
+      "samples": 1,
+      "laeq_g30_first": null
+    },
+    "duplicates-and-gap": {
+      "samples": 3
+    },
+    "over-midnight": {
+      "samples": 2,
+      "first": "2026-11-16 23:59:59",
+      "last": "2026-11-17 00:00:00"
+    },
+    "summary-layout-mismatch": {
+      "samples": 2,
+      "summary_lcpeak_legacy": 101,
+      "summary_laeq_g30_legacy": 132
+    },
+    "invalid-interval": {
+      "samples": 1,
+      "interval_sec_legacy": 1
+    },
+    "invalid-not-xl3": {
+      "parse_ok": false
+    },
+    "only-missing-values": {
+      "samples": 0
+    },
+    "archived-real-log": {
+      "samples": 8441,
+      "laeq_total": 77.4,
+      "lcpeak_max": 114.7,
+      "laeq_g30": null,
+      "interval_sec": 1
+    }
+  }
+}
