@@ -159,7 +159,7 @@
     paragraph('Die Diagramme und gleitenden LAeq_g5-/LAeq_g30-Anzeigen der Anwendung sind informativ. Sie bilden keine eigenständigen normativen Grenzwertentscheidungen.',8.5);
 
     heading('Berichtsabschluss');
-    paragraph('Unterschrift des Protokollverfassers',8);
+    paragraph('Unterschriftsfeld des Protokollverfassers (nicht unterschrieben)',8);
     ensure(30);
     doc.setDrawColor(125);
     doc.rect(left,y,usable,22);
