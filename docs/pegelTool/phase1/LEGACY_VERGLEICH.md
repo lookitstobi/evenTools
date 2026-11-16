@@ -37,4 +37,4 @@ Die Legacy-Suite enthält logische Tests für Zustandsschema 1, JSON-Parsing, ei
 
 ### Qualitätskennzeichnung
 
-Parser-Vergleich: **ausgeführt**. Node-Regressionssuite: **als ausführbarer Quellcode angelegt; durch CI zu verifizieren**. Browser-Workflow: **nicht ausgeführt**. PDF-Bytes/Visual: **nicht ausgeführt**. DIN-Abnahme: **nicht freigegeben**.
+Parser-Vergleich: **ausgeführt**. Node-Regressionssuite: **GitHub Actions erfolgreich** (Run #43870449169, Node 22, Commit `f9a8762`; 14 Testfälle im Testskript). Browser-Workflow: **nicht ausgeführt**. PDF-Bytes/Visual: **nicht ausgeführt**. DIN-Abnahme: **nicht freigegeben**.
