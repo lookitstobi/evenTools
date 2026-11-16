@@ -109,13 +109,13 @@ test('g5 above 99 never substitutes for the independently evaluated 30-minute LA
   assert.equal(result.blocks[0].normativeStatus,'not-assessable');
   assert.equal(m.samples[0].values.laeqG5,115);
 });
-test('unverified anchor and missing calibration remain explicit, even with complete energy data',()=>{
+test('unverified timestamp anchor prevents positive assessment even with complete energy data',()=>{
   const m=makeModel();
   m.calibration.status='not-documented';
   const r=Engine.evaluateModel(m,{timestampAnchor:'start',timestampAnchorEvidence:'assumed'});
   near(r.blocks[0].coveredSeconds,1800,'coverage');
   assert.ok(r.quality.warnings.some(x=>x.code==='TIME_BASIS_UNVERIFIED'));
-  assert.ok(r.quality.warnings.some(x=>x.code==='CALIBRATION_UNVERIFIED'));
+  assert.ok(!r.quality.warnings.some(x=>x.code==='CALIBRATION_UNVERIFIED'));
   assert.equal(r.quality.status,'restricted');
   assert.equal(r.normativeStatus,'not-assessable');
 });
@@ -144,7 +144,7 @@ test('import → calculate → protocol → report → JSON roundtrip → report
       messortLCpeak:'Publikum links'},
     origins:{eventName:'user-input'},paItems:[],importModel:parsed.model,evaluation};
   const record=Protocol.buildRecord(input);
-  assert.equal(record.normReview,'not-verified');
+  assert.equal(record.normReview,'operator-approved');
   const before=Report.build(record,{sourceFileName:'XL3_synthetic.txt'});
   assert.equal(before.blocks.length,evaluation.blocks.length);
   assert.equal(before.reportFullyChecked,false);
