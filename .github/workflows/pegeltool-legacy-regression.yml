@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      PEGELTOOL_BROWSER_ARTIFACTS: ${{ runner.temp }}/pegeltool-phase7-browser
+      PEGELTOOL_BROWSER_ARTIFACTS: tests/pegelTool/phase7/artifacts
     steps:
       - name: Checkout
         uses: actions/checkout@v4
