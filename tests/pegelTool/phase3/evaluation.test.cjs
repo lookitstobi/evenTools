@@ -241,7 +241,7 @@ test('Phase 3 evaluation guard remains; Phase 5 PDF requires imported measuremen
   const app=fs.readFileSync(path.resolve(__dirname,'../../../app/tools/pegelTool/index.html'),'utf8');
   assert.match(app,/file=evaluation\/engine\.js/);
   assert.match(app,/id="phase3Tabelle"/);
-  assert.match(app,/timestampAnchor:'end', timestampAnchorEvidence:'assumed'/);
+  assert.match(app,/timestampAnchor:'end', timestampAnchorEvidence:'operator-approved'/);
   assert.match(app,/setPdfButtonsDisabled\(!importModel \|\| !phase3Evaluation\)/);
   assert.match(app,/button\.disabled=!!disabled/);
 });
