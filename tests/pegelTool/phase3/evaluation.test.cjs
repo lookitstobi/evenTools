@@ -70,7 +70,10 @@ test('T01: two independent half-hour windows and no gliding mixing', () => {
   assert.deepEqual(r.blocks.map(b=>b.comparisonLAeq),['at-or-below','above']);
 });
 test('T03, T06: partial first/last windows stay unassessable', () => {
-  const r=calculate([slot('2026-11-16T20:07:00','2026-11-16T21:12:00',90)]);
+  const intervals=[];
+  for(let ms=T('2026-11-16T20:07:00');ms<T('2026-11-16T21:12:00');ms+=60000)
+    intervals.push({startMs:ms,endMs:ms+60000,laeqDb:90,lcpeakDb:120});
+  const r=calculate(intervals);
   assert.deepEqual(r.blocks.map(x=>x.coveredSeconds),[1380,1800,720]);
   assert.deepEqual(r.blocks.map(x=>x.dataQuality),['incomplete','complete','incomplete']);
   assert.deepEqual(r.blocks.map(x=>x.laeq30Db),[null,90,null]);
