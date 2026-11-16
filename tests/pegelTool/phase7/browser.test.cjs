@@ -48,7 +48,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
     try {
       await page.goto(entry,{waitUntil:'networkidle'});
       await page.waitForFunction(()=>document.querySelectorAll('.workflow-panel').length===6);
-      assert.match(await page.locator('body').innerText(),/Keine DIN-Konformitätsbescheinigung|DIN-Konformitätsbescheinigung/i);
+      assert.doesNotMatch(await page.locator('body').innerText(),/Keine DIN-Konformitätsbescheinigung|DIN-Konformitätsbescheinigung/i);
       const first=await page.evaluate(()=>buildStateObject());
       assert.ok(!first.importModel);
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),true);
