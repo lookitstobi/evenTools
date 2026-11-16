@@ -1,0 +1,502 @@
+{
+  "schemaVersion": 1,
+  "source": "Synthetische Referenzfälle; keine originalen XL3-Messungen, keine DIN-Freigabe",
+  "intervalFormat": "[offsetSeconds, durationSeconds, LAeq_dB, LCpeak_dB]",
+  "expectedFormat": "[dataQuality, coveredSeconds, LAeq30_dB, LCpeakMax_dB, LAeqTechnicalComparison, LCpeakTechnicalComparison]",
+  "cases": [
+    {
+      "id": "L99_BELOW",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          98.999,
+          120
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          98.999,
+          120,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "L99_EQUAL",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          99,
+          120
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          99,
+          120,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "L99_ABOVE",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          99.001,
+          120
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          99.001,
+          120,
+          "above",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "P135_BELOW",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          90,
+          134.999
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          90,
+          134.999,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "P135_EQUAL",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          90,
+          135
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          90,
+          135,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "P135_ABOVE",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          90,
+          135.001
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          90,
+          135.001,
+          "at-or-below",
+          "above"
+        ]
+      ]
+    },
+    {
+      "id": "ENERGY_600_1200",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          600,
+          90,
+          110
+        ],
+        [
+          600,
+          1200,
+          96,
+          124
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          94.7529063443759,
+          124,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "ENERGY_EQUAL_DURATION",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          900,
+          90,
+          100
+        ],
+        [
+          900,
+          900,
+          100,
+          125
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          97.40362689494245,
+          125,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "FIRST_PARTIAL",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          420,
+          1380,
+          98,
+          132
+        ]
+      ],
+      "expected": [
+        [
+          "incomplete",
+          1380,
+          null,
+          null,
+          "unknown",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "id": "MISSING_120S",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          600,
+          95,
+          118
+        ],
+        [
+          720,
+          1080,
+          97,
+          123
+        ]
+      ],
+      "expected": [
+        [
+          "incomplete",
+          1680,
+          null,
+          null,
+          "unknown",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "id": "TWO_FULL_BLOCKS",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          96,
+          122
+        ],
+        [
+          1800,
+          1800,
+          100,
+          131
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          96,
+          122,
+          "at-or-below",
+          "at-or-below"
+        ],
+        [
+          "complete",
+          1800,
+          100,
+          131,
+          "above",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "MIDNIGHT",
+      "base": "2026-11-16T23:30:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          97,
+          125
+        ],
+        [
+          1800,
+          1800,
+          98,
+          126
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          97,
+          125,
+          "at-or-below",
+          "at-or-below"
+        ],
+        [
+          "complete",
+          1800,
+          98,
+          126,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "DUPLICATE_OVERLAP",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          97,
+          129
+        ],
+        [
+          0,
+          1800,
+          97,
+          129
+        ]
+      ],
+      "expected": [
+        [
+          "conflict",
+          1800,
+          null,
+          null,
+          "unknown",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "id": "CROSSING_BOUNDARY",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1740,
+          90,
+          115
+        ],
+        [
+          1740,
+          120,
+          100,
+          130
+        ],
+        [
+          1860,
+          1740,
+          90,
+          114
+        ]
+      ],
+      "expected": [
+        [
+          "conflict",
+          1800,
+          null,
+          null,
+          "unknown",
+          "unknown"
+        ],
+        [
+          "conflict",
+          1800,
+          null,
+          null,
+          "unknown",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "id": "LAEQ_MISSING",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          900,
+          90,
+          120
+        ],
+        [
+          900,
+          900,
+          null,
+          121
+        ]
+      ],
+      "expected": [
+        [
+          "incomplete",
+          1800,
+          null,
+          121,
+          "unknown",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "LCPEAK_MISSING",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          900,
+          90,
+          120
+        ],
+        [
+          900,
+          900,
+          90,
+          null
+        ]
+      ],
+      "expected": [
+        [
+          "incomplete",
+          1800,
+          90,
+          null,
+          "at-or-below",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "id": "FULL_GAP_FULL",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          0,
+          1800,
+          90,
+          110
+        ],
+        [
+          3600,
+          1800,
+          91,
+          111
+        ]
+      ],
+      "expected": [
+        [
+          "complete",
+          1800,
+          90,
+          110,
+          "at-or-below",
+          "at-or-below"
+        ],
+        [
+          "incomplete",
+          0,
+          null,
+          null,
+          "unknown",
+          "unknown"
+        ],
+        [
+          "complete",
+          1800,
+          91,
+          111,
+          "at-or-below",
+          "at-or-below"
+        ]
+      ]
+    },
+    {
+      "id": "INVALID_TIME",
+      "base": "2026-11-16T20:00:00",
+      "intervals": [
+        [
+          500,
+          0,
+          95,
+          120
+        ]
+      ],
+      "expected": [],
+      "quality": "no-data"
+    }
+  ]
+}
