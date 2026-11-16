@@ -33,8 +33,12 @@
   function collectIssues(snapshot) {
     const s=snapshot || {}, model=s.importModel || {}, quality=model.quality || {},
       review=s.review || {}, evaluation=s.evaluation || {}, q=evaluation.quality || {};
-    if (!s.importModel) return [{source:'Import',message:'Noch kein nachvollziehbarer XL3-Datensatz geladen.',step:'import',priority:0}];
-    const all=[];
+    const retryErrors=arr(s.lastImportAttempt && s.lastImportAttempt.errors)
+      .filter(i=>i && i.message).map(i=>({source:'Letzter Importversuch',message:String(i.message),
+        code:String(i.code || 'IMPORT_REJECTED'),step:'quality',priority:-1}));
+    if (!s.importModel) return retryErrors.concat([
+      {source:'Import',message:'Noch kein nachvollziehbarer XL3-Datensatz geladen.',step:'import',priority:0}]);
+    const all=retryErrors.slice();
     const add=(list,source,step,priority)=>arr(list).forEach(i=>{
       if (!i || !i.message) return;
       all.push({source,message:String(i.message),code:String(i.code || ''),step,priority});
@@ -59,10 +63,11 @@
     const evidenceIssues=arr(review && review.evidenceIssues);
     const errors=arr(model && model.quality && model.quality.errors);
     const warnings=arr(model && model.quality && model.quality.warnings);
+    const lastImportErrors=arr(s.lastImportAttempt && s.lastImportAttempt.errors);
     const steps={
       import: model ? 'Messdaten geladen' : 'Noch offen',
-      quality: !model ? 'Wartet auf Import' :
-        errors.length ? 'Importfehler' : (warnings.length || evidenceIssues.length ? 'Prüfhinweise' : 'Daten vorhanden'),
+      quality: lastImportErrors.length || errors.length ? 'Importfehler' : !model ? 'Wartet auf Import' :
+        warnings.length || evidenceIssues.length ? 'Prüfhinweise' : 'Daten vorhanden',
       setup: !review ? 'Noch offen' : formIssues.length ? formIssues.length+' Angaben offen' : 'Angaben erfasst',
       assessment: !blocks.length ? 'Noch nicht geprüft' :
         blocks.some(b=>b.dataQuality !== 'complete') ? 'Datenlücken prüfen' : 'Technisch berechnet',
@@ -81,6 +86,10 @@
     if (!doc || typeof getSnapshot !== 'function') return null;
     const main=doc.getElementById('main'), header=doc.querySelector('header.header');
     if(!main || !header || !doc.body) return null;
+    // HTML project exports serialize the currently mounted DOM. A second load
+    // must rebuild controls/listeners, not leave two navigation shells behind.
+    const staleShell=doc.querySelector('.workflow-shell');
+    const stalePanels=Array.from(main.querySelectorAll('.workflow-panel'));
     const sectionNames=['metrics','blocks','charts','log','review','preview',
       'eventAndEvidence','description','signature','pa','corrections'];
     const sections={};
@@ -179,6 +188,9 @@
       panel.appendChild(footer);
       panelMap[step.id]=panel;main.appendChild(panel);
     }
+    // Sections are now in their new owners. Old exported shells/panels are safe to remove.
+    for(const old of stalePanels) old.remove();
+    if(staleShell) staleShell.remove();
     // Remove obsolete two-column wrappers only after all sections were moved.
     for(const id of ['leftColumn','rightColumn']) doc.getElementById(id)?.remove();
     main.classList.add('workflow-main');
@@ -217,11 +229,15 @@
       fragments.importText.textContent=summary.hasImport ?
         'Messdaten sind geladen. Unter „Datenprüfung“ den Importstatus und die Rohdatenangaben kontrollieren.' :
         'Noch keine Messdaten geladen. PDF und Bewertung bleiben bis zum Import gesperrt.';
-      fragments.qualityText.textContent=summary.hasImport ?
+      const retryErrors=arr(currentSnapshot.lastImportAttempt && currentSnapshot.lastImportAttempt.errors);
+      const loadedText=summary.hasImport ?
         'Datei: '+(currentSnapshot.logFileName || 'Name nicht bekannt')+
         ' · '+summary.blockCount+' technische Zeitblöcke · '+summary.missingEvidence+
         ' offene Messnachweise · '+summary.missingForm+' offene Protokollangaben.' :
         'Bitte zuerst ein XL3-Log importieren oder ein Projekt öffnen.';
+      fragments.qualityText.textContent=retryErrors.length ?
+        'Letzter Importversuch abgewiesen ('+retryErrors.length+' Fehler). Vorherige Messdaten bleiben erhalten. '+loadedText :
+        loadedText;
       fragments.exportButton.disabled=!summary.canExport;
       fragments.exportText.textContent=summary.canExport ?
         'Technischer PDF-Export verfügbar – weiterhin keine bestätigte DIN-Konformität.' :
