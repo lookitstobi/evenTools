@@ -108,7 +108,10 @@ test('T10: invalid level is not converted to 0 dB', () => {
   assert.equal(r.blocks[0].laeq30Db,null);
 });
 test('T11: midnight correctly produces three date-labelled windows', () => {
-  const r=calculate([slot('2026-11-16T23:45:00','2026-11-17T00:45:00',90)]);
+  const intervals=[];
+  for(let ms=T('2026-11-16T23:45:00');ms<T('2026-11-17T00:45:00');ms+=60000)
+    intervals.push({startMs:ms,endMs:ms+60000,laeqDb:90,lcpeakDb:120});
+  const r=calculate(intervals);
   assert.equal(r.blocks.length,3);
   assert.deepEqual(r.blocks.map(b=>b.coveredSeconds),[900,1800,900]);
   assert.equal(r.blocks[1].start,'2026-11-17T00:00:00');
@@ -211,4 +214,33 @@ test('model: real XL3 archive can be evaluated only provisionally', () => {
 });
 test('120-minute variant is not exposed without the original-norm decision', () => {
   assert.equal(typeof Engine.evaluate120Minutes,'undefined');
+});
+
+test('large log avoids spread-argument limits while preserving durations', () => {
+  const origin=T('2026-11-16T20:00:00');
+  const xs=Array.from({length:130000},(_,i)=>({
+    startMs:origin+i*10,endMs:origin+(i+1)*10,laeqDb:90,lcpeakDb:110,sourceLine:i+1
+  }));
+  const r=Engine.buildBlocks(xs);
+  assert.equal(r.blocks.length,1);
+  assert.equal(r.blocks[0].coveredSeconds,1300);
+  nearly(r.blocks[0].laeqObservedDb,90);
+  assert.equal(r.blocks[0].laeq30Db,null);
+});
+test('missing correction does not generate thousands of duplicate warnings', () => {
+  const origin=T('2026-11-16T20:00:00');
+  const stamps=Array.from({length:3000},(_,i)=>({
+    t:new Date(origin+i*1000).toISOString().slice(0,19),la:98,pk:120
+  }));
+  const m=model(stamps,{k1Applied:false});
+  m.corrections.k1.valueDb=null;
+  const r=Engine.evaluateModel(m,{timestampAnchor:'start'});
+  assert.equal(r.quality.warnings.filter(x=>x.code==='CORRECTION_VALUE_MISSING').length,1);
+});
+test('Phase 3 UI loads engine and keeps both legacy PDF exports blocked', () => {
+  const app=fs.readFileSync(path.resolve(__dirname,'../../../app/tools/pegelTool/index.html'),'utf8');
+  assert.match(app,/file=evaluation\/engine\.js/);
+  assert.match(app,/id="phase3Tabelle"/);
+  assert.match(app,/timestampAnchor:'end', timestampAnchorEvidence:'assumed'/);
+  assert.match(app,/function setPdfButtonsDisabled\(disabled\)[\s\S]+?button\.disabled = true/);
 });
