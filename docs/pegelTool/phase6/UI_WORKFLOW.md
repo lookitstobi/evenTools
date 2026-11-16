@@ -35,7 +35,9 @@ Oben werden zuerst kritische Importfehler, dann Mess-/Rechen-Nachweise, danach D
 - Status- und Warnbereich als Live-Region für Änderungen während der Eingabe.
 - Responsives Layout mit horizontal scrollbareren Schritten auf schmalen Displays; ursprüngliche Formular-Grids fallen dort auf eine Spalte zurück.
 - Diagramme werden beim Öffnen des Bewertungsschritts neu vermessen, da sie sonst in einer zunächst ausgeblendeten Sektion zu schmal gerendert werden könnten.
-- Erfolgreicher Import bzw. Wiederherstellung bringt die Nutzerin/den Nutzer zur Datenprüfung. Fehlende Werte, alte Projekte und Korrekturherkunft bleiben als offene Punkte sichtbar.
+- Erfolgreicher Import bzw. Wiederherstellung öffnet die Datenprüfung. Fehlende Werte, alte Projekte und Korrekturherkunft bleiben als offene Punkte sichtbar.
+- Bei abgewiesenem Import bleiben vorherige Messdaten unverändert; Fehlermeldungen des letzten Importversuchs erscheinen unmittelbar in der Datenprüfung.
+- Ein erneut geöffnetes, bereits mit Workflow-Elementen exportiertes HTML-Dokument erhält keine zweite Navigationsleiste: alte UI-Hüllen werden erst nach dem Umhängen der Originalsektionen entfernt.
 
 ## Testumfang
 
@@ -46,7 +48,9 @@ Oben werden zuerst kritische Importfehler, dann Mess-/Rechen-Nachweise, danach D
 - Priorität der Prüfhinweise und Erkennung offener Blöcke/Nachweise;
 - DOM-Verschiebung der elf bestehenden Abschnitte, Navigation und aktive Schrittmarkierung;
 - Unverändertheit des fachlichen Messdatenobjekts nach UI-Aktionen;
-- Vorhandensein der alten Import-, Speicher-, Wiederherstellungs- und Exportaktionen.
+- Vorhandensein der alten Import-, Speicher-, Wiederherstellungs- und Exportaktionen;
+- erneut initialisierte HTML-Projekte ohne doppelte Navigation;
+- abgewiesene Importe ohne Verlust des vorherigen Datensatzes.
 
 Der Workflow läuft zusätzlich zu sämtlichen Phase-1- bis Phase-5-Tests in GitHub Actions.
 
@@ -59,3 +63,7 @@ Der Workflow läuft zusätzlich zu sämtlichen Phase-1- bis Phase-5-Tests in Git
 - **Regressionsabnahme:** Frühere Projektdateien inklusive nur teilweiser lokaler Wiederherstellung.
 
 **Freigabestatus:** Technische Implementierung für Review. Keine normativ belastbare Konformitätsbescheinigung; PR bleibt Draft, `main` bleibt unverändert.
+
+## GitHub Actions
+
+Zum letzten getesteten Code-Commit `ebc8821` sind alle sechs Testsuiten erfolgreich: **90/90 Tests** (Phase 1: 14; Phase 2: 10; Phase 3: 25; Phase 4: 14; Phase 5: 15; Phase 6: 12). Die Tests prüfen nicht die normative Richtigkeit ohne Original-DIN und ersetzen keinen echten Browser-/PDF-Abnahmetest.
