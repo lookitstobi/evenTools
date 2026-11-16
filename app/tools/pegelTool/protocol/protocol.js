@@ -130,8 +130,10 @@
       evidenceIssues.push(issue('BLOCKS_MISSING','Keine auswertbaren Beurteilungszeiträume nachgewiesen.'));
     else if (evaluation.blocks.some(function (b) {return b.dataQuality !== 'complete';}))
       evidenceIssues.push(issue('BLOCKS_INCOMPLETE','Mindestens ein Beurteilungszeitraum hat Datenlücken oder Zeitkonflikte.'));
-    if (model && model.quality && model.quality.status !== 'usable')
-      evidenceIssues.push(issue('IMPORT_QUALITY','Importqualität nicht uneingeschränkt verwendbar.'));
+    // A non-critical device summary warning must not invalidate measured interval data.
+    // Rejected imports and genuine interval defects are still blocked by parser/evaluation.
+    if (model?.quality?.status === 'rejected' || (model?.quality?.errors || []).length)
+      evidenceIssues.push(issue('IMPORT_QUALITY','Der Import enthält entscheidende Fehler.'));
     if (!evaluation || !['verified','operator-approved'].includes(evaluation.assumptions?.timestampAnchorEvidence))
       evidenceIssues.push(issue('TIMESTAMP_UNVERIFIED','Zeitstempel-Semantik für die Auswertung nicht bestätigt.'));
     if (trim(form.messortTyp)==='direkt' && model &&
