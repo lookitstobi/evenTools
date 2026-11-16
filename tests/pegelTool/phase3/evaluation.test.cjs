@@ -237,10 +237,11 @@ test('missing correction does not generate thousands of duplicate warnings', () 
   const r=Engine.evaluateModel(m,{timestampAnchor:'start'});
   assert.equal(r.quality.warnings.filter(x=>x.code==='CORRECTION_VALUE_MISSING').length,1);
 });
-test('Phase 3 UI loads engine and keeps both legacy PDF exports blocked', () => {
+test('Phase 3 evaluation guard remains; Phase 5 PDF requires imported measurement', () => {
   const app=fs.readFileSync(path.resolve(__dirname,'../../../app/tools/pegelTool/index.html'),'utf8');
   assert.match(app,/file=evaluation\/engine\.js/);
   assert.match(app,/id="phase3Tabelle"/);
   assert.match(app,/timestampAnchor:'end', timestampAnchorEvidence:'assumed'/);
-  assert.match(app,/function setPdfButtonsDisabled\(disabled\)[\s\S]+?button\.disabled = true/);
+  assert.match(app,/setPdfButtonsDisabled\(!importModel \|\| !phase3Evaluation\)/);
+  assert.match(app,/button\.disabled=!!disabled/);
 });
