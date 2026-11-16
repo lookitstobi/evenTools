@@ -39,7 +39,7 @@
   }
   function weightedLeq(entries) {
     if (!entries.length) return null;
-    const max = Math.max(...entries.map(e => e.db));
+    const max = entries.reduce((best, entry) => Math.max(best, entry.db), -Infinity);
     const seconds = entries.reduce((sum, e) => sum + e.ms, 0) / 1000;
     if (!(seconds > 0)) return null;
     const relativeEnergy = entries.reduce((sum, e) => sum + e.ms / 1000 * Math.pow(10, (e.db - max) / 10), 0);
@@ -71,8 +71,8 @@
       blocks: [], overall: {laeqMaxDb: null, lcpeakMaxDb: null, comparisonLAeq: 'unknown', comparisonLCpeak: 'unknown'}
     };
 
-    const first = Math.min(...cleaned.map(v => v.startMs));
-    const last = Math.max(...cleaned.map(v => v.endMs));
+    const first = cleaned.reduce((best, interval) => Math.min(best, interval.startMs), Infinity);
+    const last = cleaned.reduce((best, interval) => Math.max(best, interval.endMs), -Infinity);
     const firstBlock = Math.floor(first / BLOCK_MS) * BLOCK_MS;
     const lastBlock = Math.ceil(last / BLOCK_MS) * BLOCK_MS;
     // Guard against malformed inputs accidentally generating an unbounded report.
@@ -126,7 +126,7 @@
       if (crossingBoundarySeconds > 1e-7) blockWarnings.push(issue('BOUNDARY_CROSSING', 'Intervall über Halbstundengrenze: Energie und Peak sind nicht exakt zuordenbar.'));
       const observedLaeqDb = overlapSeconds > 1e-7 || crossingBoundarySeconds > 1e-7 ? null : weightedLeq(energy);
       const observedLcpeakDb = overlapSeconds > 1e-7 || crossingBoundarySeconds > 1e-7 || !peaks.length
-        ? null : Math.max(...peaks.map(p => p.db));
+        ? null : peaks.reduce((best, peak) => Math.max(best, peak.db), -Infinity);
       const laeq30Db = fullCoverage && laeqCovered && !conflict ? observedLaeqDb : null;
       const lcpeakMaxDb = fullCoverage && peakCovered && !conflict ? observedLcpeakDb : null;
       const dataQuality = conflict ? 'conflict' : !fullCoverage || !laeqCovered || !peakCovered ? 'incomplete' : 'complete';
@@ -179,15 +179,22 @@
     return month === 9 ? 'DST_AMBIGUOUS' : 'DST_NONEXISTENT';
   }
 
-  function corrected(raw, column, definition, metric, issues) {
+  function corrected(raw, column, definition, metric, issues, issueKeys) {
     if (!finiteNumber(raw)) return null;
+    function note(code, message) {
+      const key = metric + ':' + code;
+      if (!issueKeys.has(key)) {
+        issueKeys.add(key);
+        issues.push(issue(code, message));
+      }
+    }
     if (!column || (column.correctionApplied !== true && column.correctionApplied !== false)) {
-      issues.push(issue('CORRECTION_ORIGIN_UNKNOWN', metric + ': Herkunft des Korrekturstatus ungeklärt.'));
+      note('CORRECTION_ORIGIN_UNKNOWN', metric + ': Herkunft des Korrekturstatus ungeklärt.');
       return null;
     }
     if (column.correctionApplied === true) return raw; // Never correct twice.
     if (!definition || !finiteNumber(definition.valueDb) || definition.valueSource === 'missing') {
-      issues.push(issue('CORRECTION_VALUE_MISSING', metric + ': noch nicht eingerechneter Korrekturwert fehlt.'));
+      note('CORRECTION_VALUE_MISSING', metric + ': noch nicht eingerechneter Korrekturwert fehlt.');
       return null;
     }
     return raw + definition.valueDb;
@@ -196,6 +203,7 @@
   function evaluateModel(model, options) {
     const opts = options || {};
     const problems = [];
+    const issueKeys = new Set();
     const anchor = opts.timestampAnchor;
     if (!model || model.schemaVersion !== 1 || !Array.isArray(model.samples) || model.quality?.status === 'rejected') {
       const failed = buildBlocks([]);
@@ -221,14 +229,18 @@
         problems.push(issue('INVALID_SAMPLE_TIME', 'Messzeile mit ungültigem Zeitstempel.', {sourceLine: sample.sourceLine}));
         continue;
       }
-      const dst = daylightIssue(stamp);
-      if (dst) problems.push(issue(dst, 'Europe/Berlin: Zeitstempel bei Zeitumstellung ohne Offset nicht eindeutig.', {sourceLine: sample.sourceLine}));
+      const zone = model.measurement?.timeZone;
+      const dst = (!zone || /Europe\/Berlin/i.test(zone)) ? daylightIssue(stamp) : null;
+      if (dst && !issueKeys.has(dst)) {
+        issueKeys.add(dst);
+        problems.push(issue(dst, 'Europe/Berlin: Zeitstempel bei Zeitumstellung ohne Offset nicht eindeutig.', {sourceLine: sample.sourceLine}));
+      }
       const startMs = anchor === 'end' ? stamp - dt : stamp;
       const endMs = startMs + dt;
       intervals.push({
         startMs, endMs, sourceLine: sample.sourceLine,
-        laeqDb: corrected(sample.values?.laeqDt, model.columns?.laeqDt, model.corrections?.k1, 'LAeq', problems),
-        lcpeakDb: corrected(sample.values?.lcpeak, model.columns?.lcpeak, model.corrections?.k2, 'LCpeak', problems)
+        laeqDb: corrected(sample.values?.laeqDt, model.columns?.laeqDt, model.corrections?.k1, 'LAeq', problems, issueKeys),
+        lcpeakDb: corrected(sample.values?.lcpeak, model.columns?.lcpeak, model.corrections?.k2, 'LCpeak', problems, issueKeys)
       });
     }
     const rawIssues = model.quality?.warnings || [];
