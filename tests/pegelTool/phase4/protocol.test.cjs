@@ -28,7 +28,7 @@ const model={
     laeqDt:{correctionApplied:true, column:'LAeq_dt+k1'},
     lcpeak:{correctionApplied:false,column:'LCpeak'}
   },
-  corrections:{k1:{valueDb:1.0,valueSource:'device-header'},k2:{valueDb:-0.5,valueSource:'device-header'}}
+  corrections:{k1:{valueDb:0,valueSource:'device-header'},k2:{valueDb:0,valueSource:'device-header'}}
 };
 const evaluation={
   blocks:[{start:'2026-11-16T18:00',end:'2026-11-16T18:30',dataQuality:'complete',
@@ -106,6 +106,24 @@ test('Technische Unvollständigkeit und fehlende Rohdaten sperren den Belegstatu
   assert.ok(hasIssue(r.evidenceIssues,'LOG_MISSING'));
   assert.ok(hasIssue(r.evidenceIssues,'BLOCKS_MISSING'));
 });
+test('Direktmessung mit nichtnull-Korrektur wird ausdrücklich geklärt',()=>{
+  const corrected=structuredClone(model);
+  corrected.corrections.k1.valueDb=1.4;
+  corrected.corrections.k2.valueDb=-1.0;
+  const r=protocol.validate(input({importModel:corrected}));
+  assert.ok(r.formIssues.some(x=>x.field==='k1Ermittlung'));
+  assert.ok(r.formIssues.some(x=>x.field==='k2Ermittlung'));
+  assert.ok(hasIssue(r.evidenceIssues,'DIRECT_CORRECTION_CONFLICT'));
+});
+test('Zeitpunkt und Reihenfolge der Kalibrierung werden geprüft',()=>{
+  const r=protocol.validate(input({form:{kalVorZeit:'2026-02-30T18:00',
+    kalNachZeit:'2026-11-16T13:00',datumMessung:'2026-13-16'}}));
+  assert.ok(r.formIssues.some(x=>x.field==='kalVorZeit'));
+  assert.ok(r.formIssues.some(x=>x.field==='datumMessung'));
+  const reversed=protocol.validate(input({form:{kalVorZeit:'2026-11-16T20:00',
+    kalNachZeit:'2026-11-16T19:00'}}));
+  assert.ok(hasIssue(reversed.formIssues,'CALIBRATION_TIME_ORDER'));
+});
 test('Lückenhafte Bewertungsblöcke sind keine gültigen Prüfnachweise',()=>{
   const r=protocol.validate(input({evaluation:{...evaluation,
     blocks:[{...evaluation.blocks[0],dataQuality:'incomplete'}]}}));
@@ -117,7 +135,7 @@ test('Berichtsdatenmodell erhält Quellen, Blöcke, getrennte Orte und Korrektur
   assert.equal(record.origins.datumMessung,'device-header');
   assert.equal(record.places.assessmentLAeq,completeForm.messortLAeq);
   assert.equal(record.places.assessmentLCpeak,completeForm.messortLCpeak);
-  assert.equal(record.corrections.k1.device.valueDb,1);
+  assert.equal(record.corrections.k1.device.valueDb,0);
   assert.equal(record.calibration.before.displayedDb,94);
   assert.equal(record.calibration.after.displayedDb,94.1);
   assert.equal(record.assessment.periods.length,1);
