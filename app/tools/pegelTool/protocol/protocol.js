@@ -54,9 +54,27 @@
     const n=Number(s.replace(',','.'));
     return Number.isFinite(n) ? n : null;
   };
-  const condition = function (rule, form, origins) {
+  const validDate = function (v) {
+    const s=trim(v);
+    if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s)) return false;
+    const d=new Date(s+'T12:00:00Z');
+    return Number.isFinite(d.getTime()) && d.toISOString().slice(0,10)===s;
+  };
+  const validDateTime = function (v) {
+    const s=trim(v);
+    const m=/^([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}):([0-9]{2})(?::([0-9]{2}))?$/.exec(s);
+    return !!m && validDate(m[1]) && Number(m[2])<24 && Number(m[3])<60 &&
+      (m[4]===undefined || Number(m[4])<60);
+  };
+  const condition = function (rule, form, origins, model) {
     if (rule.id === 'altBestaetigt') return Object.values(origins || {}).some(function (v) {return v === 'legacy-unverified';});
-    if (['ersatzMessort','k1Ermittlung','k2Ermittlung'].includes(rule.id)) return trim(form.messortTyp) === 'ersatz';
+    if (rule.id === 'ersatzMessort') return trim(form.messortTyp) === 'ersatz';
+    if (rule.id === 'k1Ermittlung' || rule.id === 'k2Ermittlung') {
+      if (trim(form.messortTyp) === 'ersatz') return true;
+      const kind = rule.id.slice(0,2);
+      const correction = model && model.corrections && model.corrections[kind];
+      return !!correction && Number.isFinite(correction.valueDb) && correction.valueDb !== 0;
+    }
     if (rule.id === 'abweichungBeschreibung') return trim(form.abweichungVorhanden) === 'ja';
     return rule.category === 'pflicht';
   };
@@ -70,7 +88,7 @@
     const fields=[];
     const formIssues=[];
     FIELD_RULES.forEach(function (rule) {
-      const required=condition(rule, form, origins);
+      const required=condition(rule, form, origins, model);
       const value=trim(form[rule.id]);
       const active=rule.category !== 'bedingt' || required;
       let valid=!required || value.length>0;
@@ -78,12 +96,17 @@
       if (required && rule.id === 'abweichungVorhanden') valid=['ja','nein'].includes(value);
       if (required && rule.id === 'messortTyp') valid=['direkt','ersatz'].includes(value);
       if (required && ['kalVorWert','kalNachWert'].includes(rule.id)) valid=number(value) !== null;
+      if (required && ['datumMessung','berichtDatum'].includes(rule.id)) valid=validDate(value);
+      if (required && ['kalVorZeit','kalNachZeit'].includes(rule.id)) valid=validDateTime(value);
       if (required && rule.id === 'ortAdresse' && value.length<6) valid=false;
       if (required && rule.id === 'location' && value === 'Eigene Angabe' && !trim(form.ortAdresse)) valid=false;
       if (required && !valid) formIssues.push(issue('FIELD_MISSING_OR_INVALID', rule.label+' fehlt oder ist unplausibel.',rule.id));
       fields.push({id:rule.id, category:rule.category, active:active, required:required, valid:valid,
         origin:trim(origins[rule.id]) || 'unbekannt'});
     });
+    if (validDateTime(form.kalVorZeit) && validDateTime(form.kalNachZeit) &&
+        trim(form.kalNachZeit)<trim(form.kalVorZeit))
+      formIssues.push(issue('CALIBRATION_TIME_ORDER','Prüfung nach der Messung liegt vor der Eingangsprüfung.','kalNachZeit'));
     if (trim(form.messortTyp)==='ersatz' && trim(form.messposition) === trim(form.messortLAeq) &&
         trim(form.messposition) === trim(form.messortLCpeak)) {
       formIssues.push(issue('REPLACEMENT_UNCLEAR','Ersatzmessort gewählt, aber alle Messorte sind identisch. Bitte klären.','messortTyp'));
@@ -113,6 +136,13 @@
       evidenceIssues.push(issue('TIMESTAMP_UNVERIFIED','Zeitstempel-Semantik des XL3 ist noch nicht belegt.'));
     if (model && !trim(model.measurement && model.measurement.timeZone))
       evidenceIssues.push(issue('TIMEZONE_UNVERIFIED','Messzeit-Zeitzone bzw. Offset nicht belegt.'));
+    if (trim(form.messortTyp)==='direkt' && model &&
+      ['k1','k2'].some(function (kind) {
+        return model.corrections && model.corrections[kind] &&
+          Number.isFinite(model.corrections[kind].valueDb) && model.corrections[kind].valueDb !== 0;
+      }))
+      evidenceIssues.push(issue('DIRECT_CORRECTION_CONFLICT',
+        'Direktmessort gewählt, aber im Log sind ungleich Null gesetzte Korrekturwerte enthalten. Anwendung klären.'));
     if (trim(form.messortTyp)==='ersatz' && model) {
       [['k1','laeqDt'],['k2','lcpeak']].forEach(function (pair) {
         const kind=pair[0], key=pair[1], correction=model.corrections && model.corrections[kind];
