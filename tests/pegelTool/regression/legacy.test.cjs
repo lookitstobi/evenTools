@@ -185,13 +185,15 @@ test('archived repository log: real-device parsing baseline (read-only)', () => 
   assert.equal(x.header.logIntervalSec,y.interval_sec);
 });
 
-test('PDF paths and vendor assets remain present (static contract only)', () => {
+test('PDF engine remains locally available; Phase-5 unified export replaces legacy paths', () => {
   for (const file of ['vendor/chart.umd.min.js','vendor/jspdf.umd.min.js','vendor/pdf-lib.min.js']) {
-    assert.ok(fs.existsSync(path.join(ROOT,'app/tools/pegelTool',file)),file);
+    assert.ok(fs.existsSync(path.join(ROOT, 'app/tools/pegelTool', file)), file);
   }
-  assert.match(APP, /async function generateTemplatePDF\(/);
-  assert.match(APP, /async function generateLegacyPDF\(/);
-  assert.match(APP, /pdf_template_api\.php\?action=get_active_template/);
+  assert.match(APP, /function generatePDF\(/);
+  assert.match(APP, /file=report\/pdf\.js/);
+  assert.match(APP, /file=report\/report\.js/);
+  assert.doesNotMatch(APP, /function generateLegacyPDF\(/);
+  assert.doesNotMatch(APP, /function generateTemplatePDF\(/);
   assert.match(APP, /function saveStateFile\(/);
   assert.match(APP, /function exportHTML\(/);
 });
