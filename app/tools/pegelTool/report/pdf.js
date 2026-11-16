@@ -111,7 +111,11 @@
       y+=maxLines*3.6+1;
       doc.setFontSize(7.1);
       doc.setTextColor(90);
-      for(const l of source){doc.text(printable(l),left+2,y);y+=3.4;}
+      for(const l of source){
+        if(y+3.4>H-bottom) {addPage();drawTableHeader();}
+        doc.setFont('helvetica','normal');doc.setFontSize(7.1);
+        doc.setTextColor(90);doc.text(printable(l),left+2,y);y+=3.4;
+      }
       doc.setTextColor(0);
       y+=2.5;
       doc.setDrawColor(222);
