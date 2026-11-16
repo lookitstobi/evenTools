@@ -1836,9 +1836,14 @@ function addChartImage(doc, chart, x, y, maxW, maxH, scale){
 }
 
 function setPdfButtonsDisabled(disabled){
+  // Phase 3 release guard: legacy PDF contents are not backed by the new engine.
+  // Keep both exports unavailable until Phase 5 explicitly replaces this guard.
   ['btnPdfTemplate', 'btnPdf'].forEach((id) => {
     const button = el(id);
-    if(button) button.disabled = disabled;
+    if(button){
+      button.disabled = true;
+      button.title = 'PDF-Ausgabe bis zum geprüften Messprotokoll in Phase 5 gesperrt';
+    }
   });
 }
 
