@@ -12,6 +12,7 @@
 <script src="/toolserve.php?name=pegelTool&file=protocol/protocol.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=report/report.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=report/pdf.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=ui/workflow.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -169,6 +170,52 @@ label.label-required::after{
   .icon-btn,.menu-item-btn,button{min-height:44px}
   .compact-row select,.compact-row input{min-width:100%}
 }
+
+/* Phase 6: single guided workspace, mobile-first and keyboard navigable. */
+html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+.header{position:relative;top:auto;min-height:60px;height:auto;padding:12px 24px}
+.workflow-shell{max-width:1180px;margin:18px auto 0;padding:0 20px}
+.workflow-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+.workflow-tab{min-width:0;min-height:69px;padding:11px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:6px;background:var(--primary-panel);color:var(--text);border:1px solid var(--border);border-radius:12px;line-height:1.25}
+.workflow-tab:hover{border-color:var(--accent)}
+.workflow-tab.is-active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--secondary-panel)}
+.workflow-tab:focus-visible,.workflow-actions button:focus-visible,.workflow-footer button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.workflow-tab-title{font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.workflow-tab-status{font-size:11px;font-weight:450;color:var(--text-secondary)}
+.workflow-overview{margin-top:15px;padding:15px 18px;background:var(--primary-panel);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:10px}
+.workflow-overall-status{display:block;font-size:18px}
+.workflow-overall-status[data-state="bad"]{color:var(--danger)}
+.workflow-overall-status[data-state="ok"]{color:var(--ok)}
+.workflow-norm-note{font-size:13px;color:var(--text-secondary);margin:8px 0}
+.workflow-issue-heading{font-size:13px;font-weight:700;margin:10px 0 3px}
+.workflow-issues{font-size:12px;line-height:1.5;padding-left:19px;margin:6px 0 0}
+#main.workflow-main{position:static;display:block;width:100%;max-width:1180px;margin:0 auto;padding:20px;box-sizing:border-box}
+.workflow-panel[hidden]{display:none!important}
+.workflow-panel-heading{margin-bottom:20px}
+.workflow-panel-heading h2{font-size:24px;margin:0 0 6px}
+.workflow-description,.workflow-inline-status{color:var(--text-secondary);line-height:1.5;font-size:14px}
+.workflow-description{margin:0}
+.workflow-inline-status{margin:14px 0}
+.workflow-notice{margin:0 0 18px;padding:12px 16px;background:var(--primary-panel);border-left:3px solid var(--warn);font-size:14px}
+.workflow-actions,.workflow-footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+.workflow-footer{justify-content:space-between;padding:3px 0 35px}
+.workflow-footer button{min-height:44px}
+#main.workflow-main .section{box-shadow:none}
+#main.workflow-main #phase5ReportPreview{max-width:100%}
+#main.workflow-main #phase5ReportPreview .report-preview-wrap{max-height:none}
+@media(max-width:900px){
+  .workflow-shell{padding:0 12px}
+  .workflow-nav{display:flex;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:5px}
+  .workflow-tab{flex:0 0 155px;scroll-snap-align:start;min-height:64px}
+  #main.workflow-main{padding:16px 12px}
+  .workflow-panel-heading h2{font-size:21px}
+  .header{padding:10px 12px}
+}
+@media(max-width:600px){
+  .workflow-actions button,.workflow-footer button{flex:1 1 100%;width:100%}
+  .workflow-overview{padding:12px}
+  .workflow-overall-status{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -203,8 +250,8 @@ label.label-required::after{
 </header>
 <div id="main">
   <div id="leftColumn">
-    <div class="section">
-      <h3>Pegel</h3>
+    <div class="section" data-workflow-section="metrics">
+      <h3>Technische Messwertübersicht (keine DIN-Freigabe)</h3>
       <div class="table-wrap">
         <table class="table" id="pegelTabelle">
           <thead>
@@ -222,7 +269,7 @@ label.label-required::after{
       <div class="small mt-6" id="chartInfo"></div>
     </div>
 
-    <div class="section">
+    <div class="section" data-workflow-section="blocks">
       <h3>30-Minuten-Auswertung (vorläufig)</h3>
       <div class="small mt-6" id="phase3Info">Noch keine Auswertung. Der Normenabgleich aus Phase 0 steht aus.</div>
       <div class="table-wrap mt-8">
@@ -236,8 +283,8 @@ label.label-required::after{
       <div class="small mt-8" id="phase3Warning">Alle Werte sind technische Zwischenstände, keine DIN-Freigabe.</div>
     </div>
 
-    <div class="section">
-      <h3>Diagramme (Vorschau)</h3>
+    <div class="section" data-workflow-section="charts">
+      <h3>Zusatzanalyse – gleitende Messwerte (informativ)</h3>
       <div class="grid-2 panel-grid-spaced">
         <div>
           <div class="small" id="laeqChartLabel">LAeq_g30 mit Grenzwert 99 dB(A)</div>
@@ -250,8 +297,8 @@ label.label-required::after{
       </div>
     </div>
 
-    <div class="section">
-      <h3>Log Daten (automatisch)</h3>
+    <div class="section" data-workflow-section="log">
+      <h3>XL3-Gerätedaten (automatisch)</h3>
       <div class="grid-2">
         <div><label>Start der Messung</label><input id="startMessung" readonly /></div>
         <div><label>Ende der Messung</label><input id="endeMessung" readonly /></div>
@@ -281,7 +328,7 @@ label.label-required::after{
 
   </div>
   <div id="rightColumn">
-    <div class="section" id="protocolReview" aria-live="polite">
+    <div class="section" id="protocolReview" data-workflow-section="review" aria-live="polite">
       <h3>Messprotokoll – Angaben & Nachweise</h3>
       <div class="small mt-8">Feldklassen Pflicht / bedingt / optional sind ein vorläufiger Arbeitsstand.
       Der Originaltext der DIN 15905-5:2022-07 ist noch nicht abschließend abgeglichen.
@@ -290,12 +337,12 @@ label.label-required::after{
       <div class="small" id="protocolEvidenceStatus">Messnachweise: offen.</div>
       <ul class="protocol-problems" id="protocolIssues"></ul>
     </div>
-    <details class="section" id="phase5ReportPreview">
+    <details class="section" id="phase5ReportPreview" data-workflow-section="preview">
       <summary>Messbericht – Vorschau des PDF-Inhalts</summary>
       <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Auch ein unvollständiger Bericht bleibt ausdrücklich „Nicht beurteilbar“.</p>
       <div id="reportPreviewContent" class="report-preview-wrap" aria-live="polite"></div>
     </details>
-    <div class="section grid-2">
+    <div class="section grid-2" data-workflow-section="eventAndEvidence">
       <div>
         <label>Veranstaltung (Name)</label>
         <input id="eventName" placeholder="z.B. Verstärktes Musical" tabindex="1" autofocus />
@@ -383,7 +430,7 @@ label.label-required::after{
       </div>
     </div>
 
-    <div class="section grid-2">
+    <div class="section grid-2" data-workflow-section="description">
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
         <textarea id="organisator" class="min-h-140" placeholder="Veranstalter mit Ansprechpartner / Adresse"></textarea>
@@ -394,7 +441,7 @@ label.label-required::after{
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" data-workflow-section="signature">
       <h3>Unterschrift</h3>
       <div class="grid-2">
         <div>
@@ -412,7 +459,7 @@ label.label-required::after{
       <div class="signature-box"></div>
     </div>
 
-    <div class="section">
+    <div class="section" data-workflow-section="pa">
       <div class="compact-row row-between">
         <h3 class="heading-reset">PA Setup</h3>
         <div class="small" id="paPresetInfo"></div>
@@ -443,7 +490,7 @@ label.label-required::after{
         <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
       </div>
     </div>
-    <div class="section">
+    <div class="section" data-workflow-section="corrections">
       <h3>Ersatzmessort und Korrekturbestimmung</h3>
       <div class="small mt-8">Bei Ersatzmessorten bedingt erforderlich. k1/k2 aus dem XL3-Log
       werden unverändert übernommen; diese Angaben verändern die Berechnungsengine nicht.
@@ -468,6 +515,7 @@ let lastLogFileName = '';
 let logLoaded = false;
 let importModel = null; // Versioned Phase-2 model; no normative judgement.
 let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
+let workflowController = null; // Phase 6 view controller; never changes normative results.
 let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
 let reservedPdfPreviewWindow = null;
 
@@ -804,6 +852,7 @@ function applySavedState(rawState, options = {}){
   if(state.recoveryPartial) setText('parseInfo', 'Nur Formulardaten wiederhergestellt – Messdaten fehlen; erneuter Import erforderlich.');
   else if(state.migratedFrom) setText('parseInfo', 'Altes Projekt geladen: Herkunftsnachweis fehlt. Für eine nachvollziehbare Auswertung das Original-XL3-Log neu importieren.');
   else if(importModel) showImportQuality(importModel);
+  if(workflowController) workflowController.go(importModel ? 'quality' : 'import');
   if(options.persistRecovery !== false) scheduleRecoverySave();
 }
 
@@ -1110,6 +1159,7 @@ function markRequiredFields(){
     }
   }
   renderReportPreview();
+  if(workflowController) workflowController.refresh();
 }
 
 function splitLines(text){
@@ -2189,6 +2239,7 @@ el('fileInput').addEventListener('change', (e)=>{
       markRequiredFields();
       calculateAndRender();
       showImportQuality(importModel);
+      if(workflowController) workflowController.go('quality');
       scheduleRecoverySave();
     }catch(err){
       console.error(err);
@@ -2208,6 +2259,23 @@ el('fileInput').addEventListener('change', (e)=>{
   setPdfButtonsDisabled(true);
   markRequiredFields();
   updateRecoveryButton();
+  if(window.PegelToolWorkflow){
+    workflowController=window.PegelToolWorkflow.mount({
+      document,
+      getSnapshot:()=>{
+        const record=getProtocolReportData();
+        return {importModel,evaluation:phase3Evaluation,record,review:record && record.review,
+          logFileName:lastLogFileName,
+          canExport:!!importModel && !!phase3Evaluation && !el('btnPdfTemplate').disabled};
+      },
+      onActivate:(step)=>{
+        if(step==='assessment') requestAnimationFrame(()=>{
+          if(chartLAeq) chartLAeq.resize();
+          if(chartLCpeak) chartLCpeak.resize();
+        });
+      }
+    });
+  }
   window.addEventListener('beforeunload', persistRecoveryState);
   window.addEventListener('pagehide', persistRecoveryState);
 })();
