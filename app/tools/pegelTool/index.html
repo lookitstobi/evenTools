@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XL3 DIN 15905-5 Messbericht</title>
+<title>XL3 Messprotokoll (vorläufig, keine DIN-Freigabe)</title>
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
 <script src="/toolserve.php?name=pegelTool&file=import/nti-xl3.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=evaluation/engine.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=protocol/protocol.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=report/report.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=report/pdf.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -144,6 +146,15 @@ label.label-required::after{
 .protocol-problems li{margin:3px 0}
 .protocol-problems strong{color:var(--text)}
 .protocol-summary{margin:8px 0;color:var(--text)}
+.report-notice{border-left:3px solid var(--warn);padding:10px 14px;background:var(--secondary-panel);margin:10px 0}
+.report-notice p{margin:8px 0 0;font-size:13px}
+.report-fields{display:grid;grid-template-columns:minmax(110px,37%) 1fr;gap:6px 12px;font-size:12px;margin:8px 0 18px}
+.report-fields dt{color:var(--text-secondary)}
+.report-fields dd{margin:0;overflow-wrap:anywhere}
+.report-fields small{display:block;color:var(--text-secondary)}
+.report-preview-wrap{max-height:70vh;overflow:auto}
+.report-preview-wrap h4{margin:18px 0 8px}
+@media(max-width:600px){.report-fields{grid-template-columns:1fr}.report-fields dd{margin-bottom:7px}}
 .hidden-file{display:none}
 .chips-offset{margin-left:16px}
 .mt-6{margin-top:6px}
@@ -167,7 +178,7 @@ label.label-required::after{
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messbericht als PDF mit der aktuellen Vorlage exportieren">PDF exportieren</button>
+      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Technisches Messprotokoll mit offenem DIN-Freigabestatus als PDF exportieren">PDF exportieren (vorläufig)</button>
       <button id="btnRecover" class="icon-btn subtle" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung laden</button>
     </div>
     <div class="header-secondary-actions">
@@ -175,7 +186,6 @@ label.label-required::after{
         <summary class="icon-btn subtle menu-trigger" title="Erweiterte Export- und Projektaktionen anzeigen">Erweitert</summary>
         <div class="header-dropdown">
           <div class="menu-list">
-            <button id="btnPdf" class="menu-item-btn" type="button" disabled title="Messbericht mit dem Legacy-PDF-Generator exportieren">PDF exportieren (Legacy)</button>
             <button id="btnExportHtml" class="menu-item-btn" type="button" title="Erstellt eine lokal oeffenbare HTML-Datei mit dem aktuellen Stand, die spaeter auch wieder geladen werden kann.">Projekt speichern (HTML)</button>
             <button id="btnSaveState" class="menu-item-btn" type="button" title="Speichert Log, Diagramme und Eingaben als bearbeitbare Projektdatei fuer spaeteres Weiterarbeiten.">Projekt speichern (JSON)</button>
             <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Projekt laden (JSON)</button>
@@ -280,6 +290,11 @@ label.label-required::after{
       <div class="small" id="protocolEvidenceStatus">Messnachweise: offen.</div>
       <ul class="protocol-problems" id="protocolIssues"></ul>
     </div>
+    <details class="section" id="phase5ReportPreview">
+      <summary>Messbericht – Vorschau des PDF-Inhalts</summary>
+      <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Auch ein unvollständiger Bericht bleibt ausdrücklich „Nicht beurteilbar“.</p>
+      <div id="reportPreviewContent" class="report-preview-wrap" aria-live="polite"></div>
+    </details>
     <div class="section grid-2">
       <div>
         <label>Veranstaltung (Name)</label>
@@ -1041,6 +1056,18 @@ function getProtocolReportData(){
     evaluation:phase3Evaluation
   });
 }
+function getPhase5Report(){
+  if(!window.PegelToolReport) return null;
+  const source = getProtocolReportData();
+  return source ? window.PegelToolReport.build(source, {sourceFileName:lastLogFileName}) : null;
+}
+function renderReportPreview(){
+  const container = el('reportPreviewContent');
+  if(!container) return;
+  const report = getPhase5Report();
+  container.innerHTML = report ? window.PegelToolReport.renderHtml(report) :
+    '<p>Berichtsmodul nicht verfügbar.</p>';
+}
 function markRequiredFields(){
   const report = getProtocolReportData();
   if(!report) return;
@@ -1082,6 +1109,7 @@ function markRequiredFields(){
       issues.appendChild(li);
     }
   }
+  renderReportPreview();
 }
 
 function splitLines(text){
@@ -1775,7 +1803,7 @@ function renderPhase3Evaluation(result){
     .concat(result.blocks.flatMap(b => b.warnings.map(w => w.code))))];
   setText('phase3Warning', '* Vollständig bedeutet nur: Datenabdeckung vorhanden, ' +
     'nicht DIN-konform. Offene Nachweise: ' + (codes.slice(0, 8).join(', ') || 'Normenfreigabe') +
-    (codes.length > 8 ? ' …' : '') + '. PDF-Ausgabe bis Phase 5 gesperrt.');
+    (codes.length > 8 ? ' …' : '') + '. Das PDF bleibt ausdrücklich vorläufig.');
 }
 function calculateAndRender(){
   const tbody = document.querySelector('#pegelTabelle tbody');
@@ -1821,9 +1849,8 @@ function calculateAndRender(){
     ' (je Punkt ~' + ds.bucketSize*(header.logIntervalSec||1) + 's).');
   renderCharts();
   updateComplianceStatus();
-  // Existing PDFs still use the legacy, non-normative summary calculation.
-  // Do not create a misleading DIN document before Phase 5 replaces this path.
-  setPdfButtonsDisabled(true);
+  // Phase 5 exports only the technical report from the canonical Phase-4 record.
+  setPdfButtonsDisabled(!importModel || !phase3Evaluation);
   markRequiredFields();
 }
 
@@ -1993,871 +2020,37 @@ function addChartImage(doc, chart, x, y, maxW, maxH, scale){
 }
 
 function setPdfButtonsDisabled(disabled){
-  // Phase 3 release guard: legacy PDF contents are not backed by the new engine.
-  // Keep both exports unavailable until Phase 5 explicitly replaces this guard.
-  ['btnPdfTemplate', 'btnPdf'].forEach((id) => {
-    const button = el(id);
-    if(button){
-      button.disabled = true;
-      button.title = 'PDF-Ausgabe bis zum geprüften Messprotokoll in Phase 5 gesperrt';
-    }
-  });
+  const button=el('btnPdfTemplate');
+  if(!button) return;
+  button.disabled=!!disabled || !window.PegelToolReport || !window.PegelToolReportPdf || !window.jspdf?.jsPDF;
+  button.title=button.disabled
+    ? 'PDF nur mit importiertem Log und geladenem Berichtsmodul verfügbar'
+    : 'Vorläufigen technischen Bericht als PDF herunterladen (keine DIN-Freigabe)';
 }
 
-// Konvertiert mm in PDF-Punkte (1mm = 72/25.4 pt).
-function mmToPt(mm){ return mm * 72 / 25.4; }
-
-async function generateTemplatePDF(){
-  const PDFLib = window.PDFLib;
-  if(!PDFLib){
-    alert('pdf-lib konnte nicht geladen werden.');
-    return;
-  }
-
-  // 1. Aktive Vorlage laden.
-  setPdfButtonsDisabled(true);
-  let templateMeta = null;
-  try{
-    const metaRes = await fetch('/pdf_template_api.php?action=get_active_template&tool_key=pegelTool',
-      { credentials: 'same-origin' });
-    if(metaRes.ok){
-      const metaJson = await metaRes.json();
-      if(metaJson.ok && metaJson.template) templateMeta = metaJson.template;
-    }
-  }catch(e){ /* Netzwerkfehler → Legacy-Fallback */ }
-
-  if(!templateMeta){
-    // Kein Template zugewiesen → Legacy-PDF.
-    setPdfButtonsDisabled(false);
-    await generateLegacyPDF();
-    return;
-  }
-
-  // 2. PDF-Bytes holen.
-  let pdfBytes = null;
-  try{
-    const pdfRes = await fetch(
-      '/pdf_template_api.php?action=get_pdf&id=' + templateMeta.id + '&tool_key=pegelTool',
-      { credentials: 'same-origin' }
-    );
-    if(pdfRes.ok) pdfBytes = await pdfRes.arrayBuffer();
-  }catch(e){ /* Laden fehlgeschlagen */ }
-
-  if(!pdfBytes){
-    setPdfButtonsDisabled(false);
-    alert('Vorlage konnte nicht geladen werden. Fallback auf Legacy-PDF.');
-    await generateLegacyPDF();
-    return;
-  }
-
-  // 3. Messdaten-Mapping (identisch zu payloadData, aber nur Strings).
-  const formatLevel = (value, unit) => {
-    const n = Number(value);
-    if(!Number.isFinite(n)) return '—';
-    return n.toFixed(1) + ' ' + unit;
-  };
-
-  const complianceStatus = (value, limit) => {
-    const n = Number(value);
-    if(!Number.isFinite(n)) return '—';
-    return n > limit ? 'NEGATIV' : 'OK';
-  };
-
-  const paItems = collectPAItems();
-
-  // Überschreitungsdauern und lauteste Werte für Template-Variablen
-  const excLAeqSec    = samples.length ? countExceedDuration(samples.map(s => s.LAeq_dt).filter(v => v != null), LIMIT_LAEQ_30) : 0;
-  const excLAeqG5Sec  = samples.length ? countExceedDuration(samples.map(s => s.LAeq_g5).filter(v => v != null), LIMIT_LAEQ_30) : 0;
-  const excLAeqG30Sec = samples.length ? countExceedDuration(samples.map(s => s.LAeq_g30).filter(v => v != null), LIMIT_LAEQ_30) : 0;
-  const excLCpeakSec  = samples.length ? countExceedDuration(samples.map(s => s.LCpk).filter(v => v != null), LIMIT_LCPEAK) : 0;
-  const laeqTotalVal = (summary && summary.laeq_total != null)
-    ? summary.laeq_total
-    : calcEnergyAvgDb(samples.map(s=>s.LAeq_dt));
-  const laeqG5Val = (summary && summary.laeq_g5 != null)
-    ? summary.laeq_g5
-    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAeq_g5).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
-  const laeqG30Val = (summary && summary.laeq_g30 != null)
-    ? summary.laeq_g30
-    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAeq_g30).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
-  const laeqMaxVal = samples.length
-    ? (()=>{ const vals = samples.map(s=>s.LAeq_dt).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })()
-    : null;
-  const lcPeakVal = (summary && summary.lcpeak_max != null)
-    ? summary.lcpeak_max
-    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LCpk).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
-
-  const data = {
-    project_name:         getVal('eventName').trim(),
-    measurement_date:     getVal('datumMessung').trim() || getVal('berichtDatum').trim(),
-    operator_name:        getVal('messungVon').trim() || getVal('berichtName').trim(),
-    result_laeq:          formatLevel(laeqTotalVal, 'dB(A)'),
-    result_laeq_g30:      formatLevel(laeqG30Val, 'dB(A)'),
-    result_laf:           formatLevel(laeqG5Val, 'dB(A)'),
-    result_laeq_g5:       formatLevel(laeqG5Val, 'dB(A)'),
-    result_peak:          formatLevel(lcPeakVal, 'dB(C)'),
-    result_laeq_status:   complianceStatus(laeqTotalVal, 99),
-    result_laf_status:    complianceStatus(laeqG5Val, 99),
-    result_laeq_g5_status: complianceStatus(laeqG5Val, 99),
-    result_laeq_g30_status: complianceStatus(laeqG30Val, 99),
-    result_peak_status:   complianceStatus(lcPeakVal, 135),
-    customer:             getVal('foh').trim(),
-    location:             getVal('location').trim(),
-    environment:          getVal('umwelt').trim(),
-    measurement_position: getVal('messposition').trim(),
-    loudest_position:     getVal('lautestePosition').trim(),
-    organiser:            getVal('organisator').trim(),
-    description:          getVal('beschreibung').trim(),
-    report_date:          getVal('berichtDatum').trim(),
-    report_name:          getVal('berichtName').trim(),
-    report_city:          getVal('berichtsort').trim(),
-    device_model:         getVal('messgeraet').trim(),
-    device_sn:            getVal('messgeraetSN').trim(),
-    calibrator_model:     getVal('kalibratorModell').trim(),
-    calibrator_sn:        getVal('kalibratorSN').trim(),
-    firmware:             getVal('firmware').trim(),
-    log_interval:         getVal('logInterval').trim(),
-    start_measurement:    getVal('startMessung').trim(),
-    end_measurement:      getVal('endeMessung').trim(),
-    kset_date:            getVal('kset').trim(),
-    correction_k1:        getVal('k1').trim() ? getVal('k1').trim() + ' dB(A)' : '',
-    correction_k2:        getVal('k2').trim() ? getVal('k2').trim() + ' dB(C)' : '',
-    pa_setup:             getPASetupInline(),
-    microphone:           getVal('mikrofon').trim(),
-    mic_type:             header.micType || '',
-    mic_sn:               header.micSN || '',
-    mic_sensitivity:      getVal('mikroSens').trim(),
-    mic_calibration_date: getVal('micCal').trim(),
-    param_name_1:         'LAeq_g30',
-    param_name_2:         'LAeq_g5',
-    param_name_3:         'LCpeak',
-    limit_laeq:           LIMIT_LAEQ_30 + ' dB(A)',
-    limit_laeq_g30:       LIMIT_LAEQ_30 + ' dB(A)',
-    limit_laeq_g5:        LIMIT_LAEQ_30 + ' dB(A)',
-    limit_lcpeak:         LIMIT_LCPEAK  + ' dB(C)',
-    exceedance_laeq:      secondsToHMS(excLAeqSec),
-    exceedance_laeq_g30:  secondsToHMS(excLAeqG30Sec),
-    exceedance_laf:       secondsToHMS(excLAeqG5Sec),
-    exceedance_laeq_g5:   secondsToHMS(excLAeqG5Sec),
-    exceedance_lcpeak:    secondsToHMS(excLCpeakSec),
-    result_laeq_max:      formatLevel(laeqMaxVal, 'dB(A)'),
-    result_laf_max:       formatLevel(laeqG5Val, 'dB(A)'),
-    result_laeq_g5_max:   formatLevel(laeqG5Val, 'dB(A)'),
-    result_lcpeak_max:    formatLevel(lcPeakVal, 'dB(C)'),
-  };
-
-  // PA-Einzelpositionen (bis zu 8)
-  for(let i = 0; i < 8; i++){
-    const item  = paItems[i];
-    const label = item ? (item.type === '__custom__' ? (item.customType || '?') : item.type) : '';
-    data[`pa_item_${i + 1}`] = item && label ? `${item.qty ?? '?'} × ${label}` : '';
-  }
-
-  // 4. Hintergrund-PDF laden und Felder einblenden.
-  try{
-    const bgDoc = await PDFLib.PDFDocument.load(pdfBytes);
-
-    // Felder aufteilen: AcroForm-Text, AcroForm-Diagramm, Koordinaten-Bild, Koordinaten-Text.
-    const allFields       = Array.isArray(templateMeta.fields) ? templateMeta.fields : [];
-    const acroFields      = allFields.filter(f => f.mode === 'acro');
-    const imageFields     = allFields.filter(f => f.mode === 'image');
-    const coordFields     = allFields.filter(f => (f.mode || '') !== 'acro' && (f.mode || '') !== 'image');
-
-    const CHART_VAR_KEYS  = new Set(['chart_laeq_image', 'chart_laeq_g30_image', 'chart_lcpeak_image']);
-    const acroTextFields  = acroFields.filter(f => !CHART_VAR_KEYS.has(f.field));
-    const acroChartFields = acroFields.filter(f =>  CHART_VAR_KEYS.has(f.field));
-
-    // Positionen der Diagramm-AcroFelder VOR dem Flatten einsammeln.
-    const acroChartPositions = [];
-    if(acroChartFields.length){
-      try{
-        const bgPages    = bgDoc.getPages();
-        const acroForm   = bgDoc.getForm();
-        const allAcroFld = acroForm.getFields();
-        for(const entry of acroChartFields){
-          try{
-            const pdfField = allAcroFld.find(f => f.getName() === entry.acro_field_name);
-            if(!pdfField) continue;
-            const widgets  = pdfField.acroField.getWidgets();
-            if(!widgets.length) continue;
-            const widget   = widgets[0];
-            const rect     = widget.getRectangle();
-            let pageIndex  = 0;
-            try{
-              const pRef = widget.dict.get(PDFLib.PDFName.of('P'));
-              if(pRef && pRef.objectNumber != null){
-                const idx = bgPages.findIndex(p => p.ref.objectNumber === pRef.objectNumber);
-                if(idx >= 0) pageIndex = idx;
-              }
-            }catch(_){}
-            acroChartPositions.push({ field: entry.field, pageIndex, rect });
-          }catch(e){ console.warn('Diagramm-AcroFeld nicht lesbar:', entry.acro_field_name, e); }
-        }
-      }catch(e){}
-    }
-
-    // AcroForm-Textfelder befüllen und gesamtes Formular flatten.
-    if(acroTextFields.length || acroChartFields.length){
-      try{
-        const form = bgDoc.getForm();
-        for(const f of acroTextFields){
-          const value = String(data[f.field] ?? '');
-          if(!value || !f.acro_field_name) continue;
-          try{
-            const field = form.getTextField(f.acro_field_name);
-            field.setText(value);
-            const rawSz = Number(f.size_pt) || 10;
-            field.setFontSize(Math.max(1, rawSz - 2));
-          }catch(e){ /* Feld nicht vorhanden oder falscher Typ – ignorieren */ }
-        }
-        form.flatten();
-      }catch(e){ /* Kein AcroForm in diesem PDF – ignorieren */ }
-    }
-
-    const outDoc = await PDFLib.PDFDocument.create();
-
-    // Alle Seiten aus Hintergrund-PDF kopieren (mit gefüllten AcroForm-Feldern).
-    const pageIndices = bgDoc.getPageIndices();
-    const copiedPages = await outDoc.copyPages(bgDoc, pageIndices);
-    copiedPages.forEach(p => outDoc.addPage(p));
-
-    // Standard-Fonts laden (in pdf-lib eingebaut, kein Download).
-    const fontMap = {
-      regular: await outDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-      bold:    await outDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
-    };
-
-    // Koordinaten-Felder als Text einblenden.
-    for(const f of coordFields){
-      const pageIdx = Math.max(0, (f.page || 1) - 1);
-      if(pageIdx >= outDoc.getPageCount()) continue;
-
-      const page = outDoc.getPage(pageIdx);
-      const { height: pageHeight } = page.getSize();
-
-      const value = String(data[f.field] ?? '');
-      if(!value) continue;
-
-      // Farbe: Status-Felder automatisch einfärben, neutrale Texte etwas weicher setzen.
-      let color = PDFLib.rgb(96 / 255, 96 / 255, 96 / 255);
-      if(f.field && f.field.endsWith('_status')){
-        if(value === 'OK')           color = PDFLib.rgb(0.08, 0.65, 0.42); // grün
-        else if(value === 'NEGATIV') color = PDFLib.rgb(1.0,  0.39, 0.18); // rot
-      } else {
-        const hex = String(f.color || '#000000');
-        if(/^#[0-9a-fA-F]{6}$/.test(hex)){
-          const r = parseInt(hex.slice(1, 3), 16) / 255;
-          const g = parseInt(hex.slice(3, 5), 16) / 255;
-          const b = parseInt(hex.slice(5, 7), 16) / 255;
-          const isNearBlack = r <= 0.08 && g <= 0.08 && b <= 0.08;
-          color = isNearBlack ? PDFLib.rgb(96 / 255, 96 / 255, 96 / 255) : PDFLib.rgb(r, g, b);
-        }
-      }
-
-      // Ausrichtung.
-      let textAlign = PDFLib.TextAlignment.Left;
-      if(f.align === 'center') textAlign = PDFLib.TextAlignment.Center;
-      else if(f.align === 'right')  textAlign = PDFLib.TextAlignment.Right;
-
-      const rawSizePt = Number(f.size_pt) || 10;
-      const sizePt = Math.max(1, rawSizePt - 2);
-      const xPt = mmToPt(Number(f.x_mm) || 0);
-      // PDF-Koordinatenursprung ist unten-links; Y von oben umrechnen.
-      const yPt = pageHeight - mmToPt(Number(f.y_mm) || 0) - sizePt;
-
-      page.drawText(value, {
-        x: xPt,
-        y: yPt,
-        size: sizePt,
-        font: fontMap.regular,
-        color: color,
-      });
-    }
-
-    // Bild-Felder einblenden (Koordinaten-Modus und AcroForm-Positionen).
-    const chartCanvasMap = {
-      chart_laeq_image:   chartLAeq   ? document.getElementById('chartLAeq')   : null,
-      chart_laeq_g30_image: chartLAeq ? document.getElementById('chartLAeq')   : null,
-      chart_lcpeak_image: chartLCpeak ? document.getElementById('chartLCpeak') : null,
-    };
-
-    // Koordinaten-basierte Bild-Felder.
-    for(const f of imageFields){
-      const canvas = chartCanvasMap[f.field] || null;
-      if(!canvas) continue;
-      const pageIdx = Math.max(0, (f.page || 1) - 1);
-      if(pageIdx >= outDoc.getPageCount()) continue;
-      try{
-        applyChartTheme('light');
-        const pngDataUrl = canvas.toDataURL('image/png');
-        applyChartTheme('dark');
-        const base64 = pngDataUrl.split(',')[1];
-        const binStr = atob(base64);
-        const bytes  = new Uint8Array(binStr.length);
-        for(let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-        const pdfImg = await outDoc.embedPng(bytes);
-        const page   = outDoc.getPage(pageIdx);
-        const { height: pageH } = page.getSize();
-        const xPt = mmToPt(Number(f.x_mm) || 0);
-        const wPt = mmToPt(Number(f.w_mm) || 100);
-        const hPt = mmToPt(Number(f.h_mm) || 70);
-        const yPt = pageH - mmToPt(Number(f.y_mm) || 0) - hPt;
-        page.drawImage(pdfImg, { x: xPt, y: yPt, width: wPt, height: hPt });
-      }catch(e){
-        console.warn('Bild-Feld konnte nicht gezeichnet werden:', f.field, e);
-      }
-    }
-
-    // AcroForm-basierte Diagramm-Felder (Position aus Formular-Rechteck).
-    for(const pos of acroChartPositions){
-      const canvas = chartCanvasMap[pos.field] || null;
-      if(!canvas) continue;
-      if(pos.pageIndex >= outDoc.getPageCount()) continue;
-      try{
-        applyChartTheme('light');
-        const pngDataUrl = canvas.toDataURL('image/png');
-        applyChartTheme('dark');
-        const base64 = pngDataUrl.split(',')[1];
-        const binStr = atob(base64);
-        const bytes  = new Uint8Array(binStr.length);
-        for(let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-        const pdfImg = await outDoc.embedPng(bytes);
-        const page   = outDoc.getPage(pos.pageIndex);
-        page.drawImage(pdfImg, {
-          x:      pos.rect.x,
-          y:      pos.rect.y,
-          width:  pos.rect.width,
-          height: pos.rect.height,
-        });
-      }catch(e){
-        console.warn('AcroForm-Diagramm konnte nicht eingefügt werden:', pos.field, e);
-      }
-    }
-
-    const mainBytes = await outDoc.save();
-    const templateHasEmbeddedCharts = imageFields.some(f => CHART_VAR_KEYS.has(f.field)) || acroChartFields.length > 0;
-
-    // 5. Fallback: Nur bei alten Vorlagen ohne eigene Chart-Felder eine Charts-Seite anhängen.
-    const buildChartsPagePdf = () => {
-      const jsPDFRef = window.jspdf?.jsPDF;
-      if (!jsPDFRef) return null;
-      if (!chartLAeq && !chartLCpeak) return null;
-
-    const doc = new jsPDFRef({ unit: 'mm', format: 'a4' });
-    const M = 12;
-    const pageW = 210 - 2 * M;
-
-    const drawHeader = () => {
-      doc.setDrawColor(200, 200, 200);
-      doc.line(M, 24, M + pageW, 24);
-      doc.setTextColor(50, 50, 50);
-      doc.setFontSize(16);
-      doc.setFont(undefined, 'bold');
-      doc.text('Messverlauf', M + 2, 12);
-      doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
-      const ev = getVal('eventName').trim() || '(unbenannt)';
-      doc.text(`Veranstaltung: ${ev}`, M + 2, 20);
-    };
-
-    const drawFooter = () => {
-      const pageH = doc.internal.pageSize.getHeight();
-      const footerTextY = pageH - 10;
-      const footerRuleY = footerTextY - 4;
-      doc.setDrawColor(225, 225, 225);
-      doc.line(M, footerRuleY, M + pageW, footerRuleY);
-      doc.setFontSize(9);
-      doc.setTextColor(150, 150, 150);
-      doc.text('Diagramme', M, footerTextY);
-      const dateText = `Erstellt: ${new Date().toLocaleDateString('de-DE')}`;
-      doc.text(dateText, M + pageW - doc.getTextWidth(dateText), footerTextY);
-    };
-
-    drawHeader();
-    let y = 31;
-
-    if (chartLAeq) {
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('LAeq_g30 mit Grenzwert 99 dB(A)', M, y);
-      const h = addChartImage(doc, chartLAeq, M, y + 5, pageW, 96, 2);
-      y += h + 14;
-    }
-
-    if (chartLCpeak) {
-      if (y + 112 > 280) {
-        drawFooter();
-        doc.addPage();
-        drawHeader();
-        y = 31;
-      }
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
-      addChartImage(doc, chartLCpeak, M, y + 5, pageW, 96, 2);
-    }
-
-    const totalPages = doc.getNumberOfPages();
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      doc.setPage(pageNum);
-      drawFooter();
-    }
-
-    return doc.output('arraybuffer');
-  };
-
-  const mergePdfBuffers = async (firstBuffer, secondBuffer) => {
-    const PDFDocument = window.PDFLib?.PDFDocument;
-    if (!PDFDocument) {
-      return firstBuffer;
-    }
-
-    const out = await PDFDocument.create();
-
-    const first = await PDFDocument.load(firstBuffer);
-    const firstPages = await out.copyPages(first, first.getPageIndices());
-    firstPages.forEach((p) => out.addPage(p));
-
-    if (secondBuffer) {
-      const second = await PDFDocument.load(secondBuffer);
-      const secondPages = await out.copyPages(second, second.getPageIndices());
-      secondPages.forEach((p) => out.addPage(p));
-    }
-
-    return out.save();
-  };
-
-
-    let secondPdfBuffer = null;
-    if (!templateHasEmbeddedCharts) {
-      applyChartTheme('light');
-      secondPdfBuffer = buildChartsPagePdf();
-      applyChartTheme('dark');
-    }
-
-    const mergedBytes = await mergePdfBuffers(mainBytes, secondPdfBuffer);
-    const blob = new Blob([mergedBytes], { type: 'application/pdf' });
-    const fallbackName = `${sanitizeBaseName()}.pdf`;
-    await openPdfPreview(blob, fallbackName);
-  }catch(e){
-    console.error('Template-PDF Fehler:', e);
-    alert('Fehler beim Erstellen des Template-PDFs: ' + e.message);
-  }finally{
-    setPdfButtonsDisabled(false);
-  }
-}
-
-async function generateLegacyPDF(){
-  const { jsPDF } = window.jspdf || {};
-  if(!jsPDF) { alert('jsPDF konnte nicht geladen werden.'); return; }
-
-  const doc = new jsPDF({unit:'mm', format:'a4'});
-  const M = 12;
-  const pageW = 210 - 2*M;
-  const pageH = doc.internal.pageSize.getHeight();
-  const footerSafeZone = 10;
-  const footerTextY = pageH - footerSafeZone;
-  const footerRuleY = footerTextY - 4;
-  const contentMaxY = footerRuleY - 6;
-  const signatureBlockHeight = 46;
-  const signatureTopY = contentMaxY - signatureBlockHeight;
-
-  async function drawHeader(){
-    const logoUrl = '/assets/Logos/pegelTools.png';
-    const maxH = 12;
-    const maxW = 40;
-    try {
-      await new Promise((resolve)=>{
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = ()=>{
-          try{
-            const iw = img.naturalWidth || img.width;
-            const ih = img.naturalHeight || img.height;
-            const imgAspect = iw/ih;
-            const boxAspect = maxW/maxH;
-            let wmm, hmm;
-            if(imgAspect > boxAspect){
-              wmm = maxW;
-              hmm = maxW / imgAspect;
-            } else {
-              hmm = maxH;
-              wmm = maxH * imgAspect;
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = iw; canvas.height = ih;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img,0,0);
-            const dataUrl = canvas.toDataURL('image/png');
-            const x = M + pageW - wmm;
-            const y = 6;
-            doc.addImage(dataUrl, 'PNG', x, y, wmm, hmm);
-          }catch(e){
-            console.warn('Logo load/draw failed', e);
-          }
-          resolve();
-        };
-        img.onerror = ()=>{ resolve(); };
-        img.src = logoUrl;
-        setTimeout(resolve, 1500);
-      });
-    } catch(e){ console.warn('drawHeader logo error', e); }
-
-    doc.setDrawColor(200, 200, 200);
-    doc.line(M, 24, M+pageW, 24);
-    doc.setTextColor(50, 50, 50);
-    doc.setFontSize(16);
-    doc.setFont(undefined,'bold');
-    doc.text('Schallpegelmessung', M+2, 12);
-    doc.setFontSize(11);
-    doc.setFont(undefined,'normal');
-    doc.text('gemäß DIN 15905-5', M+2, 21);
-  }
-
-  function drawFooter(pageNum, totalPages){
-    doc.setDrawColor(225, 225, 225);
-    doc.line(M, footerRuleY, M+pageW, footerRuleY);
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Seite ${pageNum}/${totalPages}`, M, footerTextY);
-    const date = new Date().toLocaleDateString('de-DE');
-    const dateText = `Erstellt: ${date}`;
-    doc.text(dateText, M + pageW - doc.getTextWidth(dateText), footerTextY);
-  }
-
-  async function startNewPage(){
-    doc.addPage();
-    await drawHeader();
-    return 28;
-  }
-
-  async function ensureSpaceWithin(y, neededHeight, maxY){
-    if(y + neededHeight <= maxY) return y;
-    return startNewPage();
-  }
-
-  function drawAllFooters(){
-    const totalPages = doc.getNumberOfPages();
-    for(let pageNum = 1; pageNum <= totalPages; pageNum++){
-      doc.setPage(pageNum);
-      drawFooter(pageNum, totalPages);
-    }
-  }
-
-  function section(y, t){
-    doc.setFontSize(11);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(12, 67, 145);
-    doc.text(t, M, y);
-    doc.setDrawColor(12, 67, 145);
-    doc.setLineWidth(0.5);
-    doc.line(M, y+0.8, M+pageW, y+0.8);
-    doc.setTextColor(50, 50, 50);
-    return y + 7;
-  }
-
-  function fieldPair(y, label1, val1, label2, val2){
-    const col1W = pageW/2 - 2;
-    doc.setFontSize(9);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label1, M, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines1 = wrap(doc, val1||'—', col1W-5);
-    doc.text(lines1, M, y+4);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label2, M+pageW/2+2, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines2 = wrap(doc, val2||'—', col1W-5);
-    doc.text(lines2, M+pageW/2+2, y+4);
-
-    return y + Math.max(lines1.length, lines2.length)*4 + 6;
-  }
-
-  function fieldTriple(y, label1, val1, label2, val2, label3, val3){
-    const gap = 4;
-    const colW = (pageW - (2*gap)) / 3;
-    const x1 = M;
-    const x2 = M + colW + gap;
-    const x3 = M + (2*(colW + gap));
-
-    doc.setFontSize(9);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label1, x1, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines1 = wrap(doc, val1||'—', colW-4);
-    doc.text(lines1, x1, y+4);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label2, x2, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines2 = wrap(doc, val2||'—', colW-4);
-    doc.text(lines2, x2, y+4);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label3, x3, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines3 = wrap(doc, val3||'—', colW-4);
-    doc.text(lines3, x3, y+4);
-
-    return y + Math.max(lines1.length, lines2.length, lines3.length)*4 + 6;
-  }
-
-  function textBox(y, text){
-    const lines = wrap(doc, text || '—', pageW - 4);
-    const boxH = Math.max(14, lines.length * 4 + 8);
-    doc.setDrawColor(210, 210, 210);
-    doc.rect(M, y, pageW, boxH);
-    doc.setFontSize(9);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    doc.text(lines, M + 2, y + 6);
-    return y + boxH;
-  }
-
-  function drawSignatureBlock(topY){
-    const sigTitleY = topY + 6;
-    doc.setFontSize(11);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(50,50,50);
-    doc.text('Unterschrift', M, sigTitleY);
-
-    const sigFieldsY = sigTitleY + 6;
-    doc.setFontSize(9);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100,100,100);
-    doc.text('Datum', M, sigFieldsY);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50,50,50);
-    doc.text(String(getVal('berichtDatum')||''), M+18, sigFieldsY);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100,100,100);
-    doc.text('Name', M+pageW/2, sigFieldsY);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50,50,50);
-    doc.text(String(getVal('berichtName')||''), M+pageW/2+18, sigFieldsY);
-
-    const sigBoxY = sigFieldsY + 6;
-    const sigBoxH = 28;
-    doc.setDrawColor(200,200,200);
-    doc.rect(M, sigBoxY, pageW, sigBoxH);
-    doc.setFontSize(9);
-    doc.setTextColor(120,120,120);
-    doc.text('Unterschrift (Platzhalter)', M+2, sigBoxY+6);
-  }
-
-  function resultTable(y, rows, maxY=contentMaxY){
-    const cols = [
-      {t:'Parameter', w:58},
-      {t:'Messwert', w:24},
-      {t:'Dauer', w:36},
-      {t:'Grenzwert', w:24},
-      {t:'Status', w:(pageW-142)}
-    ];
-
-    doc.setFontSize(9);
-    doc.setFont(undefined,'bold');
-    doc.setFillColor(240, 240, 240);
-    doc.setDrawColor(200, 200, 200);
-
-    const h = 7;
-    doc.rect(M, y, pageW, h, 'FD');
-    let x = M;
-    doc.setTextColor(80, 80, 80);
-    for(const c of cols){ doc.text(c.t, x+2, y+5.5); x += c.w; }
-
-    doc.setFont(undefined,'normal');
-    let yy = y + h;
-    doc.setTextColor(50, 50, 50);
-    let rowsDrawn = 0;
-    for(const r of rows){
-      const lineH = 6;
-      if(yy + lineH > maxY) break;
-      doc.setDrawColor(230, 230, 230);
-      doc.rect(M, yy, pageW, lineH);
-      let xx = M;
-      for(let i=0;i<5;i++){
-        const text = String(r[i] ?? '');
-        if(i === 4 && text.includes('NICHT OK')) doc.setTextColor(255, 82, 82);
-        else if(i === 4 && text.includes('OK')) doc.setTextColor(76, 175, 80);
-        else doc.setTextColor(50, 50, 50);
-        doc.text(text, xx+2, yy+5);
-        xx += cols[i].w;
-      }
-      yy += lineH;
-      rowsDrawn++;
-    }
-    return { y: yy, rowsDrawn };
-  }
-
-  const ev = getVal('eventName').trim() || '(unbenannt)';
-  const dt = getVal('datumMessung').trim() || '';
-
-  await drawHeader();
-  let y = 28;
-  const firstPageMaxY = signatureTopY - 2;
-
-  y = section(y, 'Details');
-  y += 2;
-  y = await ensureSpaceWithin(y, 12, firstPageMaxY);
-  y = fieldPair(y, 'Veranstaltung', ev, 'Datum', dt);
-  y = await ensureSpaceWithin(y, 12, firstPageMaxY);
-  y = fieldPair(y, 'Location', getVal('location'), 'Umgebung', getVal('umwelt'));
-
-  const colGapLocal = 10;
-  const colWLocal = (pageW - colGapLocal)/2;
-  const orgLines = wrap(doc, getVal('organisator'), colWLocal - 4);
-  const beschrLines = wrap(doc, getVal('beschreibung'), colWLocal - 4);
-  const boxHLocal = Math.max(26, Math.max(orgLines.length, beschrLines.length)*4 + 8);
-  y = await ensureSpaceWithin(y, 3 + boxHLocal + 8, firstPageMaxY);
-  doc.setFontSize(10);
-  doc.setFont(undefined,'bold');
-  doc.text('Organisator:', M, y);
-  doc.text('Beschreibung:', M + colWLocal + colGapLocal, y);
-  const boxYLocal = y + 3;
-  doc.setDrawColor(210,210,210);
-  doc.rect(M, boxYLocal, colWLocal, boxHLocal);
-  doc.rect(M + colWLocal + colGapLocal, boxYLocal, colWLocal, boxHLocal);
-  doc.setFont(undefined,'normal');
-  doc.text(orgLines, M+2, boxYLocal+6);
-  doc.text(beschrLines, M + colWLocal + colGapLocal + 2, boxYLocal+6);
-  y = boxYLocal + boxHLocal + 8;
-
-  y = await ensureSpaceWithin(y, 22, firstPageMaxY);
-  y = section(y, 'Messbeteiligte');
-  y += 2;
-  y = fieldPair(y, 'Messung durchgeführt von', getVal('messungVon'), 'FOH-Techniker', getVal('foh'));
-  y = fieldPair(y, 'Messposition', getVal('messposition'), 'Lauteste Position', getVal('lautestePosition'));
-
-  y = await ensureSpaceWithin(y, 38, firstPageMaxY);
-  y = section(y, 'Messgerät & Kalibrierung');
-  y += 2;
-  y = fieldTriple(y, 'Messgerät', getVal('messgeraet'), 'Kalibrator', getVal('kalibratorModell'), 'Korrekturwert k1', header.k1);
-  y = fieldTriple(y, 'Messgerät S/N', getVal('messgeraetSN'), 'Kalibrator S/N', getVal('kalibratorSN'), 'Korrekturwert k2', header.k2);
-  y = fieldTriple(y, 'Firmware', getVal('firmware'), 'Log-Intervall', header.logIntervalText, 'k-Werte gesetzt', header.kset);
-
-  const paSetupText = getPASetupInline() || '—';
-  const paBoxH = Math.max(14, wrap(doc, paSetupText, pageW - 4).length * 4 + 8);
-  y = await ensureSpaceWithin(y, 9 + 2 + paBoxH + 8, firstPageMaxY);
-  y = section(y, 'Anlagen-Setup');
-  y += 2;
-  y = textBox(y, paSetupText) + 8;
-
-  const rows = Array.from(document.querySelectorAll('#pegelTabelle tbody tr'))
-    .map(tr => Array.from(tr.children).map(td => td.innerText));
-  let remainingRows = rows.slice();
-  const firstPageResultMinHeight = 9 + 2 + 7 + 6;
-  let resultsStartedOnFirstPage = false;
-  if(y + firstPageResultMinHeight <= signatureTopY){
-    y = section(y, 'Messergebnisse');
-    y += 2;
-    const firstPageRows = resultTable(y, remainingRows, signatureTopY - 2);
-    remainingRows = remainingRows.slice(firstPageRows.rowsDrawn);
-    y = firstPageRows.y + 8;
-    resultsStartedOnFirstPage = firstPageRows.rowsDrawn > 0;
-  }
-
-  drawSignatureBlock(signatureTopY);
-
-  if(remainingRows.length){
-    y = await startNewPage();
-    let isContinuation = resultsStartedOnFirstPage;
-    while(remainingRows.length){
-      y = section(y, isContinuation ? 'Messergebnisse (Fortsetzung)' : 'Messergebnisse');
-      y += 2;
-      const pageRows = resultTable(y, remainingRows, contentMaxY);
-      if(pageRows.rowsDrawn === 0){
-        y = await startNewPage();
-        isContinuation = true;
-        continue;
-      }
-      remainingRows = remainingRows.slice(pageRows.rowsDrawn);
-      y = pageRows.y + 8;
-      if(remainingRows.length){
-        y = await startNewPage();
-        isContinuation = true;
-      }
-    }
-  }
-
-  const loudestDbA = (summary && summary.lafmax_dt != null)
-    ? summary.lafmax_dt
-    : (() => {
-        const values = samples.map(s => s.LAFmax).filter(v => v != null && Number.isFinite(v));
-        return values.length ? Math.max(...values) : null;
-      })();
-  const loudestDbC = (summary && summary.lcpeak_max != null)
-    ? summary.lcpeak_max
-    : (() => {
-        const values = samples.map(s => s.LCpk).filter(v => v != null && Number.isFinite(v));
-        return values.length ? Math.max(...values) : null;
-      })();
-  const formatLevelForChartTitle = (value, unit) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? `${n.toFixed(1)} ${unit}` : '—';
-  };
-
-  applyChartTheme('light');
-  doc.addPage();
-  await drawHeader();
-  y = 28;
-
-  y = section(y, `Messverlauf – ${ev}`);
-  y += 2;
-
-  if(chartLAeq){
-    doc.setFontSize(12);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('LAeq_g30 mit Grenzwert 99 dB(A)', M, y);
-    doc.setFontSize(10);
-    doc.setFont(undefined,'normal');
-    const loudestAText = `Lautester Wert dB(A): ${formatLevelForChartTitle(loudestDbA, 'dB(A)')}`;
-    doc.text(loudestAText, M + pageW - doc.getTextWidth(loudestAText), y);
-    const chartH = addChartImage(doc, chartLAeq, M, y+5, pageW, 95, 2);
-    y += chartH + 12;
-  }
-
-  if(chartLCpeak){
-    doc.setFontSize(12);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
-    doc.setFontSize(10);
-    doc.setFont(undefined,'normal');
-    const loudestCText = `Lautester Wert dB(C): ${formatLevelForChartTitle(loudestDbC, 'dB(C)')}`;
-    doc.text(loudestCText, M + pageW - doc.getTextWidth(loudestCText), y);
-    addChartImage(doc, chartLCpeak, M, y+5, pageW, 95, 2);
-  }
-
-  applyChartTheme('dark');
-  drawAllFooters();
-
-  const fname = `${sanitizeBaseName()} nach DIN 15905-5`;
-
-  try {
-    const blob = doc.output('blob');
-    await openPdfPreview(blob, `${fname}.pdf`);
-  } catch (e) {
-    doc.save(`${fname}.pdf`);
-  }
-}
-
+// Ein einheitlicher PDF-Pfad: keine Template-Feldzuordnung, kein Legacy-Status,
+// keine Null->0-Umwandlung, keine separate Neuberechnung.
 async function generatePDF(){
-  await generateTemplatePDF();
+  if(!importModel || !phase3Evaluation)
+    throw new Error('Vor dem PDF-Export ein XL3-Log importieren und auswerten.');
+  const report=getPhase5Report();
+  if(!report) throw new Error('Berichtsdatenmodul nicht geladen.');
+  const JsPdf=window.jspdf?.jsPDF;
+  const backend=window.PegelToolReportPdf;
+  if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
+  const documentPdf=backend.create(report,JsPdf);
+  const filename=sanitizeBaseName()+' - vorlaeufig.pdf';
+  const blob=documentPdf.output('blob');
+  triggerDownload(blob,filename,false);
+  // Die Vorschau zeigt exakt dieselben PDF-Bytes wie der Download.
+  const previewWindow=consumeReservedPdfPreviewWindow();
+  if(previewWindow){
+    const url=URL.createObjectURL(blob);
+    try{previewWindow.location.replace(url);}
+    catch(err){console.warn('PDF-Vorschau nicht möglich',err);}
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+  }
+  setText('parseInfo','PDF exportiert: vorläufiger Bericht ohne DIN-Freigabe. Alle Daten- und Prüfhinweise enthalten.');
 }
 
 function exportHTML(){
@@ -2935,12 +2128,13 @@ document.querySelectorAll('.header-menu').forEach(menu => {
 // wire import button to hidden file input
 el('btnPdfTemplate').addEventListener('click', async ()=>{
   reservePdfPreviewWindow();
-  await generatePDF();
-});
-el('btnPdf').addEventListener('click', ()=>{
-  closeHeaderMenus();
-  reservePdfPreviewWindow();
-  generateLegacyPDF();
+  try{ await generatePDF(); }
+  catch(err){
+    const previewWindow=consumeReservedPdfPreviewWindow();
+    if(previewWindow) previewWindow.close();
+    console.error(err);
+    alert('PDF konnte nicht erstellt werden: '+String(err?.message || err));
+  }
 });
 el('btnImport').addEventListener('click', ()=>{
   const inp = el('fileInput'); if(inp) inp.click();
