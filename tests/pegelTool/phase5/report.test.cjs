@@ -149,7 +149,7 @@ test('PDF enthält dieselben Abschnittswerte, Hinweise und Beurteilungszeiträum
     assert.ok(text.includes(key), 'Fehlt im PDF: '+key);
   assert.match(text,/NICHT BEURTEILBAR/);
   assert.match(text,/nicht unterschrieben/);
-  assert.doesNotMatch(text,/DIN-konform/i);
+  assert.doesNotMatch(text,/Grenzwert eingehalten/i);
   assert.equal(doc.props.author,'pegelTool '+r.toolVersion);
 });
 test('PDF-Aufbau verändert das gemeinsame Berichtsmodell nicht',()=>{
