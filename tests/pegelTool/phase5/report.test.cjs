@@ -82,7 +82,7 @@ class FakePDF {
     }
     return out;
   }
-  text(value){this.pages[this.current].push(String(value));return this;}
+  text(value,x,y){assert.ok(y<292, 'PDF-Text außerhalb des A4-Seitenbereichs');this.pages[this.current].push(String(value));return this;}
   addPage(){this.pages.push([]);this.current=this.pages.length-1;return this;}
   setPage(number){this.current=number-1;return this;}
   output(){return this.pages.map(p=>p.join('\n')).join('\n===NEW PAGE===\n');}
@@ -169,6 +169,14 @@ test('Vollständige lange Blocktabelle erzeugt mehrere nummerierte PDF-Seiten',(
   assert.match(rendered,new RegExp('Seite '+doc.pages.length+'/'+doc.pages.length));
   assert.equal((rendered.match(/20-23/g)||[]).length>=120,true);
 });
+test('Sehr lange Rohdatenreferenzen umbrechen ohne PDF-Seitenüberlauf',()=>{
+  const r=makeReport();
+  r.blocks=[{...r.blocks[0],source:Array.from({length:950},(_,i)=>String(i+1)).join(', ')}];
+  const doc=pdf.create(r,FakePDF);
+  assert.ok(doc.pages.length>2);
+  assert.match(doc.output(),/949, 950/);
+});
+
 test('PDF-Eintrag für fehlende Werte wird nie implizit als 0,0 dB dargestellt',()=>{
   const r=makeReport({evaluation:{blocks:[incompleteBlock],overall:{laeqMaxDb:null,lcpeakMaxDb:null}}});
   assert.ok(!pdf.create(r,FakePDF).output().includes('0,0 dB'));
