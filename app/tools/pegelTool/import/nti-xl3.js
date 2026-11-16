@@ -222,6 +222,8 @@
       if (missingValues) warn('MISSING_VALUES', missingValues + ' fehlende/ungültige Messwertzellen, unverändert als null erhalten.', firstMissing, {count: missingValues});
     }
     if (!model.samples.length) fail('NO_VALID_SAMPLES', 'Keine gültigen Zeitreihenzeilen vorhanden.');
+    if (model.samples.length && !model.samples.some(x => KEYS.some(key => x.values[key] != null)))
+      fail('NO_MEASUREMENT_VALUES', 'Keine verwertbaren Pegelwerte vorhanden; Zeitstempel allein genügen nicht.');
     if (model.samples.length) {
       if (!model.measurement.start) model.measurement.start = model.samples[0].date + ' ' + model.samples[0].time;
       if (!model.measurement.end) {
