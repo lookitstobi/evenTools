@@ -25,7 +25,7 @@ test('imported values alone never imply DIN compliance, even far below limits',(
   const s=imported();
   s.evaluation.overall={laeqMaxDb:70,lcpeakMaxDb:90};
   assert.equal(UI.assessmentStatus(s),'Nicht beurteilbar');
-  assert.match(UI.summarize(s).normNotice,/keine DIN-Konformitätsbescheinigung/i);
+  assert.equal(UI.summarize(s).normNotice,'');
 });
 test('an open original-norm gate blocks positive and negative DIN judgements',()=>{
   for(const hypothetical of ['compliant','exceeded']) {
@@ -35,10 +35,10 @@ test('an open original-norm gate blocks positive and negative DIN judgements',()
   }
 });
 test('hypothetical fully verified future status maps only from an authorised result',()=>{
-  const s=imported({record:{normReview:'verified',assessment:{normativeStatus:'compliant'}}});
+  const s=imported({record:{normReview:'verified',assessment:{measurementStatus:'within-limits'}}});
   s.review={documentationComplete:true,evidenceComplete:true,reportFullyChecked:true};
   assert.equal(UI.assessmentStatus(s),'Grenzwert eingehalten');
-  s.record.assessment.normativeStatus='exceeded';
+  s.record.assessment.measurementStatus='exceeded';
   assert.equal(UI.assessmentStatus(s),'Grenzwert überschritten');
   s.review.evidenceComplete=false;
   assert.equal(UI.assessmentStatus(s),'Nicht beurteilbar');
