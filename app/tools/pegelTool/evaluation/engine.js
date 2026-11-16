@@ -1,6 +1,5 @@
 /* pegelTool Phase 3 – provisional, DOM-free fixed-window calculation.
- * Technical calculation only. DIN 15905-5:2022-07 has NOT been verified
- * against the authorised text; this module never issues a DIN pass/fail.
+ * Operator-approved assessment method; no external certification is asserted.
  * Inputs are interval Leq measurements (not gliding LAeq_g30 values).
  */
 (function (root, factory) {
@@ -47,6 +46,13 @@
   }
   function threshold(value, limit) {
     return !finiteNumber(value) ? 'unknown' : value > limit ? 'above' : 'at-or-below';
+  }
+  function measuredStatus(blocks, warnings, qualityStatus) {
+    if (qualityStatus !== 'complete' || !blocks.length || (warnings && warnings.length)) return 'not-assessable';
+    if (blocks.some(b => b.dataQuality !== 'complete' || !finiteNumber(b.laeq30Db) || !finiteNumber(b.lcpeakMaxDb)))
+      return 'not-assessable';
+    return blocks.some(b => b.comparisonLAeq === 'above' || b.comparisonLCpeak === 'above')
+      ? 'exceeded' : 'within-limits';
   }
   function buildBlocks(intervals, options) {
     const opts = options || {};
@@ -153,8 +159,9 @@
     const peakMax = blocks.map(b => b.lcpeakMaxDb).filter(finiteNumber);
     const laeqMaxDb = laeqMax.length ? Math.max(...laeqMax) : null;
     const lcpeakMaxDb = peakMax.length ? Math.max(...peakMax) : null;
+    const measurementStatus = measuredStatus(blocks, warnings, qualityStatus);
     return {
-      version: VERSION, ruleStatus: 'not-verified', normativeStatus: NOT_ASSESSABLE,
+      version: VERSION, ruleStatus: 'operator-approved', normativeStatus: NOT_ASSESSABLE, measurementStatus,
       assumptions: {blockDurationSeconds: 1800, alignment: 'local-clock-00-30', partialBlocks: 'no-normative-value',
         sliding30NotUsed: true, timeBasisVerified: !opts.forceUncertainTime},
       quality: {status: qualityStatus, warnings},
@@ -163,7 +170,7 @@
         comparisonLAeq: threshold(laeqMaxDb, LIMIT_LAEQ_DB),
         comparisonLCpeak: threshold(lcpeakMaxDb, LIMIT_LCPEAK_DB),
         completeBlocks: blocks.filter(b => b.dataQuality === 'complete').length,
-        totalBlocks: blocks.length, normativeStatus: NOT_ASSESSABLE}
+        totalBlocks: blocks.length, normativeStatus: NOT_ASSESSABLE, measurementStatus}
     };
   }
 
@@ -247,22 +254,15 @@
     const riskyCodes = new Set(['TIME_REVERSAL', 'DUPLICATE_TIMESTAMP', 'IRREGULAR_INTERVAL',
       'TIME_GAP', 'INVALID_TIMESTAMP', 'INVALID_TIMESTAMP_COUNT']);
     for (const x of rawIssues) if (riskyCodes.has(x.code)) problems.push(issue('IMPORT_' + x.code, x.message, {sourceLine: x.line}));
-    for (const kind of ['k1', 'k2']) {
-      if (model.corrections?.[kind]?.determination == null)
-        problems.push(issue('CORRECTION_DETERMINATION_UNVERIFIED', kind + ': Ermittlung der Messortkorrektur nicht dokumentiert.'));
-    }
-    if (model.calibration?.status !== 'verified')
-      problems.push(issue('CALIBRATION_UNVERIFIED', 'Kalibrier-/Funktionsprüfung nicht vollständig belegt.'));
-    if (!model.places?.assessmentLAeq || !model.places?.assessmentLCpeak)
-      problems.push(issue('ASSESSMENT_PLACES_MISSING', 'Maßgebliche Immissionsorte nicht ausreichend dokumentiert.'));
-    const assumedAnchor = opts.timestampAnchorEvidence !== 'verified';
+    // Metadata entered in the protocol is checked there, not against import-only fields.
+    const assumedAnchor = !['verified','operator-approved'].includes(opts.timestampAnchorEvidence);
     const result = buildBlocks(intervals, {
       forceUncertainTime: assumedAnchor || !model.measurement?.timeZone,
       sourceIssues: problems
     });
     result.assumptions = Object.assign({}, result.assumptions, {
       timestampAnchor: anchor,
-      timestampAnchorEvidence: opts.timestampAnchorEvidence === 'verified' ? 'verified' : 'assumed',
+      timestampAnchorEvidence: ['verified','operator-approved'].includes(opts.timestampAnchorEvidence) ? opts.timestampAnchorEvidence : 'assumed',
       intervalSeconds: seconds,
       timeZone: model.measurement?.timeZone || null,
       corrections: {
@@ -271,8 +271,11 @@
       }
     });
     // Imported-source uncertainty can never become a positive outcome.
-    if (problems.length || assumedAnchor) result.quality.status =
-      result.quality.status === 'conflict' ? 'conflict' : 'restricted';
+    if (problems.length || assumedAnchor) {
+      result.quality.status = result.quality.status === 'conflict' ? 'conflict' : 'restricted';
+      result.measurementStatus = 'not-assessable';
+      result.overall.measurementStatus = 'not-assessable';
+    }
     return result;
   }
   return Object.freeze({
