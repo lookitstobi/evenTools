@@ -144,9 +144,11 @@ test('PDF enthält dieselben Abschnittswerte, Hinweise und Beurteilungszeiträum
   const r=makeReport();
   const doc=pdf.create(r,FakePDF);
   const text=doc.output();
+  // Zeilenumbrüche sind layoutbedingt und dürfen den Wert im PDF nicht ändern.
+  const joined=text.replace(/\r?\n/g,'');
   for(const key of ['Testkonzert','Testveranstalter','NTI-01','97,3 dB','124,8 dB',
     'Nicht ermittelt','18:30:00','20-23','CAL-01','TIME_BASIS_UNVERIFIED'])
-    assert.ok(text.includes(key), 'Fehlt im PDF: '+key);
+    assert.ok(joined.includes(key), 'Fehlt im PDF: '+key);
   assert.match(text,/NICHT BEURTEILBAR/);
   assert.match(text,/nicht unterschrieben/);
   assert.doesNotMatch(text,/Grenzwert eingehalten/i);
