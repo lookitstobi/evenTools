@@ -26,6 +26,20 @@
   `not-assessable`. Dies beseitigt einen uneinheitlichen Statuspfad,
   **ohne** die Berechnungs- oder Grenzwertregeln zu ändern.
 
+- **F7-002:** Nach einem abgewiesenen Folgeimport zeigt die Kopfzeile jetzt
+  ausdrücklich an, dass die vorherige Messung noch geladen ist. Der
+  Browser-End-to-End-Test sichert die Anzeige und unveränderten Samples ab.
+
+### Testnachweis
+
+- [GitHub Actions #43896067894](https://github.com/lookitstobi/evenTools/actions/runs/43896067894):
+  90/90 ältere Modultests und 28/28 Phase-7-Tests sowie Chromium-E2E und
+  vierseitiges PDF-/Poppler-Rendering erfolgreich.
+- Sichtprüfung aller vier Test-PDF-Seiten (synthetisch): keine erkennbare
+  Textabschneidung, Seitenzahlen, Warnungen und Status lesbar.
+- Reale Messgeräte-, authentifizierte Browser- und Normenfachabnahme bleiben
+  ausdrücklich offen.
+
 ### Unverändert / gesperrt
 - 120-Minuten-Sonderregel nicht implementiert.
 - Keine Normfreigabe vor Abgleich mit dem Originaltext
