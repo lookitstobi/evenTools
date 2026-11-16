@@ -2226,6 +2226,11 @@ el('fileInput').addEventListener('change', (e)=>{
         lastImportAttempt=result.model && result.model.quality || {
           errors:[{code:'REJECTED',message:'Import abgelehnt: Dateiformat oder Rohdaten nicht verwertbar.'}]};
         showImportQuality(result.model);
+        if(importModel && Array.isArray(importModel.samples) && importModel.samples.length){
+          // Failed follow-up import must not visually hide the preserved dataset.
+          setDot('dotLog','warn');
+          setText('chipLog','Log: vorherige Messung geladen (neuer Import abgewiesen)');
+        }
         if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
         return;
       }
