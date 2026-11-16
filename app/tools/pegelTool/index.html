@@ -3,10 +3,16 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XL3 DIN 15905-5 Messbericht</title>
+<title>XL3 Schallpegel-Messprotokoll</title>
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
+<script src="/toolserve.php?name=pegelTool&file=import/nti-xl3.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=evaluation/engine.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=protocol/protocol.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=report/report.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=report/pdf.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=ui/workflow.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -134,6 +140,22 @@ label.label-required::after{
   margin-left:4px;
 }
 
+.protocol-tag{display:inline-block;margin-left:7px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;font-size:10px;letter-spacing:0;text-transform:none;color:var(--text-secondary)}
+.protocol-tag[data-category="pflicht"]{border-color:var(--accent);color:#9aafff}
+.protocol-tag[data-category="bedingt"]{border-color:#aa9543}
+.protocol-problems{margin:10px 0 0;padding-left:20px;color:var(--text-secondary);font-size:13px}
+.protocol-problems li{margin:3px 0}
+.protocol-problems strong{color:var(--text)}
+.protocol-summary{margin:8px 0;color:var(--text)}
+.report-notice{border-left:3px solid var(--warn);padding:10px 14px;background:var(--secondary-panel);margin:10px 0}
+.report-notice p{margin:8px 0 0;font-size:13px}
+.report-fields{display:grid;grid-template-columns:minmax(110px,37%) 1fr;gap:6px 12px;font-size:12px;margin:8px 0 18px}
+.report-fields dt{color:var(--text-secondary)}
+.report-fields dd{margin:0;overflow-wrap:anywhere}
+.report-fields small{display:block;color:var(--text-secondary)}
+.report-preview-wrap{max-height:70vh;overflow:auto}
+.report-preview-wrap h4{margin:18px 0 8px}
+@media(max-width:600px){.report-fields{grid-template-columns:1fr}.report-fields dd{margin-bottom:7px}}
 .hidden-file{display:none}
 .chips-offset{margin-left:16px}
 .mt-6{margin-top:6px}
@@ -148,6 +170,52 @@ label.label-required::after{
   .icon-btn,.menu-item-btn,button{min-height:44px}
   .compact-row select,.compact-row input{min-width:100%}
 }
+
+/* Phase 6: single guided workspace, mobile-first and keyboard navigable. */
+html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+.header{position:relative;top:auto;min-height:60px;height:auto;padding:12px 24px}
+.workflow-shell{max-width:1180px;margin:18px auto 0;padding:0 20px}
+.workflow-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+.workflow-tab{min-width:0;min-height:69px;padding:11px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:6px;background:var(--primary-panel);color:var(--text);border:1px solid var(--border);border-radius:12px;line-height:1.25}
+.workflow-tab:hover{border-color:var(--accent)}
+.workflow-tab.is-active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--secondary-panel)}
+.workflow-tab:focus-visible,.workflow-actions button:focus-visible,.workflow-footer button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.workflow-tab-title{font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.workflow-tab-status{font-size:11px;font-weight:450;color:var(--text-secondary)}
+.workflow-overview{margin-top:15px;padding:15px 18px;background:var(--primary-panel);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:10px}
+.workflow-overall-status{display:block;font-size:18px}
+.workflow-overall-status[data-state="bad"]{color:var(--danger)}
+.workflow-overall-status[data-state="ok"]{color:var(--ok)}
+.workflow-norm-note{font-size:13px;color:var(--text-secondary);margin:8px 0}
+.workflow-issue-heading{font-size:13px;font-weight:700;margin:10px 0 3px}
+.workflow-issues{font-size:12px;line-height:1.5;padding-left:19px;margin:6px 0 0}
+#main.workflow-main{position:static;display:block;width:100%;max-width:1180px;margin:0 auto;padding:20px;box-sizing:border-box}
+.workflow-panel[hidden]{display:none!important}
+.workflow-panel-heading{margin-bottom:20px}
+.workflow-panel-heading h2{font-size:24px;margin:0 0 6px}
+.workflow-description,.workflow-inline-status{color:var(--text-secondary);line-height:1.5;font-size:14px}
+.workflow-description{margin:0}
+.workflow-inline-status{margin:14px 0}
+.workflow-notice{margin:0 0 18px;padding:12px 16px;background:var(--primary-panel);border-left:3px solid var(--warn);font-size:14px}
+.workflow-actions,.workflow-footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+.workflow-footer{justify-content:space-between;padding:3px 0 35px}
+.workflow-footer button{min-height:44px}
+#main.workflow-main .section{box-shadow:none}
+#main.workflow-main #phase5ReportPreview{max-width:100%}
+#main.workflow-main #phase5ReportPreview .report-preview-wrap{max-height:none}
+@media(max-width:900px){
+  .workflow-shell{padding:0 12px}
+  .workflow-nav{display:flex;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:5px}
+  .workflow-tab{flex:0 0 155px;scroll-snap-align:start;min-height:64px}
+  #main.workflow-main{padding:16px 12px}
+  .workflow-panel-heading h2{font-size:21px}
+  .header{padding:10px 12px}
+}
+@media(max-width:600px){
+  .workflow-actions button,.workflow-footer button{flex:1 1 100%;width:100%}
+  .workflow-overview{padding:12px}
+  .workflow-overall-status{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -157,7 +225,7 @@ label.label-required::after{
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messbericht als PDF mit der aktuellen Vorlage exportieren">PDF exportieren</button>
+      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messprotokoll als PDF exportieren">PDF exportieren</button>
       <button id="btnRecover" class="icon-btn subtle" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung laden</button>
     </div>
     <div class="header-secondary-actions">
@@ -165,7 +233,6 @@ label.label-required::after{
         <summary class="icon-btn subtle menu-trigger" title="Erweiterte Export- und Projektaktionen anzeigen">Erweitert</summary>
         <div class="header-dropdown">
           <div class="menu-list">
-            <button id="btnPdf" class="menu-item-btn" type="button" disabled title="Messbericht mit dem Legacy-PDF-Generator exportieren">PDF exportieren (Legacy)</button>
             <button id="btnExportHtml" class="menu-item-btn" type="button" title="Erstellt eine lokal oeffenbare HTML-Datei mit dem aktuellen Stand, die spaeter auch wieder geladen werden kann.">Projekt speichern (HTML)</button>
             <button id="btnSaveState" class="menu-item-btn" type="button" title="Speichert Log, Diagramme und Eingaben als bearbeitbare Projektdatei fuer spaeteres Weiterarbeiten.">Projekt speichern (JSON)</button>
             <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Projekt laden (JSON)</button>
@@ -183,8 +250,8 @@ label.label-required::after{
 </header>
 <div id="main">
   <div id="leftColumn">
-    <div class="section">
-      <h3>Pegel</h3>
+    <div class="section" data-workflow-section="metrics">
+      <h3>Messwertübersicht</h3>
       <div class="table-wrap">
         <table class="table" id="pegelTabelle">
           <thead>
@@ -202,8 +269,22 @@ label.label-required::after{
       <div class="small mt-6" id="chartInfo"></div>
     </div>
 
-    <div class="section">
-      <h3>Diagramme (Vorschau)</h3>
+    <div class="section" data-workflow-section="blocks">
+      <h3>30-Minuten-Auswertung</h3>
+      <div class="small mt-6" id="phase3Info">Noch keine Auswertung.</div>
+      <div class="table-wrap mt-8">
+        <table class="table" id="phase3Tabelle">
+          <thead><tr>
+            <th>Zeitraum</th><th>Abdeckung</th><th>LAeq 30 min</th><th>LCpeak</th><th>Datenlage</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="small mt-8" id="phase3Warning"></div>
+    </div>
+
+    <div class="section" data-workflow-section="charts">
+      <h3>Zusatzanalyse – gleitende Messwerte (informativ)</h3>
       <div class="grid-2 panel-grid-spaced">
         <div>
           <div class="small" id="laeqChartLabel">LAeq_g30 mit Grenzwert 99 dB(A)</div>
@@ -216,8 +297,8 @@ label.label-required::after{
       </div>
     </div>
 
-    <div class="section">
-      <h3>Log Daten (automatisch)</h3>
+    <div class="section" data-workflow-section="log">
+      <h3>XL3-Gerätedaten (automatisch)</h3>
       <div class="grid-2">
         <div><label>Start der Messung</label><input id="startMessung" readonly /></div>
         <div><label>Ende der Messung</label><input id="endeMessung" readonly /></div>
@@ -247,13 +328,24 @@ label.label-required::after{
 
   </div>
   <div id="rightColumn">
-    <div class="section grid-2">
+    <div class="section" id="protocolReview" data-workflow-section="review" aria-live="polite">
+      <h3>Messprotokoll – Angaben & Nachweise</h3>
+      <div class="protocol-summary" id="protocolStatus">Protokollangaben noch nicht geprüft.</div>
+      <div class="small" id="protocolEvidenceStatus">Messnachweise: offen.</div>
+      <ul class="protocol-problems" id="protocolIssues"></ul>
+    </div>
+    <details class="section" id="phase5ReportPreview" data-workflow-section="preview">
+      <summary>Messbericht – Vorschau des PDF-Inhalts</summary>
+      <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Fehlende Angaben werden im Bericht gekennzeichnet.</p>
+      <div id="reportPreviewContent" class="report-preview-wrap" aria-live="polite"></div>
+    </details>
+    <div class="section grid-2" data-workflow-section="eventAndEvidence">
       <div>
         <label>Veranstaltung (Name)</label>
         <input id="eventName" placeholder="z.B. Verstärktes Musical" tabindex="1" autofocus />
 
         <label>Datum der Messung</label>
-        <input id="datumMessung" />
+        <input id="datumMessung" type="date" />
 
         <label>Location</label>
         <select id="location">
@@ -261,9 +353,20 @@ label.label-required::after{
           <option>Philharmonie Essen, Nationalbank-Pavillon</option>
           <option>Eigene Angabe</option>
         </select>
+        <label>Anschrift / konkrete Ortsangabe</label>
+        <input id="ortAdresse" placeholder="Straße, Hausnummer, PLZ, Ort" />
+        <label>Veranstaltungsort anhand der realen Veranstaltung geprüft?</label>
+        <select id="ortBestaetigt">
+          <option value="">Nicht bestätigt (Preset ist kein Nachweis)</option>
+          <option value="ja">Ja, manuell geprüft</option>
+        </select>
+        <label>Veranstaltungsbeginn (optional)</label>
+        <input id="veranstaltungsBeginn" placeholder="Datum / Uhrzeit" />
+        <label>Veranstaltungsende (optional)</label>
+        <input id="veranstaltungsEnde" placeholder="Datum / Uhrzeit" />
 
         <label>Umgebungsbedingungen</label>
-        <input id="umwelt" value="21°C, Indoor" />
+        <input id="umwelt" placeholder="Optional, z.B. Wetter / Umgebungseinflüsse" />
       </div>
 
       <div>
@@ -277,33 +380,57 @@ label.label-required::after{
           </div>
           <div>
             <label>Lauteste Position</label>
-            <input id="lautestePosition" tabindex="4" />
+            <input id="lautestePosition" tabindex="4" placeholder="Altfeld; nicht als Nachweis verwenden" />
           </div>
         </div>
 
-        <label>Zugeständiger FOH-Techniker</label>
+        <label>Maßgeblicher Immissionsort für LAeq</label>
+        <input id="messortLAeq" placeholder="Position im Publikum und Ermittlung" />
+        <label>Maßgeblicher Immissionsort für LCpeak</label>
+        <input id="messortLCpeak" placeholder="Kann vom LAeq-Ort abweichen" />
+        <label>Art des Messorts</label>
+        <select id="messortTyp">
+          <option value="">Bitte auswählen</option>
+          <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
+          <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
+        </select>
+
+        <label>Zuständiger FOH-Techniker</label>
         <input id="foh" tabindex="5" />
 
         <div class="grid-2">
           <div>
             <label>Kalibrator</label>
-            <input id="kalibratorModell" value="CENTER 326" />
+            <input id="kalibratorModell" placeholder="Typ / Hersteller" />
           </div>
           <div>
             <label>Kalibrator SN</label>
-            <input id="kalibratorSN" value="140408454" />
+            <input id="kalibratorSN" placeholder="Seriennummer" />
           </div>
         </div>
+        <div class="grid-2">
+          <div>
+            <label>Funktionsprüfung vor der Messung – Zeitpunkt</label>
+            <input id="kalVorZeit" type="datetime-local" />
+            <label>Angezeigter Pegel vor der Messung (dB)</label>
+            <input id="kalVorWert" inputmode="decimal" placeholder="z.B. 94,0" />
+          </div>
+          <div>
+            <label>Funktionsprüfung nach der Messung – Zeitpunkt</label>
+            <input id="kalNachZeit" type="datetime-local" />
+            <label>Angezeigter Pegel nach der Messung (dB)</label>
+            <input id="kalNachWert" inputmode="decimal" placeholder="z.B. 94,0" />
+          </div>
+        </div>
+        <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
+        Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
       </div>
     </div>
 
-    <div class="section grid-2">
+    <div class="section grid-2" data-workflow-section="description">
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
-        <textarea id="organisator" class="min-h-140">Theater und Philharmonie Essen GmbH
-Opernplatz 10, 45128 Essen
-Geschäftsführer: Fritz Frömming
-Intendanz Philharmonie Essen: Babette Nierenz</textarea>
+        <textarea id="organisator" class="min-h-140" placeholder="Veranstalter mit Ansprechpartner / Adresse"></textarea>
       </div>
       <div>
         <label>Beschreibung</label>
@@ -311,14 +438,14 @@ Intendanz Philharmonie Essen: Babette Nierenz</textarea>
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" data-workflow-section="signature">
       <h3>Unterschrift</h3>
       <div class="grid-2">
         <div>
           <label>Berichtsort</label>
           <input id="berichtsort" placeholder="z.B. Essen" />
           <label>Datum</label>
-          <input id="berichtDatum" />
+          <input id="berichtDatum" type="date" />
         </div>
         <div>
           <label>Name</label>
@@ -329,16 +456,48 @@ Intendanz Philharmonie Essen: Babette Nierenz</textarea>
       <div class="signature-box"></div>
     </div>
 
-    <div class="section">
+    <div class="section" data-workflow-section="pa">
       <div class="compact-row row-between">
         <h3 class="heading-reset">PA Setup</h3>
         <div class="small" id="paPresetInfo"></div>
       </div>
       <div id="paContainer"></div>
+      <label>Aufstellung / Anordnung der Beschallungsanlage</label>
+      <textarea id="paAnordnung" placeholder="Positionen, Ausrichtung, Delays, Subs und weitere relevante Anlagenkomponenten"></textarea>
+      <label>Ist die PA-Konfiguration für diese Veranstaltung geprüft?</label>
+      <select id="paBestaetigt">
+        <option value="">Nein – ein Preset ist kein Messnachweis</option>
+        <option value="ja">Ja, vor Ort mit dem tatsächlichen Aufbau abgeglichen</option>
+      </select>
+      <label>Wurden Messbedingungen oder Abweichungen dokumentiert?</label>
+      <select id="abweichungVorhanden">
+        <option value="">Bitte auswählen</option>
+        <option value="nein">Keine dokumentierten Abweichungen</option>
+        <option value="ja">Ja – Beschreibung erforderlich</option>
+      </select>
+      <label>Abweichungen, besondere Ereignisse und Begründung (falls vorhanden)</label>
+      <textarea id="abweichungBeschreibung" placeholder="Nur wenn zutreffend; zeitlich und fachlich nachvollziehbar"></textarea>
+      <label>Altprojekt: Vorbelegte Angaben aus früherer Version überprüft?</label>
+      <select id="altBestaetigt">
+        <option value="">Nicht geprüft</option>
+        <option value="ja">Ja, sämtliche übernommenen Angaben geprüft</option>
+      </select>
       <div class="compact-row mt-8">
         <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
         <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
       </div>
+    </div>
+    <div class="section" data-workflow-section="corrections">
+      <h3>Ersatzmessort und Korrekturbestimmung</h3>
+      <div class="small mt-8">Bei Ersatzmessorten bedingt erforderlich. k1/k2 aus dem XL3-Log
+      werden unverändert übernommen; diese Angaben verändern die Berechnungsengine nicht.
+      Keine doppelte Anwendung der Korrekturwerte.</div>
+      <label>Beschreibung Ersatzmessort</label>
+      <input id="ersatzMessort" placeholder="Konkrete Messposition und Bezug zum Publikum" />
+      <label>Bestimmung / Herkunft k1 (LAeq)</label>
+      <textarea id="k1Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
+      <label>Bestimmung / Herkunft k2 (LCpeak)</label>
+      <textarea id="k2Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
     </div>
   </div>
 </div>
@@ -351,15 +510,21 @@ let chartLCpeak = null;
 let lastLogText = '';
 let lastLogFileName = '';
 let logLoaded = false;
+let importModel = null; // Versioned Phase-2 model; no normative judgement.
+let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
+let workflowController = null; // Phase 6 view controller; never changes normative results.
+let lastImportAttempt = null; // Ephemeral rejected-import feedback; never overwrites existing data.
+let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
 let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
 const MAX_LOG_BYTES = 8 * 1024 * 1024;
-const STATE_SCHEMA_VERSION = 1;
+const STATE_SCHEMA_VERSION = 2;
 const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
-const FORM_FIELD_IDS = [
+const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD_IDS : [
+  // Legacy harness compatibility when the external protocol module is not loaded.
   'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
   'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN',
   'berichtsort'
@@ -508,11 +673,14 @@ function buildStateObject(options = {}){
     sourceApp: 'pegelTool',
     savedAt: new Date().toISOString(),
     header: header,
+    importModel: includeSamples ? importModel : null,
+    recoveryPartial: !includeSamples,
     samples: includeSamples ? samples : [],
     chartSamples: includeChartSamples ? chartSamples : [],
     summary: summary,
     logLoaded: !!logLoaded,
     form: getFormState(),
+    protocolMeta: { schemaVersion: 1, origins: {...protocolOrigins} },
     paItems: collectPAItems(),
     logText: includeLogText ? lastLogText : '',
     logFileName: lastLogFileName || ''
@@ -521,10 +689,22 @@ function buildStateObject(options = {}){
 
 function normalizeState(raw){
   if(!raw || typeof raw !== 'object') return null;
+  const version = Number(raw.schemaVersion);
+  if(version !== 1 && version !== 2) throw new Error('Nicht unterstützte Projektversion: '+String(raw.schemaVersion));
 
   const normalizedForm = {};
   const srcForm = (raw.form && typeof raw.form === 'object') ? raw.form : {};
   for(const id of FORM_FIELD_IDS){ normalizedForm[id] = (srcForm[id] ?? '').toString(); }
+  const storedOrigins = raw.protocolMeta && raw.protocolMeta.schemaVersion === 1
+    && raw.protocolMeta.origins && typeof raw.protocolMeta.origins === 'object'
+    ? raw.protocolMeta.origins : null;
+  const normalizedOrigins = {};
+  for(const id of FORM_FIELD_IDS){
+    if(storedOrigins && typeof storedOrigins[id] === 'string') normalizedOrigins[id] = storedOrigins[id];
+    else if(String(srcForm[id] ?? '').trim()) normalizedOrigins[id] = 'legacy-unverified';
+  }
+  normalizedOrigins.paItems = (storedOrigins && typeof storedOrigins.paItems === 'string')
+    ? storedOrigins.paItems : 'legacy-unverified';
 
   const srcHeader = (raw.header && typeof raw.header === 'object') ? raw.header : {};
   const normalizedHeader = { ...makeEmptyHeader(), ...srcHeader };
@@ -545,7 +725,10 @@ function normalizeState(raw){
     : [];
 
   return {
-    schemaVersion: Number(raw.schemaVersion) || 0,
+    schemaVersion: STATE_SCHEMA_VERSION,
+    migratedFrom: version === 1 ? 1 : null,
+    recoveryPartial: !!raw.recoveryPartial,
+    importModel: version === 2 && raw.importModel && raw.importModel.schemaVersion === PegelToolImport.MODEL_VERSION ? raw.importModel : null,
     sourceApp: String(raw.sourceApp || ''),
     savedAt: String(raw.savedAt || ''),
     header: normalizedHeader,
@@ -553,6 +736,7 @@ function normalizeState(raw){
     chartSamples: Array.isArray(raw.chartSamples) ? raw.chartSamples : [],
     summary: normalizedSummary,
     form: normalizedForm,
+    protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
     logText: String(raw.logText || ''),
     logFileName: String(raw.logFileName || ''),
@@ -635,8 +819,11 @@ function applySavedState(rawState, options = {}){
 
   setFormState(state.form);
   restorePAItems(state.paItems);
+  protocolOrigins = state.protocolMeta.origins;
+  lastImportAttempt = null;
 
   header = state.header;
+  importModel = state.importModel;
   summary = state.summary;
   samples = state.samples;
   chartSamples = state.chartSamples;
@@ -652,6 +839,7 @@ function applySavedState(rawState, options = {}){
     const tbody = document.querySelector('#pegelTabelle tbody');
     if(tbody) tbody.innerHTML = '';
     setText('chartInfo', '');
+    phase3Evaluation = null;
     if(chartLAeq){ chartLAeq.destroy(); chartLAeq = null; }
     if(chartLCpeak){ chartLCpeak.destroy(); chartLCpeak = null; }
     setPdfButtonsDisabled(true);
@@ -660,6 +848,10 @@ function applySavedState(rawState, options = {}){
   }
 
   markRequiredFields();
+  if(state.recoveryPartial) setText('parseInfo', 'Nur Formulardaten wiederhergestellt – Messdaten fehlen; erneuter Import erforderlich.');
+  else if(state.migratedFrom) setText('parseInfo', 'Altes Projekt geladen: Herkunftsnachweis fehlt. Für eine nachvollziehbare Auswertung das Original-XL3-Log neu importieren.');
+  else if(importModel) showImportQuality(importModel);
+  if(workflowController) workflowController.go(importModel ? 'quality' : 'import');
   if(options.persistRecovery !== false) scheduleRecoverySave();
 }
 
@@ -678,7 +870,8 @@ function recoverLastSession(){
     const parsed = JSON.parse(raw);
     applySavedState(parsed, { persistRecovery:false });
     const stamp = parsed && parsed.savedAt ? new Date(parsed.savedAt).toLocaleString('de-DE') : null;
-    setText('parseInfo', stamp ? `Lokale Session wiederhergestellt (${stamp}).` : 'Lokale Session wiederhergestellt.');
+    if(!parsed.recoveryPartial && parsed.schemaVersion !== 1)
+      setText('parseInfo', stamp ? `Lokale Session wiederhergestellt (${stamp}).` : 'Lokale Session wiederhergestellt.');
   }catch(err){
     console.error(err);
     alert('Lokale Session konnte nicht wiederhergestellt werden.');
@@ -882,7 +1075,8 @@ function handleStateFileInputChange(e){
       const text = String(evt.target.result || '');
       const parsed = parseStateFromText(f.name, text);
       applySavedState(parsed, { persistRecovery:true });
-      setText('parseInfo', `Gespeicherter Stand geladen (${f.name}).`);
+      if(!parsed.recoveryPartial && parsed.schemaVersion !== 1)
+        setText('parseInfo', `Gespeicherter Stand geladen (${f.name}).`);
     }catch(err){
       console.error(err);
       alert('Stand konnte nicht geladen werden: ' + String(err && err.message ? err.message : err));
@@ -900,23 +1094,70 @@ function setDot(dotId, state){
   d.classList.add(state);
 }
 
+function getProtocolReportData(){
+  if(!window.PegelToolProtocol) return null;
+  return window.PegelToolProtocol.buildRecord({
+    form:getFormState(),
+    origins:protocolOrigins,
+    paItems:collectPAItems(),
+    importModel:importModel,
+    evaluation:phase3Evaluation
+  });
+}
+function getPhase5Report(){
+  if(!window.PegelToolReport) return null;
+  const source = getProtocolReportData();
+  return source ? window.PegelToolReport.build(source, {sourceFileName:lastLogFileName}) : null;
+}
+function renderReportPreview(){
+  const container = el('reportPreviewContent');
+  if(!container) return;
+  const report = getPhase5Report();
+  container.innerHTML = report ? window.PegelToolReport.renderHtml(report) :
+    '<p>Berichtsmodul nicht verfügbar.</p>';
+}
 function markRequiredFields(){
-  const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName','berichtsort'];
-  for(const id of requiredIds){
-    const field = el(id);
-    const label = field ? field.previousElementSibling : null;
-    if(field){
-      const isEmpty = !field.value || field.value.trim() === '';
-      if(isEmpty){
-        // mark label and input for visual hint
-        field.classList.add('input-required');
-        if(label && label.tagName === 'LABEL') label.classList.add('label-required');
-      } else {
-        field.classList.remove('input-required');
-        if(label && label.tagName === 'LABEL') label.classList.remove('label-required');
+  const report = getProtocolReportData();
+  if(!report) return;
+  const review = report.review;
+  setText('protocolStatus', review.status);
+  setText('protocolEvidenceStatus', 'Erfassungsfelder offen: ' + review.formIssues.length +
+    ' · Mess-/Prüfnachweise offen: ' + review.evidenceIssues.length + '.');
+  for(const field of review.fields){
+    const input = el(field.id);
+    if(!input) continue;
+    input.classList.toggle('input-required', field.required && !field.valid);
+    const label = input.previousElementSibling;
+    if(label && label.tagName === 'LABEL'){
+      let tag = label.querySelector('.protocol-tag');
+      if(!tag){
+        tag=document.createElement('span');
+        tag.className='protocol-tag';
+        label.appendChild(tag);
       }
+      tag.dataset.category=field.category;
+      tag.textContent=field.category === 'pflicht' ? 'Pflicht*' :
+        (field.category === 'bedingt' ? 'bedingt*' : 'optional');
+      label.classList.toggle('label-required', field.required && !field.valid);
     }
   }
+  const issues = el('protocolIssues');
+  if(issues){
+    issues.replaceChildren();
+    const problems = [...review.formIssues, ...review.evidenceIssues];
+    for(const problem of problems.slice(0,9)){
+      const li=document.createElement('li');
+      li.textContent=problem.message;
+      issues.appendChild(li);
+    }
+    if(problems.length > 9){
+      const li=document.createElement('li');
+      li.textContent='… und ' + (problems.length-9) + ' weitere offene Punkte.';
+      issues.appendChild(li);
+    }
+  }
+  renderReportPreview();
+  if(workflowController) workflowController.refresh();
 }
 
 function splitLines(text){
@@ -1436,20 +1677,25 @@ function applyChartTheme(name){
 }
 
 function updateComplianceStatus(){
-  const badCount = document.querySelectorAll('#pegelTabelle .status-bad').length;
   const dot = document.getElementById('complianceDot');
   if(!dot) return;
   dot.classList.remove('status-ok','status-warn','status-bad','status-empty');
   if(!logLoaded){
     dot.classList.add('status-empty');
-    return;
-  }
-  if(badCount === 0){
-    dot.classList.add('status-ok');
-  } else if(badCount === 1){
-    dot.classList.add('status-warn');
+    dot.title = 'Keine Messung geladen';
   } else {
-    dot.classList.add('status-bad');
+    const record=getProtocolReportData();
+    const assessment=record?.review?.reportFullyChecked ? record.assessment.measurementStatus : 'not-assessable';
+    if(assessment === 'within-limits'){
+      dot.classList.add('status-ok');
+      dot.title='Grenzwerte eingehalten';
+    } else if(assessment === 'exceeded'){
+      dot.classList.add('status-bad');
+      dot.title='Grenzwert überschritten';
+    } else {
+      dot.classList.add('status-warn');
+      dot.title='Angaben oder Messdaten noch nicht vollständig beurteilbar';
+    }
   }
 }
 
@@ -1576,41 +1822,94 @@ function renderCharts(){
   refreshChartLayout();
 }
 
+function phase3Db(value){
+  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) + ' dB' : '—';
+}
+function phase3AppendRow(body, values){
+  const tr = document.createElement('tr');
+  for(const value of values){
+    const td = document.createElement('td');
+    td.textContent = String(value);
+    tr.appendChild(td);
+  }
+  body.appendChild(tr);
+}
+function renderPhase3Evaluation(result){
+  const body = document.querySelector('#phase3Tabelle tbody');
+  if(body) body.innerHTML = '';
+  if(!result){
+    setText('phase3Info', 'Berechnungsmodul nicht geladen. Keine Bewertung möglich.');
+    setText('phase3Warning', 'Ohne Berechnungsmodul keine Auswertung.');
+    return;
+  }
+  if(body){
+    for(const block of result.blocks){
+      phase3AppendRow(body, [
+        block.start.slice(0,16).replace('T',' ') + ' – ' + block.end.slice(11,16),
+        block.coveredSeconds.toFixed(0) + ' / ' + block.expectedSeconds + ' s',
+        phase3Db(block.laeq30Db), phase3Db(block.lcpeakMaxDb),
+        block.dataQuality === 'complete' ? 'Messzeit vollständig*' :
+          block.dataQuality === 'conflict' ? 'Zeitkonflikt' : 'Unvollständig'
+      ]);
+    }
+  }
+  setText('phase3Info', result.blocks.length + ' feste Halbstundenfenster; ' +
+    result.overall.completeBlocks + ' vollständig erfasste Blöcke. Zeitstempel als Intervallende ausgewertet.');
+  const codes = [...new Set(result.quality.warnings.map(w => w.code)
+    .concat(result.blocks.flatMap(b => b.warnings.map(w => w.code))))];
+  setText('phase3Warning', codes.length ?
+    'Messdatenhinweise: ' + codes.slice(0, 8).join(', ') + (codes.length > 8 ? ' …' : '') : '');
+}
 function calculateAndRender(){
   const tbody = document.querySelector('#pegelTabelle tbody');
-  tbody.innerHTML = "";
+  tbody.innerHTML = '';
 
-  const hasSummary = summary && (summary.source && (summary.laeq_g30!=null || summary.laeq_g5!=null || summary.lcpeak_max!=null || summary.lafmax_dt!=null));
-
-  const laeqG5    = (summary && summary.laeq_g5 != null)
-    ? summary.laeq_g5
-    : (samples.length ? Math.max(...samples.map(s=>s.LAeq_g5).filter(v=>v!=null && Number.isFinite(v))) : null);
-  const laeqG30   = hasSummary ? summary.laeq_g30 : (samples.length ? Math.max(...samples.map(s=>s.LAeq_g30).filter(v=>v!=null && Number.isFinite(v))) : null);
-  const lcPeakMax = hasSummary ? summary.lcpeak_max : (samples.length ? Math.max(...samples.map(s=>s.LCpk).filter(v=>v!=null && Number.isFinite(v))) : null);
-
-  const durLA30 = countExceedDuration(samples.map(s=> s.LAeq_g30).filter(v=>v!=null), LIMIT_LAEQ_30);
-  const durLA5 = countExceedDuration(samples.map(s=> s.LAeq_g5).filter(v=>v!=null), LIMIT_LAEQ_30);
-  const durLC = countExceedDuration(samples.map(s=> s.LCpk).filter(v=>v!=null), LIMIT_LCPEAK);
-
-  addRow('LAeq_g30', laeqG30, LIMIT_LAEQ_30, durLA30);
-  addRow('LAeq_g5', laeqG5, LIMIT_LAEQ_30, durLA5);
-  addRow('LCpeak (max)', lcPeakMax, LIMIT_LCPEAK, durLC);
+  if(importModel){
+    phase3Evaluation = window.PegelToolEvaluation
+      ? window.PegelToolEvaluation.evaluateModel(importModel,
+        {timestampAnchor:'end', timestampAnchorEvidence:'operator-approved'})
+      : null;
+    if(phase3Evaluation){
+      importModel.timeBlocks = phase3Evaluation.blocks;
+      const overall = phase3Evaluation.overall;
+      const complete=overall.measurementStatus !== 'not-assessable';
+      const labelFor=comparison=>!complete ? 'Nicht beurteilbar' :
+        comparison==='above' ? 'Überschritten' : comparison==='at-or-below' ? 'Eingehalten' : 'Nicht beurteilbar';
+      phase3AppendRow(tbody, ['LAeq 30 min (feste Blöcke)', phase3Db(overall.laeqMaxDb),
+        '—','99 dB(A)',labelFor(overall.comparisonLAeq)]);
+      phase3AppendRow(tbody, ['LCpeak (Blockmaximum)', phase3Db(overall.lcpeakMaxDb),
+        '—','135 dB(C)',labelFor(overall.comparisonLCpeak)]);
+    }
+    renderPhase3Evaluation(phase3Evaluation);
+    setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
+  } else {
+    // Legacy state without verifiable origin: show only informal observations.
+    phase3Evaluation = null;
+    renderPhase3Evaluation(null);
+    const maxFinite = items => {
+      const valid = items.filter(x=>typeof x==='number' && Number.isFinite(x));
+      return valid.length ? Math.max(...valid) : null;
+    };
+    const laeqG5 = summary?.laeq_g5 != null ? summary.laeq_g5 : maxFinite(samples.map(x=>x.LAeq_g5));
+    const laeqG30 = summary?.laeq_g30 != null ? summary.laeq_g30 : maxFinite(samples.map(x=>x.LAeq_g30));
+    const lcPeakMax = summary?.lcpeak_max != null ? summary.lcpeak_max : maxFinite(samples.map(x=>x.LCpk));
+    phase3AppendRow(tbody, ['LAeq_g30 (gleitend, informativ)', phase3Db(laeqG30), '—','—','Nicht beurteilbar']);
+    phase3AppendRow(tbody, ['LAeq_g5 (gleitend, informativ)', phase3Db(laeqG5), '—','—','Nicht beurteilbar']);
+    phase3AppendRow(tbody, ['LCpeak (informativ)', phase3Db(lcPeakMax), '—','—','Nicht beurteilbar']);
+    setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
+  }
 
   const ds = downsampleForDisplay(samples, 900);
   chartSamples = ds.data;
-  const peakInfo = ds.injectedPeaks ? ` inkl. ${ds.injectedPeaks} echtem Spitzenwert-Punkt` : '';
-  setText('chartInfo', `Diagramme: ${samples.length.toLocaleString()} Originalpunkte → ${chartSamples.length.toLocaleString()} Punkte${peakInfo} (je Punkt ~${ds.bucketSize*(header.logIntervalSec||1)}s).`);
-  setText('laeqChartLabel', 'LAeq_g30 Verlauf mit Grenzwert 99 dB(A)');
-
+  const peakInfo = ds.injectedPeaks ? ' inkl. ' + ds.injectedPeaks + ' echtem Spitzenwert-Punkt' : '';
+  setText('chartInfo', 'Diagramme (informativ): ' + samples.length.toLocaleString() +
+    ' Originalpunkte → ' + chartSamples.length.toLocaleString() + ' Punkte' + peakInfo +
+    ' (je Punkt ~' + ds.bucketSize*(header.logIntervalSec||1) + 's).');
   renderCharts();
-
-  if(hasSummary){ setDot('dotSummary','ok'); setText('chipSummary','Summary: verwendet'); }
-  else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden (Fallback)'); }
-
-  // update header compliance indicator based on table results
   updateComplianceStatus();
-
-  setPdfButtonsDisabled(false);
+  // Phase 5 exports only the technical report from the canonical Phase-4 record.
+  setPdfButtonsDisabled(!importModel || !phase3Evaluation);
+  markRequiredFields();
 }
 
 function paRow(type="", qty=""){
@@ -1643,7 +1942,13 @@ function paRow(type="", qty=""){
   btnDel.className = 'secondary';
   btnDel.textContent = '✕';
   btnDel.style.padding = '10px 12px';
-  btnDel.addEventListener('click', ()=> row.remove());
+  btnDel.addEventListener('click', ()=>{
+    row.remove();
+    protocolOrigins.paItems='manual';
+    setVal('paBestaetigt','');
+    markRequiredFields();
+    scheduleRecoverySave();
+  });
 
   sel.addEventListener('change', ()=>{
     custom.style.display = (sel.value === 'custom') ? 'block' : 'none';
@@ -1670,41 +1975,57 @@ function applyLocationPreset(loc){
     for(const it of preset){ container.appendChild(paRow(it.type, it.qty)); }
     setText('paPresetInfo', `Preset aktiv: ${loc}`);
   } else {
-    container.appendChild(paRow('L-ACOUSTIC KARA II', PA_DEFAULT_QTY['L-ACOUSTIC KARA II']));
-    setText('paPresetInfo', 'Preset aktiv: (nur Kara)');
+    container.appendChild(paRow('', ''));
+    setText('paPresetInfo', 'Kein gültiger Preset-Nachweis – PA manuell erfassen');
   }
 }
 
 el('btnAddPA').addEventListener('click', ()=> {
   el('paContainer').appendChild(paRow('', ''));
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields();
   scheduleRecoverySave();
 });
 el('btnClearPA').addEventListener('click', ()=> {
   applyLocationPreset(getVal('location'));
+  protocolOrigins.paItems='preset-unverified';
+  setVal('paBestaetigt','');
+  markRequiredFields();
   scheduleRecoverySave();
 });
 el('location').addEventListener('change', ()=> {
   applyLocationPreset(getVal('location'));
+  protocolOrigins.paItems='preset-unverified';
+  markRequiredFields();
   scheduleRecoverySave();
 });
 
-el('paContainer').addEventListener('input', scheduleRecoverySave);
-el('paContainer').addEventListener('change', scheduleRecoverySave);
-
-const requiredIds = ['eventName','messungVon','messposition','lautestePosition','foh','beschreibung','berichtName','berichtsort'];
-for(const id of requiredIds){
-  const field = el(id);
-  if(field){
-    field.addEventListener('input', ()=>{ markRequiredFields(); scheduleRecoverySave(); });
-    field.addEventListener('change', ()=>{ markRequiredFields(); scheduleRecoverySave(); });
-  }
-}
-
+el('paContainer').addEventListener('input', ()=>{
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields(); scheduleRecoverySave();
+});
+el('paContainer').addEventListener('change', ()=>{
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields(); scheduleRecoverySave();
+});
 for(const id of FORM_FIELD_IDS){
   const field = el(id);
   if(!field) continue;
-  field.addEventListener('input', scheduleRecoverySave);
-  field.addEventListener('change', scheduleRecoverySave);
+  const changed = ()=>{
+    protocolOrigins[id] = id === 'location' ? 'preset-unverified' : 'manual';
+    if(id === 'location'){
+      setVal('ortBestaetigt','');
+      setVal('paBestaetigt','');
+      protocolOrigins.paItems='preset-unverified';
+    }
+    markRequiredFields();
+    scheduleRecoverySave();
+  };
+  field.addEventListener('input',changed);
+  field.addEventListener('change',changed);
 }
 
 function getPASetupInline(){
@@ -1757,866 +2078,37 @@ function addChartImage(doc, chart, x, y, maxW, maxH, scale){
 }
 
 function setPdfButtonsDisabled(disabled){
-  ['btnPdfTemplate', 'btnPdf'].forEach((id) => {
-    const button = el(id);
-    if(button) button.disabled = disabled;
-  });
+  const button=el('btnPdfTemplate');
+  if(!button) return;
+  button.disabled=!!disabled || !window.PegelToolReport || !window.PegelToolReportPdf || !window.jspdf?.jsPDF;
+  button.title=button.disabled
+    ? 'PDF nur mit importiertem Log und geladenem Berichtsmodul verfügbar'
+    : 'Messprotokoll als PDF herunterladen';
 }
 
-// Konvertiert mm in PDF-Punkte (1mm = 72/25.4 pt).
-function mmToPt(mm){ return mm * 72 / 25.4; }
-
-async function generateTemplatePDF(){
-  const PDFLib = window.PDFLib;
-  if(!PDFLib){
-    alert('pdf-lib konnte nicht geladen werden.');
-    return;
-  }
-
-  // 1. Aktive Vorlage laden.
-  setPdfButtonsDisabled(true);
-  let templateMeta = null;
-  try{
-    const metaRes = await fetch('/pdf_template_api.php?action=get_active_template&tool_key=pegelTool',
-      { credentials: 'same-origin' });
-    if(metaRes.ok){
-      const metaJson = await metaRes.json();
-      if(metaJson.ok && metaJson.template) templateMeta = metaJson.template;
-    }
-  }catch(e){ /* Netzwerkfehler → Legacy-Fallback */ }
-
-  if(!templateMeta){
-    // Kein Template zugewiesen → Legacy-PDF.
-    setPdfButtonsDisabled(false);
-    await generateLegacyPDF();
-    return;
-  }
-
-  // 2. PDF-Bytes holen.
-  let pdfBytes = null;
-  try{
-    const pdfRes = await fetch(
-      '/pdf_template_api.php?action=get_pdf&id=' + templateMeta.id + '&tool_key=pegelTool',
-      { credentials: 'same-origin' }
-    );
-    if(pdfRes.ok) pdfBytes = await pdfRes.arrayBuffer();
-  }catch(e){ /* Laden fehlgeschlagen */ }
-
-  if(!pdfBytes){
-    setPdfButtonsDisabled(false);
-    alert('Vorlage konnte nicht geladen werden. Fallback auf Legacy-PDF.');
-    await generateLegacyPDF();
-    return;
-  }
-
-  // 3. Messdaten-Mapping (identisch zu payloadData, aber nur Strings).
-  const formatLevel = (value, unit) => {
-    const n = Number(value);
-    if(!Number.isFinite(n)) return '—';
-    return n.toFixed(1) + ' ' + unit;
-  };
-
-  const complianceStatus = (value, limit) => {
-    const n = Number(value);
-    if(!Number.isFinite(n)) return '—';
-    return n > limit ? 'NEGATIV' : 'OK';
-  };
-
-  const paItems = collectPAItems();
-
-  // Überschreitungsdauern und lauteste Werte für Template-Variablen
-  const excLAeqSec    = samples.length ? countExceedDuration(samples.map(s => s.LAeq_dt).filter(v => v != null), LIMIT_LAEQ_30) : 0;
-  const excLAeqG5Sec  = samples.length ? countExceedDuration(samples.map(s => s.LAeq_g5).filter(v => v != null), LIMIT_LAEQ_30) : 0;
-  const excLAeqG30Sec = samples.length ? countExceedDuration(samples.map(s => s.LAeq_g30).filter(v => v != null), LIMIT_LAEQ_30) : 0;
-  const excLCpeakSec  = samples.length ? countExceedDuration(samples.map(s => s.LCpk).filter(v => v != null), LIMIT_LCPEAK) : 0;
-  const laeqTotalVal = (summary && summary.laeq_total != null)
-    ? summary.laeq_total
-    : calcEnergyAvgDb(samples.map(s=>s.LAeq_dt));
-  const laeqG5Val = (summary && summary.laeq_g5 != null)
-    ? summary.laeq_g5
-    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAeq_g5).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
-  const laeqG30Val = (summary && summary.laeq_g30 != null)
-    ? summary.laeq_g30
-    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LAeq_g30).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
-  const laeqMaxVal = samples.length
-    ? (()=>{ const vals = samples.map(s=>s.LAeq_dt).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })()
-    : null;
-  const lcPeakVal = (summary && summary.lcpeak_max != null)
-    ? summary.lcpeak_max
-    : (samples.length ? (()=>{ const vals = samples.map(s=>s.LCpk).filter(v=>v!=null&&Number.isFinite(v)); return vals.length ? Math.max(...vals) : null; })() : null);
-
-  const data = {
-    project_name:         getVal('eventName').trim(),
-    measurement_date:     getVal('datumMessung').trim() || getVal('berichtDatum').trim(),
-    operator_name:        getVal('messungVon').trim() || getVal('berichtName').trim(),
-    result_laeq:          formatLevel(laeqTotalVal, 'dB(A)'),
-    result_laeq_g30:      formatLevel(laeqG30Val, 'dB(A)'),
-    result_laf:           formatLevel(laeqG5Val, 'dB(A)'),
-    result_laeq_g5:       formatLevel(laeqG5Val, 'dB(A)'),
-    result_peak:          formatLevel(lcPeakVal, 'dB(C)'),
-    result_laeq_status:   complianceStatus(laeqTotalVal, 99),
-    result_laf_status:    complianceStatus(laeqG5Val, 99),
-    result_laeq_g5_status: complianceStatus(laeqG5Val, 99),
-    result_laeq_g30_status: complianceStatus(laeqG30Val, 99),
-    result_peak_status:   complianceStatus(lcPeakVal, 135),
-    customer:             getVal('foh').trim(),
-    location:             getVal('location').trim(),
-    environment:          getVal('umwelt').trim(),
-    measurement_position: getVal('messposition').trim(),
-    loudest_position:     getVal('lautestePosition').trim(),
-    organiser:            getVal('organisator').trim(),
-    description:          getVal('beschreibung').trim(),
-    report_date:          getVal('berichtDatum').trim(),
-    report_name:          getVal('berichtName').trim(),
-    report_city:          getVal('berichtsort').trim(),
-    device_model:         getVal('messgeraet').trim(),
-    device_sn:            getVal('messgeraetSN').trim(),
-    calibrator_model:     getVal('kalibratorModell').trim(),
-    calibrator_sn:        getVal('kalibratorSN').trim(),
-    firmware:             getVal('firmware').trim(),
-    log_interval:         getVal('logInterval').trim(),
-    start_measurement:    getVal('startMessung').trim(),
-    end_measurement:      getVal('endeMessung').trim(),
-    kset_date:            getVal('kset').trim(),
-    correction_k1:        getVal('k1').trim() ? getVal('k1').trim() + ' dB(A)' : '',
-    correction_k2:        getVal('k2').trim() ? getVal('k2').trim() + ' dB(C)' : '',
-    pa_setup:             getPASetupInline(),
-    microphone:           getVal('mikrofon').trim(),
-    mic_type:             header.micType || '',
-    mic_sn:               header.micSN || '',
-    mic_sensitivity:      getVal('mikroSens').trim(),
-    mic_calibration_date: getVal('micCal').trim(),
-    param_name_1:         'LAeq_g30',
-    param_name_2:         'LAeq_g5',
-    param_name_3:         'LCpeak',
-    limit_laeq:           LIMIT_LAEQ_30 + ' dB(A)',
-    limit_laeq_g30:       LIMIT_LAEQ_30 + ' dB(A)',
-    limit_laeq_g5:        LIMIT_LAEQ_30 + ' dB(A)',
-    limit_lcpeak:         LIMIT_LCPEAK  + ' dB(C)',
-    exceedance_laeq:      secondsToHMS(excLAeqSec),
-    exceedance_laeq_g30:  secondsToHMS(excLAeqG30Sec),
-    exceedance_laf:       secondsToHMS(excLAeqG5Sec),
-    exceedance_laeq_g5:   secondsToHMS(excLAeqG5Sec),
-    exceedance_lcpeak:    secondsToHMS(excLCpeakSec),
-    result_laeq_max:      formatLevel(laeqMaxVal, 'dB(A)'),
-    result_laf_max:       formatLevel(laeqG5Val, 'dB(A)'),
-    result_laeq_g5_max:   formatLevel(laeqG5Val, 'dB(A)'),
-    result_lcpeak_max:    formatLevel(lcPeakVal, 'dB(C)'),
-  };
-
-  // PA-Einzelpositionen (bis zu 8)
-  for(let i = 0; i < 8; i++){
-    const item  = paItems[i];
-    const label = item ? (item.type === '__custom__' ? (item.customType || '?') : item.type) : '';
-    data[`pa_item_${i + 1}`] = item && label ? `${item.qty ?? '?'} × ${label}` : '';
-  }
-
-  // 4. Hintergrund-PDF laden und Felder einblenden.
-  try{
-    const bgDoc = await PDFLib.PDFDocument.load(pdfBytes);
-
-    // Felder aufteilen: AcroForm-Text, AcroForm-Diagramm, Koordinaten-Bild, Koordinaten-Text.
-    const allFields       = Array.isArray(templateMeta.fields) ? templateMeta.fields : [];
-    const acroFields      = allFields.filter(f => f.mode === 'acro');
-    const imageFields     = allFields.filter(f => f.mode === 'image');
-    const coordFields     = allFields.filter(f => (f.mode || '') !== 'acro' && (f.mode || '') !== 'image');
-
-    const CHART_VAR_KEYS  = new Set(['chart_laeq_image', 'chart_laeq_g30_image', 'chart_lcpeak_image']);
-    const acroTextFields  = acroFields.filter(f => !CHART_VAR_KEYS.has(f.field));
-    const acroChartFields = acroFields.filter(f =>  CHART_VAR_KEYS.has(f.field));
-
-    // Positionen der Diagramm-AcroFelder VOR dem Flatten einsammeln.
-    const acroChartPositions = [];
-    if(acroChartFields.length){
-      try{
-        const bgPages    = bgDoc.getPages();
-        const acroForm   = bgDoc.getForm();
-        const allAcroFld = acroForm.getFields();
-        for(const entry of acroChartFields){
-          try{
-            const pdfField = allAcroFld.find(f => f.getName() === entry.acro_field_name);
-            if(!pdfField) continue;
-            const widgets  = pdfField.acroField.getWidgets();
-            if(!widgets.length) continue;
-            const widget   = widgets[0];
-            const rect     = widget.getRectangle();
-            let pageIndex  = 0;
-            try{
-              const pRef = widget.dict.get(PDFLib.PDFName.of('P'));
-              if(pRef && pRef.objectNumber != null){
-                const idx = bgPages.findIndex(p => p.ref.objectNumber === pRef.objectNumber);
-                if(idx >= 0) pageIndex = idx;
-              }
-            }catch(_){}
-            acroChartPositions.push({ field: entry.field, pageIndex, rect });
-          }catch(e){ console.warn('Diagramm-AcroFeld nicht lesbar:', entry.acro_field_name, e); }
-        }
-      }catch(e){}
-    }
-
-    // AcroForm-Textfelder befüllen und gesamtes Formular flatten.
-    if(acroTextFields.length || acroChartFields.length){
-      try{
-        const form = bgDoc.getForm();
-        for(const f of acroTextFields){
-          const value = String(data[f.field] ?? '');
-          if(!value || !f.acro_field_name) continue;
-          try{
-            const field = form.getTextField(f.acro_field_name);
-            field.setText(value);
-            const rawSz = Number(f.size_pt) || 10;
-            field.setFontSize(Math.max(1, rawSz - 2));
-          }catch(e){ /* Feld nicht vorhanden oder falscher Typ – ignorieren */ }
-        }
-        form.flatten();
-      }catch(e){ /* Kein AcroForm in diesem PDF – ignorieren */ }
-    }
-
-    const outDoc = await PDFLib.PDFDocument.create();
-
-    // Alle Seiten aus Hintergrund-PDF kopieren (mit gefüllten AcroForm-Feldern).
-    const pageIndices = bgDoc.getPageIndices();
-    const copiedPages = await outDoc.copyPages(bgDoc, pageIndices);
-    copiedPages.forEach(p => outDoc.addPage(p));
-
-    // Standard-Fonts laden (in pdf-lib eingebaut, kein Download).
-    const fontMap = {
-      regular: await outDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-      bold:    await outDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
-    };
-
-    // Koordinaten-Felder als Text einblenden.
-    for(const f of coordFields){
-      const pageIdx = Math.max(0, (f.page || 1) - 1);
-      if(pageIdx >= outDoc.getPageCount()) continue;
-
-      const page = outDoc.getPage(pageIdx);
-      const { height: pageHeight } = page.getSize();
-
-      const value = String(data[f.field] ?? '');
-      if(!value) continue;
-
-      // Farbe: Status-Felder automatisch einfärben, neutrale Texte etwas weicher setzen.
-      let color = PDFLib.rgb(96 / 255, 96 / 255, 96 / 255);
-      if(f.field && f.field.endsWith('_status')){
-        if(value === 'OK')           color = PDFLib.rgb(0.08, 0.65, 0.42); // grün
-        else if(value === 'NEGATIV') color = PDFLib.rgb(1.0,  0.39, 0.18); // rot
-      } else {
-        const hex = String(f.color || '#000000');
-        if(/^#[0-9a-fA-F]{6}$/.test(hex)){
-          const r = parseInt(hex.slice(1, 3), 16) / 255;
-          const g = parseInt(hex.slice(3, 5), 16) / 255;
-          const b = parseInt(hex.slice(5, 7), 16) / 255;
-          const isNearBlack = r <= 0.08 && g <= 0.08 && b <= 0.08;
-          color = isNearBlack ? PDFLib.rgb(96 / 255, 96 / 255, 96 / 255) : PDFLib.rgb(r, g, b);
-        }
-      }
-
-      // Ausrichtung.
-      let textAlign = PDFLib.TextAlignment.Left;
-      if(f.align === 'center') textAlign = PDFLib.TextAlignment.Center;
-      else if(f.align === 'right')  textAlign = PDFLib.TextAlignment.Right;
-
-      const rawSizePt = Number(f.size_pt) || 10;
-      const sizePt = Math.max(1, rawSizePt - 2);
-      const xPt = mmToPt(Number(f.x_mm) || 0);
-      // PDF-Koordinatenursprung ist unten-links; Y von oben umrechnen.
-      const yPt = pageHeight - mmToPt(Number(f.y_mm) || 0) - sizePt;
-
-      page.drawText(value, {
-        x: xPt,
-        y: yPt,
-        size: sizePt,
-        font: fontMap.regular,
-        color: color,
-      });
-    }
-
-    // Bild-Felder einblenden (Koordinaten-Modus und AcroForm-Positionen).
-    const chartCanvasMap = {
-      chart_laeq_image:   chartLAeq   ? document.getElementById('chartLAeq')   : null,
-      chart_laeq_g30_image: chartLAeq ? document.getElementById('chartLAeq')   : null,
-      chart_lcpeak_image: chartLCpeak ? document.getElementById('chartLCpeak') : null,
-    };
-
-    // Koordinaten-basierte Bild-Felder.
-    for(const f of imageFields){
-      const canvas = chartCanvasMap[f.field] || null;
-      if(!canvas) continue;
-      const pageIdx = Math.max(0, (f.page || 1) - 1);
-      if(pageIdx >= outDoc.getPageCount()) continue;
-      try{
-        applyChartTheme('light');
-        const pngDataUrl = canvas.toDataURL('image/png');
-        applyChartTheme('dark');
-        const base64 = pngDataUrl.split(',')[1];
-        const binStr = atob(base64);
-        const bytes  = new Uint8Array(binStr.length);
-        for(let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-        const pdfImg = await outDoc.embedPng(bytes);
-        const page   = outDoc.getPage(pageIdx);
-        const { height: pageH } = page.getSize();
-        const xPt = mmToPt(Number(f.x_mm) || 0);
-        const wPt = mmToPt(Number(f.w_mm) || 100);
-        const hPt = mmToPt(Number(f.h_mm) || 70);
-        const yPt = pageH - mmToPt(Number(f.y_mm) || 0) - hPt;
-        page.drawImage(pdfImg, { x: xPt, y: yPt, width: wPt, height: hPt });
-      }catch(e){
-        console.warn('Bild-Feld konnte nicht gezeichnet werden:', f.field, e);
-      }
-    }
-
-    // AcroForm-basierte Diagramm-Felder (Position aus Formular-Rechteck).
-    for(const pos of acroChartPositions){
-      const canvas = chartCanvasMap[pos.field] || null;
-      if(!canvas) continue;
-      if(pos.pageIndex >= outDoc.getPageCount()) continue;
-      try{
-        applyChartTheme('light');
-        const pngDataUrl = canvas.toDataURL('image/png');
-        applyChartTheme('dark');
-        const base64 = pngDataUrl.split(',')[1];
-        const binStr = atob(base64);
-        const bytes  = new Uint8Array(binStr.length);
-        for(let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-        const pdfImg = await outDoc.embedPng(bytes);
-        const page   = outDoc.getPage(pos.pageIndex);
-        page.drawImage(pdfImg, {
-          x:      pos.rect.x,
-          y:      pos.rect.y,
-          width:  pos.rect.width,
-          height: pos.rect.height,
-        });
-      }catch(e){
-        console.warn('AcroForm-Diagramm konnte nicht eingefügt werden:', pos.field, e);
-      }
-    }
-
-    const mainBytes = await outDoc.save();
-    const templateHasEmbeddedCharts = imageFields.some(f => CHART_VAR_KEYS.has(f.field)) || acroChartFields.length > 0;
-
-    // 5. Fallback: Nur bei alten Vorlagen ohne eigene Chart-Felder eine Charts-Seite anhängen.
-    const buildChartsPagePdf = () => {
-      const jsPDFRef = window.jspdf?.jsPDF;
-      if (!jsPDFRef) return null;
-      if (!chartLAeq && !chartLCpeak) return null;
-
-    const doc = new jsPDFRef({ unit: 'mm', format: 'a4' });
-    const M = 12;
-    const pageW = 210 - 2 * M;
-
-    const drawHeader = () => {
-      doc.setDrawColor(200, 200, 200);
-      doc.line(M, 24, M + pageW, 24);
-      doc.setTextColor(50, 50, 50);
-      doc.setFontSize(16);
-      doc.setFont(undefined, 'bold');
-      doc.text('Messverlauf', M + 2, 12);
-      doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
-      const ev = getVal('eventName').trim() || '(unbenannt)';
-      doc.text(`Veranstaltung: ${ev}`, M + 2, 20);
-    };
-
-    const drawFooter = () => {
-      const pageH = doc.internal.pageSize.getHeight();
-      const footerTextY = pageH - 10;
-      const footerRuleY = footerTextY - 4;
-      doc.setDrawColor(225, 225, 225);
-      doc.line(M, footerRuleY, M + pageW, footerRuleY);
-      doc.setFontSize(9);
-      doc.setTextColor(150, 150, 150);
-      doc.text('Diagramme', M, footerTextY);
-      const dateText = `Erstellt: ${new Date().toLocaleDateString('de-DE')}`;
-      doc.text(dateText, M + pageW - doc.getTextWidth(dateText), footerTextY);
-    };
-
-    drawHeader();
-    let y = 31;
-
-    if (chartLAeq) {
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('LAeq_g30 mit Grenzwert 99 dB(A)', M, y);
-      const h = addChartImage(doc, chartLAeq, M, y + 5, pageW, 96, 2);
-      y += h + 14;
-    }
-
-    if (chartLCpeak) {
-      if (y + 112 > 280) {
-        drawFooter();
-        doc.addPage();
-        drawHeader();
-        y = 31;
-      }
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
-      addChartImage(doc, chartLCpeak, M, y + 5, pageW, 96, 2);
-    }
-
-    const totalPages = doc.getNumberOfPages();
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      doc.setPage(pageNum);
-      drawFooter();
-    }
-
-    return doc.output('arraybuffer');
-  };
-
-  const mergePdfBuffers = async (firstBuffer, secondBuffer) => {
-    const PDFDocument = window.PDFLib?.PDFDocument;
-    if (!PDFDocument) {
-      return firstBuffer;
-    }
-
-    const out = await PDFDocument.create();
-
-    const first = await PDFDocument.load(firstBuffer);
-    const firstPages = await out.copyPages(first, first.getPageIndices());
-    firstPages.forEach((p) => out.addPage(p));
-
-    if (secondBuffer) {
-      const second = await PDFDocument.load(secondBuffer);
-      const secondPages = await out.copyPages(second, second.getPageIndices());
-      secondPages.forEach((p) => out.addPage(p));
-    }
-
-    return out.save();
-  };
-
-
-    let secondPdfBuffer = null;
-    if (!templateHasEmbeddedCharts) {
-      applyChartTheme('light');
-      secondPdfBuffer = buildChartsPagePdf();
-      applyChartTheme('dark');
-    }
-
-    const mergedBytes = await mergePdfBuffers(mainBytes, secondPdfBuffer);
-    const blob = new Blob([mergedBytes], { type: 'application/pdf' });
-    const fallbackName = `${sanitizeBaseName()}.pdf`;
-    await openPdfPreview(blob, fallbackName);
-  }catch(e){
-    console.error('Template-PDF Fehler:', e);
-    alert('Fehler beim Erstellen des Template-PDFs: ' + e.message);
-  }finally{
-    setPdfButtonsDisabled(false);
-  }
-}
-
-async function generateLegacyPDF(){
-  const { jsPDF } = window.jspdf || {};
-  if(!jsPDF) { alert('jsPDF konnte nicht geladen werden.'); return; }
-
-  const doc = new jsPDF({unit:'mm', format:'a4'});
-  const M = 12;
-  const pageW = 210 - 2*M;
-  const pageH = doc.internal.pageSize.getHeight();
-  const footerSafeZone = 10;
-  const footerTextY = pageH - footerSafeZone;
-  const footerRuleY = footerTextY - 4;
-  const contentMaxY = footerRuleY - 6;
-  const signatureBlockHeight = 46;
-  const signatureTopY = contentMaxY - signatureBlockHeight;
-
-  async function drawHeader(){
-    const logoUrl = '/assets/Logos/pegelTools.png';
-    const maxH = 12;
-    const maxW = 40;
-    try {
-      await new Promise((resolve)=>{
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = ()=>{
-          try{
-            const iw = img.naturalWidth || img.width;
-            const ih = img.naturalHeight || img.height;
-            const imgAspect = iw/ih;
-            const boxAspect = maxW/maxH;
-            let wmm, hmm;
-            if(imgAspect > boxAspect){
-              wmm = maxW;
-              hmm = maxW / imgAspect;
-            } else {
-              hmm = maxH;
-              wmm = maxH * imgAspect;
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = iw; canvas.height = ih;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img,0,0);
-            const dataUrl = canvas.toDataURL('image/png');
-            const x = M + pageW - wmm;
-            const y = 6;
-            doc.addImage(dataUrl, 'PNG', x, y, wmm, hmm);
-          }catch(e){
-            console.warn('Logo load/draw failed', e);
-          }
-          resolve();
-        };
-        img.onerror = ()=>{ resolve(); };
-        img.src = logoUrl;
-        setTimeout(resolve, 1500);
-      });
-    } catch(e){ console.warn('drawHeader logo error', e); }
-
-    doc.setDrawColor(200, 200, 200);
-    doc.line(M, 24, M+pageW, 24);
-    doc.setTextColor(50, 50, 50);
-    doc.setFontSize(16);
-    doc.setFont(undefined,'bold');
-    doc.text('Schallpegelmessung', M+2, 12);
-    doc.setFontSize(11);
-    doc.setFont(undefined,'normal');
-    doc.text('gemäß DIN 15905-5', M+2, 21);
-  }
-
-  function drawFooter(pageNum, totalPages){
-    doc.setDrawColor(225, 225, 225);
-    doc.line(M, footerRuleY, M+pageW, footerRuleY);
-    doc.setFontSize(9);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Seite ${pageNum}/${totalPages}`, M, footerTextY);
-    const date = new Date().toLocaleDateString('de-DE');
-    const dateText = `Erstellt: ${date}`;
-    doc.text(dateText, M + pageW - doc.getTextWidth(dateText), footerTextY);
-  }
-
-  async function startNewPage(){
-    doc.addPage();
-    await drawHeader();
-    return 28;
-  }
-
-  async function ensureSpaceWithin(y, neededHeight, maxY){
-    if(y + neededHeight <= maxY) return y;
-    return startNewPage();
-  }
-
-  function drawAllFooters(){
-    const totalPages = doc.getNumberOfPages();
-    for(let pageNum = 1; pageNum <= totalPages; pageNum++){
-      doc.setPage(pageNum);
-      drawFooter(pageNum, totalPages);
-    }
-  }
-
-  function section(y, t){
-    doc.setFontSize(11);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(12, 67, 145);
-    doc.text(t, M, y);
-    doc.setDrawColor(12, 67, 145);
-    doc.setLineWidth(0.5);
-    doc.line(M, y+0.8, M+pageW, y+0.8);
-    doc.setTextColor(50, 50, 50);
-    return y + 7;
-  }
-
-  function fieldPair(y, label1, val1, label2, val2){
-    const col1W = pageW/2 - 2;
-    doc.setFontSize(9);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label1, M, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines1 = wrap(doc, val1||'—', col1W-5);
-    doc.text(lines1, M, y+4);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label2, M+pageW/2+2, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines2 = wrap(doc, val2||'—', col1W-5);
-    doc.text(lines2, M+pageW/2+2, y+4);
-
-    return y + Math.max(lines1.length, lines2.length)*4 + 6;
-  }
-
-  function fieldTriple(y, label1, val1, label2, val2, label3, val3){
-    const gap = 4;
-    const colW = (pageW - (2*gap)) / 3;
-    const x1 = M;
-    const x2 = M + colW + gap;
-    const x3 = M + (2*(colW + gap));
-
-    doc.setFontSize(9);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label1, x1, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines1 = wrap(doc, val1||'—', colW-4);
-    doc.text(lines1, x1, y+4);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label2, x2, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines2 = wrap(doc, val2||'—', colW-4);
-    doc.text(lines2, x2, y+4);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label3, x3, y);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    const lines3 = wrap(doc, val3||'—', colW-4);
-    doc.text(lines3, x3, y+4);
-
-    return y + Math.max(lines1.length, lines2.length, lines3.length)*4 + 6;
-  }
-
-  function textBox(y, text){
-    const lines = wrap(doc, text || '—', pageW - 4);
-    const boxH = Math.max(14, lines.length * 4 + 8);
-    doc.setDrawColor(210, 210, 210);
-    doc.rect(M, y, pageW, boxH);
-    doc.setFontSize(9);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50, 50, 50);
-    doc.text(lines, M + 2, y + 6);
-    return y + boxH;
-  }
-
-  function drawSignatureBlock(topY){
-    const sigTitleY = topY + 6;
-    doc.setFontSize(11);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(50,50,50);
-    doc.text('Unterschrift', M, sigTitleY);
-
-    const sigFieldsY = sigTitleY + 6;
-    doc.setFontSize(9);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100,100,100);
-    doc.text('Datum', M, sigFieldsY);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50,50,50);
-    doc.text(String(getVal('berichtDatum')||''), M+18, sigFieldsY);
-
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(100,100,100);
-    doc.text('Name', M+pageW/2, sigFieldsY);
-    doc.setFont(undefined,'normal');
-    doc.setTextColor(50,50,50);
-    doc.text(String(getVal('berichtName')||''), M+pageW/2+18, sigFieldsY);
-
-    const sigBoxY = sigFieldsY + 6;
-    const sigBoxH = 28;
-    doc.setDrawColor(200,200,200);
-    doc.rect(M, sigBoxY, pageW, sigBoxH);
-    doc.setFontSize(9);
-    doc.setTextColor(120,120,120);
-    doc.text('Unterschrift (Platzhalter)', M+2, sigBoxY+6);
-  }
-
-  function resultTable(y, rows, maxY=contentMaxY){
-    const cols = [
-      {t:'Parameter', w:58},
-      {t:'Messwert', w:24},
-      {t:'Dauer', w:36},
-      {t:'Grenzwert', w:24},
-      {t:'Status', w:(pageW-142)}
-    ];
-
-    doc.setFontSize(9);
-    doc.setFont(undefined,'bold');
-    doc.setFillColor(240, 240, 240);
-    doc.setDrawColor(200, 200, 200);
-
-    const h = 7;
-    doc.rect(M, y, pageW, h, 'FD');
-    let x = M;
-    doc.setTextColor(80, 80, 80);
-    for(const c of cols){ doc.text(c.t, x+2, y+5.5); x += c.w; }
-
-    doc.setFont(undefined,'normal');
-    let yy = y + h;
-    doc.setTextColor(50, 50, 50);
-    let rowsDrawn = 0;
-    for(const r of rows){
-      const lineH = 6;
-      if(yy + lineH > maxY) break;
-      doc.setDrawColor(230, 230, 230);
-      doc.rect(M, yy, pageW, lineH);
-      let xx = M;
-      for(let i=0;i<5;i++){
-        const text = String(r[i] ?? '');
-        if(i === 4 && text.includes('NICHT OK')) doc.setTextColor(255, 82, 82);
-        else if(i === 4 && text.includes('OK')) doc.setTextColor(76, 175, 80);
-        else doc.setTextColor(50, 50, 50);
-        doc.text(text, xx+2, yy+5);
-        xx += cols[i].w;
-      }
-      yy += lineH;
-      rowsDrawn++;
-    }
-    return { y: yy, rowsDrawn };
-  }
-
-  const ev = getVal('eventName').trim() || '(unbenannt)';
-  const dt = getVal('datumMessung').trim() || '';
-
-  await drawHeader();
-  let y = 28;
-  const firstPageMaxY = signatureTopY - 2;
-
-  y = section(y, 'Details');
-  y += 2;
-  y = await ensureSpaceWithin(y, 12, firstPageMaxY);
-  y = fieldPair(y, 'Veranstaltung', ev, 'Datum', dt);
-  y = await ensureSpaceWithin(y, 12, firstPageMaxY);
-  y = fieldPair(y, 'Location', getVal('location'), 'Umgebung', getVal('umwelt'));
-
-  const colGapLocal = 10;
-  const colWLocal = (pageW - colGapLocal)/2;
-  const orgLines = wrap(doc, getVal('organisator'), colWLocal - 4);
-  const beschrLines = wrap(doc, getVal('beschreibung'), colWLocal - 4);
-  const boxHLocal = Math.max(26, Math.max(orgLines.length, beschrLines.length)*4 + 8);
-  y = await ensureSpaceWithin(y, 3 + boxHLocal + 8, firstPageMaxY);
-  doc.setFontSize(10);
-  doc.setFont(undefined,'bold');
-  doc.text('Organisator:', M, y);
-  doc.text('Beschreibung:', M + colWLocal + colGapLocal, y);
-  const boxYLocal = y + 3;
-  doc.setDrawColor(210,210,210);
-  doc.rect(M, boxYLocal, colWLocal, boxHLocal);
-  doc.rect(M + colWLocal + colGapLocal, boxYLocal, colWLocal, boxHLocal);
-  doc.setFont(undefined,'normal');
-  doc.text(orgLines, M+2, boxYLocal+6);
-  doc.text(beschrLines, M + colWLocal + colGapLocal + 2, boxYLocal+6);
-  y = boxYLocal + boxHLocal + 8;
-
-  y = await ensureSpaceWithin(y, 22, firstPageMaxY);
-  y = section(y, 'Messbeteiligte');
-  y += 2;
-  y = fieldPair(y, 'Messung durchgeführt von', getVal('messungVon'), 'FOH-Techniker', getVal('foh'));
-  y = fieldPair(y, 'Messposition', getVal('messposition'), 'Lauteste Position', getVal('lautestePosition'));
-
-  y = await ensureSpaceWithin(y, 38, firstPageMaxY);
-  y = section(y, 'Messgerät & Kalibrierung');
-  y += 2;
-  y = fieldTriple(y, 'Messgerät', getVal('messgeraet'), 'Kalibrator', getVal('kalibratorModell'), 'Korrekturwert k1', header.k1);
-  y = fieldTriple(y, 'Messgerät S/N', getVal('messgeraetSN'), 'Kalibrator S/N', getVal('kalibratorSN'), 'Korrekturwert k2', header.k2);
-  y = fieldTriple(y, 'Firmware', getVal('firmware'), 'Log-Intervall', header.logIntervalText, 'k-Werte gesetzt', header.kset);
-
-  const paSetupText = getPASetupInline() || '—';
-  const paBoxH = Math.max(14, wrap(doc, paSetupText, pageW - 4).length * 4 + 8);
-  y = await ensureSpaceWithin(y, 9 + 2 + paBoxH + 8, firstPageMaxY);
-  y = section(y, 'Anlagen-Setup');
-  y += 2;
-  y = textBox(y, paSetupText) + 8;
-
-  const rows = Array.from(document.querySelectorAll('#pegelTabelle tbody tr'))
-    .map(tr => Array.from(tr.children).map(td => td.innerText));
-  let remainingRows = rows.slice();
-  const firstPageResultMinHeight = 9 + 2 + 7 + 6;
-  let resultsStartedOnFirstPage = false;
-  if(y + firstPageResultMinHeight <= signatureTopY){
-    y = section(y, 'Messergebnisse');
-    y += 2;
-    const firstPageRows = resultTable(y, remainingRows, signatureTopY - 2);
-    remainingRows = remainingRows.slice(firstPageRows.rowsDrawn);
-    y = firstPageRows.y + 8;
-    resultsStartedOnFirstPage = firstPageRows.rowsDrawn > 0;
-  }
-
-  drawSignatureBlock(signatureTopY);
-
-  if(remainingRows.length){
-    y = await startNewPage();
-    let isContinuation = resultsStartedOnFirstPage;
-    while(remainingRows.length){
-      y = section(y, isContinuation ? 'Messergebnisse (Fortsetzung)' : 'Messergebnisse');
-      y += 2;
-      const pageRows = resultTable(y, remainingRows, contentMaxY);
-      if(pageRows.rowsDrawn === 0){
-        y = await startNewPage();
-        isContinuation = true;
-        continue;
-      }
-      remainingRows = remainingRows.slice(pageRows.rowsDrawn);
-      y = pageRows.y + 8;
-      if(remainingRows.length){
-        y = await startNewPage();
-        isContinuation = true;
-      }
-    }
-  }
-
-  const loudestDbA = (summary && summary.lafmax_dt != null)
-    ? summary.lafmax_dt
-    : (() => {
-        const values = samples.map(s => s.LAFmax).filter(v => v != null && Number.isFinite(v));
-        return values.length ? Math.max(...values) : null;
-      })();
-  const loudestDbC = (summary && summary.lcpeak_max != null)
-    ? summary.lcpeak_max
-    : (() => {
-        const values = samples.map(s => s.LCpk).filter(v => v != null && Number.isFinite(v));
-        return values.length ? Math.max(...values) : null;
-      })();
-  const formatLevelForChartTitle = (value, unit) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? `${n.toFixed(1)} ${unit}` : '—';
-  };
-
-  applyChartTheme('light');
-  doc.addPage();
-  await drawHeader();
-  y = 28;
-
-  y = section(y, `Messverlauf – ${ev}`);
-  y += 2;
-
-  if(chartLAeq){
-    doc.setFontSize(12);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('LAeq_g30 mit Grenzwert 99 dB(A)', M, y);
-    doc.setFontSize(10);
-    doc.setFont(undefined,'normal');
-    const loudestAText = `Lautester Wert dB(A): ${formatLevelForChartTitle(loudestDbA, 'dB(A)')}`;
-    doc.text(loudestAText, M + pageW - doc.getTextWidth(loudestAText), y);
-    const chartH = addChartImage(doc, chartLAeq, M, y+5, pageW, 95, 2);
-    y += chartH + 12;
-  }
-
-  if(chartLCpeak){
-    doc.setFontSize(12);
-    doc.setFont(undefined,'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('LCpeak mit Grenzwert 135 dB(C)', M, y);
-    doc.setFontSize(10);
-    doc.setFont(undefined,'normal');
-    const loudestCText = `Lautester Wert dB(C): ${formatLevelForChartTitle(loudestDbC, 'dB(C)')}`;
-    doc.text(loudestCText, M + pageW - doc.getTextWidth(loudestCText), y);
-    addChartImage(doc, chartLCpeak, M, y+5, pageW, 95, 2);
-  }
-
-  applyChartTheme('dark');
-  drawAllFooters();
-
-  const fname = `${sanitizeBaseName()} nach DIN 15905-5`;
-
-  try {
-    const blob = doc.output('blob');
-    await openPdfPreview(blob, `${fname}.pdf`);
-  } catch (e) {
-    doc.save(`${fname}.pdf`);
-  }
-}
-
+// Ein einheitlicher PDF-Pfad: keine Template-Feldzuordnung, kein Legacy-Status,
+// keine Null->0-Umwandlung, keine separate Neuberechnung.
 async function generatePDF(){
-  await generateTemplatePDF();
+  if(!importModel || !phase3Evaluation)
+    throw new Error('Vor dem PDF-Export ein XL3-Log importieren und auswerten.');
+  const report=getPhase5Report();
+  if(!report) throw new Error('Berichtsdatenmodul nicht geladen.');
+  const JsPdf=window.jspdf?.jsPDF;
+  const backend=window.PegelToolReportPdf;
+  if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
+  const documentPdf=backend.create(report,JsPdf);
+  const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
+  const blob=documentPdf.output('blob');
+  triggerDownload(blob,filename,false);
+  // Die Vorschau zeigt exakt dieselben PDF-Bytes wie der Download.
+  const previewWindow=consumeReservedPdfPreviewWindow();
+  if(previewWindow){
+    const url=URL.createObjectURL(blob);
+    try{previewWindow.location.replace(url);}
+    catch(err){console.warn('PDF-Vorschau nicht möglich',err);}
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+  }
+  setText('parseInfo','Messprotokoll als PDF exportiert.');
 }
 
 function exportHTML(){
@@ -2694,94 +2186,117 @@ document.querySelectorAll('.header-menu').forEach(menu => {
 // wire import button to hidden file input
 el('btnPdfTemplate').addEventListener('click', async ()=>{
   reservePdfPreviewWindow();
-  await generatePDF();
-});
-el('btnPdf').addEventListener('click', ()=>{
-  closeHeaderMenus();
-  reservePdfPreviewWindow();
-  generateLegacyPDF();
+  try{ await generatePDF(); }
+  catch(err){
+    const previewWindow=consumeReservedPdfPreviewWindow();
+    if(previewWindow) previewWindow.close();
+    console.error(err);
+    alert('PDF konnte nicht erstellt werden: '+String(err?.message || err));
+  }
 });
 el('btnImport').addEventListener('click', ()=>{
   const inp = el('fileInput'); if(inp) inp.click();
 });
 
+function showImportQuality(model){
+  if(!model) return;
+  const entries = [...model.quality.errors, ...model.quality.warnings];
+  const codes = entries.slice(0, 5).map(x => x.code + (x.line ? ' (Zeile '+x.line+')' : '')).join(', ');
+  setText('parseInfo', 'Importdaten: '+model.quality.status+'; '+model.samples.length+' Zeitreihen-Zeilen; '+entries.length+
+    ' Hinweis(e)'+(codes ? ': '+codes : '')+'. Keine normative Prüfung; Details im gespeicherten Importmodell.');
+  setDot('dotLog', model.quality.status === 'usable' ? 'ok' : model.quality.status === 'rejected' ? 'bad' : 'warn');
+  setText('chipLog', model.quality.status === 'usable' ? 'Log: eingelesen (ungeprüft)' :
+    model.quality.status === 'rejected' ? 'Log: Import abgelehnt' : 'Log: eingeschränkt auswertbar');
+}
+
 el('fileInput').addEventListener('change', (e)=>{
   const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
   if(!f) return;
-
   if(f.size > MAX_LOG_BYTES){
     setDot('dotLog','bad');
-    setText('chipLog', `Log: Datei zu groß (${f.name})`);
-    setText('parseInfo', `Datei ist zu groß: ${(f.size/1024/1024).toFixed(1)} MB. Maximum: ${(MAX_LOG_BYTES/1024/1024).toFixed(0)} MB.`);
-    if(e.target) e.target.value = '';
+    setText('chipLog', 'Log: Datei zu groß ('+f.name+')');
+    setText('parseInfo', 'Logdatei über 8 MiB – nicht importiert.');
+    lastImportAttempt={errors:[{code:'TOO_LARGE',message:'Logdatei über 8 MiB – nicht importiert.'}]};
+    if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+    e.target.value = '';
     return;
   }
-
   const reader = new FileReader();
   reader.onload = (evt)=>{
     try{
+      if(!window.PegelToolImport) throw new Error('XL3-Importmodul nicht geladen.');
       const text = String(evt.target.result || '');
-
-      setDot('dotLog','warn');
-      setText('chipLog', `Log: parsing… (${f.name})`);
-
-      parseHeaderAndMeta(text);
-      const ts = parseBroadbandTimeSeries(text);
-      const sm = parseBroadbandSummary(text);
-      writeHeaderToUI();
-
-      // Auto-fill "Datum der Messung" from header start date if user left it empty.
-      if(!getVal('datumMessung').trim() && header.start){
-        const m = String(header.start).match(/\d{4}-\d{2}-\d{2}/);
-        if(m) setVal('datumMessung', m[0]);
-      }
-
-      if(sm.ok){ setDot('dotSummary','ok'); setText('chipSummary','Summary: gefunden'); }
-      else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden'); }
-
-      // store original log text for export
-      lastLogText = text;
-
-      markRequiredFields();
-
-      if(!ts.ok || !samples.length){
-        logLoaded = false;
-        lastLogFileName = '';
-        setDot('dotLog','bad');
-        setText('chipLog','Log: Fehler (keine Daten)');
-        setPdfButtonsDisabled(true);
-        updateComplianceStatus();
+      const result = window.PegelToolImport.parse(text, {fileName:f.name});
+      // Preserve previous project on rejected imports. No silent partial replacement.
+      if(!result.ok){
+        lastImportAttempt=result.model && result.model.quality || {
+          errors:[{code:'REJECTED',message:'Import abgelehnt: Dateiformat oder Rohdaten nicht verwertbar.'}]};
+        showImportQuality(result.model);
+        if(importModel && Array.isArray(importModel.samples) && importModel.samples.length){
+          // Failed follow-up import must not visually hide the preserved dataset.
+          setDot('dotLog','warn');
+          setText('chipLog','Log: vorherige Messung geladen (neuer Import abgewiesen)');
+        }
+        if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
         return;
       }
-
-      logLoaded = true;
+      const compat = window.PegelToolImport.toLegacy(result.model);
+      lastImportAttempt = null;
+      importModel = result.model;
+      header = compat.header;
+      samples = compat.samples;
+      summary = compat.summary;
+      parsedColumns = {available:Object.values(importModel.columns).map(x=>x.column),used:{}};
+      lastLogText = text;
       lastLogFileName = f.name;
-      setDot('dotLog','ok');
-      setText('chipLog', `Log: geladen (${f.name})`);
+      logLoaded = true;
+      writeHeaderToUI();
+      if(!getVal('datumMessung').trim() && header.start){
+        const m = String(header.start).match(/\d{4}-\d{2}-\d{2}/);
+        if(m){ setVal('datumMessung', m[0]); protocolOrigins.datumMessung='device-header'; }
+      }
+      markRequiredFields();
       calculateAndRender();
+      showImportQuality(importModel);
+      if(workflowController) workflowController.go('quality');
       scheduleRecoverySave();
-
     }catch(err){
       console.error(err);
-      logLoaded = false;
-      lastLogFileName = '';
       setDot('dotLog','bad');
-      setText('chipLog','Log: Fehler');
-      setText('parseInfo', 'Fehler beim Parsen: ' + String(err && err.message ? err.message : err));
-      setPdfButtonsDisabled(true);
-      updateComplianceStatus();
+      setText('chipLog','Log: Importfehler');
+      setText('parseInfo','Import fehlgeschlagen: '+String(err?.message || err));
+      lastImportAttempt={errors:[{code:'IMPORT_EXCEPTION',message:String(err?.message || err)}]};
+      if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+    }finally{
+      if(e.target) e.target.value = '';
     }
   };
   reader.readAsText(f);
 });
 
 (function init(){
-  const today = new Date().toISOString().split('T')[0];
-  setVal('berichtDatum', today);
+  // No sample date or instrument/organiser defaults may become accidental evidence.
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
   setPdfButtonsDisabled(true);
   markRequiredFields();
   updateRecoveryButton();
+  if(window.PegelToolWorkflow){
+    workflowController=window.PegelToolWorkflow.mount({
+      document,
+      getSnapshot:()=>{
+        const record=getProtocolReportData();
+        return {importModel,evaluation:phase3Evaluation,record,review:record && record.review,
+          logFileName:lastLogFileName,lastImportAttempt,
+          canExport:!!importModel && !!phase3Evaluation && !el('btnPdfTemplate').disabled};
+      },
+      onActivate:(step)=>{
+        if(step==='assessment') requestAnimationFrame(()=>{
+          if(chartLAeq) chartLAeq.resize();
+          if(chartLCpeak) chartLCpeak.resize();
+        });
+      }
+    });
+  }
   window.addEventListener('beforeunload', persistRecoveryState);
   window.addEventListener('pagehide', persistRecoveryState);
 })();

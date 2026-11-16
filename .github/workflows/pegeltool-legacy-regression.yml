@@ -1,0 +1,77 @@
+name: pegelTool legacy regression (Phase 1)
+on:
+  push:
+    paths:
+      - 'app/tools/pegelTool/**'
+      - 'tests/pegelTool/**'
+      - '.github/workflows/pegeltool-legacy-regression.yml'
+  pull_request:
+    paths:
+      - 'app/tools/pegelTool/**'
+      - 'tests/pegelTool/**'
+      - '.github/workflows/pegeltool-legacy-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run pegelTool legacy regression
+        run: node --test tests/pegelTool/regression/legacy.test.cjs
+      - name: Run pegelTool Phase 2 importer tests
+        run: node --test tests/pegelTool/phase2/import.test.cjs
+      - name: Run pegelTool Phase 3 evaluation tests
+        run: node --test tests/pegelTool/phase3/evaluation.test.cjs
+      - name: Run pegelTool Phase 4 protocol tests
+        run: node --test tests/pegelTool/phase4/protocol.test.cjs
+      - name: Run pegelTool Phase 5 report and PDF tests
+        run: node --test tests/pegelTool/phase5/report.test.cjs
+      - name: Run pegelTool Phase 6 guided workflow tests
+        run: node --test tests/pegelTool/phase6/workflow.test.cjs
+      - name: Run pegelTool Phase 7 independent reference and integration tests
+        run: node --test tests/pegelTool/phase7/release.test.cjs
+
+  browser-e2e:
+    name: pegelTool Chromium E2E and PDF rendering
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PEGELTOOL_BROWSER_ARTIFACTS: tests/pegelTool/phase7/artifacts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only Chromium/Playwright
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run Chromium end-to-end regression
+        run: node --test tests/pegelTool/phase7/browser.test.cjs
+      - name: Render generated PDF using Poppler
+        if: success()
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          pdfinfo "$PEGELTOOL_BROWSER_ARTIFACTS/bericht.pdf" > "$PEGELTOOL_BROWSER_ARTIFACTS/pdfinfo.txt"
+          pdftoppm -f 1 -l 2 -scale-to 1200 -png "$PEGELTOOL_BROWSER_ARTIFACTS/bericht.pdf" "$PEGELTOOL_BROWSER_ARTIFACTS/pdf-page" >/dev/null
+          test -s "$PEGELTOOL_BROWSER_ARTIFACTS/pdf-page-1.png"
+      - name: Attach PDF + desktop/mobile screenshots for manual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pegeltool-phase7-browser-review
+          path: ${{ env.PEGELTOOL_BROWSER_ARTIFACTS }}/
+          if-no-files-found: warn
+          retention-days: 14
