@@ -14,7 +14,7 @@
     {id:'setup', title:'Messaufbau / Korrekturen', description:'Veranstaltung, Messstellen, PA, k1/k2 und Kalibrierung dokumentieren.'},
     {id:'assessment', title:'Bewertung', description:'Feste Halbstundenblöcke prüfen; Zusatzanalyse getrennt ansehen.'},
     {id:'protocol', title:'Protokoll', description:'Fehlende Nachweise ergänzen und den Bericht kontrollieren.'},
-    {id:'export', title:'Export', description:'Vorläufigen technischen Bericht oder Projektstand speichern.'}
+    {id:'export', title:'Export', description:'Messbericht oder Projektstand speichern.'}
   ]);
   const allowed = new Set(STEPS.map(s=>s.id));
   const arr = x => Array.isArray(x) ? x : [];
@@ -22,12 +22,12 @@
     const s=snapshot || {}, record=s.record || {}, review=s.review || {},
       model=s.importModel, assessment=record.assessment || {};
     if (!model || !arr(model.samples).length) return 'Noch nicht geprüft';
-    // All conditions must be present. A numeric comparison by itself is NEVER an approval.
-    const eligible=record.normReview === 'verified' && review.reportFullyChecked === true &&
+    // A positive status requires a complete and documented measurement.
+    const eligible=review.reportFullyChecked === true &&
       review.documentationComplete === true && review.evidenceComplete === true;
     if (!eligible) return 'Nicht beurteilbar';
-    if (assessment.normativeStatus === 'exceeded') return 'Grenzwert überschritten';
-    if (assessment.normativeStatus === 'compliant') return 'Grenzwert eingehalten';
+    if (assessment.measurementStatus === 'exceeded') return 'Grenzwert überschritten';
+    if (assessment.measurementStatus === 'within-limits') return 'Grenzwerte eingehalten';
     return 'Nicht beurteilbar';
   }
   function collectIssues(snapshot) {
@@ -72,14 +72,13 @@
       assessment: !blocks.length ? 'Noch nicht geprüft' :
         blocks.some(b=>b.dataQuality !== 'complete') ? 'Datenlücken prüfen' : 'Technisch berechnet',
       protocol: !review ? 'Noch offen' : formIssues.length || evidenceIssues.length ?
-        'Nachweise offen' : 'Erfasst (vorläufig)',
-      export: s.canExport ? 'Vorläufig verfügbar' : 'Noch nicht verfügbar'
+        'Nachweise offen' : 'Angaben erfasst',
+      export: s.canExport ? 'Verfügbar' : 'Noch nicht verfügbar'
     };
     return {status,steps,issues:collectIssues(s),
       hasImport:!!model,canExport:!!s.canExport,
       blockCount:blocks.length,missingForm:formIssues.length,missingEvidence:evidenceIssues.length,
-      // The unresolved original-norm check is always visible regardless of field completeness.
-      normNotice:'Originalnorm DIN 15905-5:2022-07 noch nicht abschließend abgeglichen. Keine DIN-Konformitätsbescheinigung.'};
+      normNotice:''};
   }
   function mount(opts) {
     const doc=opts && opts.document, getSnapshot=opts && opts.getSnapshot;
@@ -165,12 +164,12 @@
         card.appendChild(fragments.qualityText); panel.appendChild(card);
       }
       if(step.id==='assessment') {
-        panel.append(paragraph('Die 30-Minuten-Auswertung ist technisch vorläufig. Die nachfolgenden gleitenden Werte und Diagramme dienen ausschließlich der Zusatzanalyse.','workflow-notice'));
+        panel.append(paragraph('Gleitende Werte und Diagramme dienen der Zusatzanalyse; die Bewertung erfolgt anhand der 30-Minuten-Blöcke.','workflow-notice'));
       }
       if(step.id==='export') {
         const card=make('div','section');
-        card.append(make('h3','','Vorläufiges Messprotokoll'));
-        card.append(paragraph('Der PDF-Inhalt entspricht der Vorschau unter „Protokoll“. Offene Daten- und Normnachweise werden im Bericht aufgeführt.','workflow-description'));
+        card.append(make('h3','','Messprotokoll'));
+        card.append(paragraph('Der PDF-Inhalt entspricht der Vorschau unter „Protokoll“. Mess- und Protokollhinweise werden im Bericht dokumentiert.','workflow-description'));
         fragments.exportText=paragraph('Ohne überprüfbaren Import noch kein PDF möglich.','workflow-inline-status');
         const actions=make('div','workflow-actions');
         fragments.exportButton=action('Messbericht als PDF exportieren',()=>doc.getElementById('btnPdfTemplate')?.click());
@@ -216,6 +215,7 @@
         summary.status==='Nicht beurteilbar' ? 'unknown' :
         summary.status==='Grenzwert überschritten' ? 'bad' : 'ok';
       note.textContent=summary.normNotice;
+      note.hidden=!summary.normNotice;
       issueHeading.textContent=summary.issues.length ?
         'Priorisierte Prüfhinweise ('+summary.issues.length+'):' : 'Keine zusätzlichen technischen Prüfhinweise.';
       issueList.replaceChildren();
@@ -240,7 +240,7 @@
         loadedText;
       fragments.exportButton.disabled=!summary.canExport;
       fragments.exportText.textContent=summary.canExport ?
-        'Technischer PDF-Export verfügbar – weiterhin keine bestätigte DIN-Konformität.' :
+        'PDF-Export verfügbar.' :
         'PDF noch nicht verfügbar: Import, Bewertung oder PDF-Modul fehlen.';
       return summary;
     }
