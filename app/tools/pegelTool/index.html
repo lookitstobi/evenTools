@@ -8,6 +8,7 @@
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
 <script src="/toolserve.php?name=pegelTool&file=import/nti-xl3.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=evaluation/engine.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -204,6 +205,20 @@ label.label-required::after{
     </div>
 
     <div class="section">
+      <h3>30-Minuten-Auswertung (vorläufig)</h3>
+      <div class="small mt-6" id="phase3Info">Noch keine Auswertung. Der Normenabgleich aus Phase 0 steht aus.</div>
+      <div class="table-wrap mt-8">
+        <table class="table" id="phase3Tabelle">
+          <thead><tr>
+            <th>Zeitraum</th><th>Abdeckung</th><th>LAeq 30 min</th><th>LCpeak</th><th>Datenlage</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="small mt-8" id="phase3Warning">Alle Werte sind technische Zwischenstände, keine DIN-Freigabe.</div>
+    </div>
+
+    <div class="section">
       <h3>Diagramme (Vorschau)</h3>
       <div class="grid-2 panel-grid-spaced">
         <div>
@@ -353,6 +368,7 @@ let lastLogText = '';
 let lastLogFileName = '';
 let logLoaded = false;
 let importModel = null; // Versioned Phase-2 model; no normative judgement.
+let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
 let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
@@ -1451,22 +1467,16 @@ function applyChartTheme(name){
 }
 
 function updateComplianceStatus(){
-  const badCount = document.querySelectorAll('#pegelTabelle .status-bad').length;
   const dot = document.getElementById('complianceDot');
   if(!dot) return;
   dot.classList.remove('status-ok','status-warn','status-bad','status-empty');
   if(!logLoaded){
     dot.classList.add('status-empty');
-    return;
-  }
-  // Phase 2 has no confirmed DIN assessment engine. Never claim a pass for new imports.
-  if(importModel){ dot.classList.add('status-warn'); dot.title = 'Keine normative Freigabe – Messdatenqualität prüfen'; return; }
-  if(badCount === 0){
-    dot.classList.add('status-ok');
-  } else if(badCount === 1){
-    dot.classList.add('status-warn');
+    dot.title = 'Keine Messung geladen';
   } else {
-    dot.classList.add('status-bad');
+    // There is NO authorised DIN pass/fail engine yet, including for legacy projects.
+    dot.classList.add('status-warn');
+    dot.title = 'DIN-Freigabe ausstehend: Normtext, Nachweise und PDF müssen noch geprüft werden';
   }
 }
 
@@ -1593,41 +1603,93 @@ function renderCharts(){
   refreshChartLayout();
 }
 
+function phase3Db(value){
+  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) + ' dB' : '—';
+}
+function phase3AppendRow(body, values){
+  const tr = document.createElement('tr');
+  for(const value of values){
+    const td = document.createElement('td');
+    td.textContent = String(value);
+    tr.appendChild(td);
+  }
+  body.appendChild(tr);
+}
+function renderPhase3Evaluation(result){
+  const body = document.querySelector('#phase3Tabelle tbody');
+  if(body) body.innerHTML = '';
+  if(!result){
+    setText('phase3Info', 'Berechnungsmodul nicht geladen. Keine Bewertung möglich.');
+    setText('phase3Warning', 'DIN-Prüfung gesperrt.');
+    return;
+  }
+  if(body){
+    for(const block of result.blocks){
+      phase3AppendRow(body, [
+        block.start.slice(0,16).replace('T',' ') + ' – ' + block.end.slice(11,16),
+        block.coveredSeconds.toFixed(0) + ' / ' + block.expectedSeconds + ' s',
+        phase3Db(block.laeq30Db), phase3Db(block.lcpeakMaxDb),
+        block.dataQuality === 'complete' ? 'Messzeit vollständig*' :
+          block.dataQuality === 'conflict' ? 'Zeitkonflikt' : 'Unvollständig'
+      ]);
+    }
+  }
+  setText('phase3Info', result.blocks.length + ' feste Halbstundenfenster; ' +
+    result.overall.completeBlocks + ' technisch vollständige Blöcke. ' +
+    'Zeitstempel vorläufig als Intervallende interpretiert. Kein DIN-Prüfurteil.');
+  const codes = [...new Set(result.quality.warnings.map(w => w.code)
+    .concat(result.blocks.flatMap(b => b.warnings.map(w => w.code))))];
+  setText('phase3Warning', '* Vollständig bedeutet nur: Datenabdeckung vorhanden, ' +
+    'nicht DIN-konform. Offene Nachweise: ' + (codes.slice(0, 8).join(', ') || 'Normenfreigabe') +
+    (codes.length > 8 ? ' …' : '') + '. PDF-Ausgabe bis Phase 5 gesperrt.');
+}
 function calculateAndRender(){
   const tbody = document.querySelector('#pegelTabelle tbody');
-  tbody.innerHTML = "";
+  tbody.innerHTML = '';
 
-  const hasSummary = summary && (summary.source && (summary.laeq_g30!=null || summary.laeq_g5!=null || summary.lcpeak_max!=null || summary.lafmax_dt!=null));
-
-  const laeqG5    = (summary && summary.laeq_g5 != null)
-    ? summary.laeq_g5
-    : (samples.length ? Math.max(...samples.map(s=>s.LAeq_g5).filter(v=>v!=null && Number.isFinite(v))) : null);
-  const laeqG30   = hasSummary ? summary.laeq_g30 : (samples.length ? Math.max(...samples.map(s=>s.LAeq_g30).filter(v=>v!=null && Number.isFinite(v))) : null);
-  const lcPeakMax = hasSummary ? summary.lcpeak_max : (samples.length ? Math.max(...samples.map(s=>s.LCpk).filter(v=>v!=null && Number.isFinite(v))) : null);
-
-  const durLA30 = countExceedDuration(samples.map(s=> s.LAeq_g30).filter(v=>v!=null), LIMIT_LAEQ_30);
-  const durLA5 = countExceedDuration(samples.map(s=> s.LAeq_g5).filter(v=>v!=null), LIMIT_LAEQ_30);
-  const durLC = countExceedDuration(samples.map(s=> s.LCpk).filter(v=>v!=null), LIMIT_LCPEAK);
-
-  addRow('LAeq_g30', laeqG30, LIMIT_LAEQ_30, durLA30);
-  addRow('LAeq_g5', laeqG5, LIMIT_LAEQ_30, durLA5);
-  addRow('LCpeak (max)', lcPeakMax, LIMIT_LCPEAK, durLC);
+  if(importModel){
+    phase3Evaluation = window.PegelToolEvaluation
+      ? window.PegelToolEvaluation.evaluateModel(importModel,
+        {timestampAnchor:'end', timestampAnchorEvidence:'assumed'})
+      : null;
+    if(phase3Evaluation){
+      importModel.timeBlocks = phase3Evaluation.blocks;
+      const overall = phase3Evaluation.overall;
+      phase3AppendRow(tbody, ['LAeq 30 min (feste Blöcke)', phase3Db(overall.laeqMaxDb),
+        '—','99 dB(A)*','Nicht beurteilbar']);
+      phase3AppendRow(tbody, ['LCpeak (Blockmaximum)', phase3Db(overall.lcpeakMaxDb),
+        '—','135 dB(C)*','Nicht beurteilbar']);
+    }
+    renderPhase3Evaluation(phase3Evaluation);
+    setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
+  } else {
+    // Legacy state without verifiable origin: show only informal observations.
+    phase3Evaluation = null;
+    renderPhase3Evaluation(null);
+    const maxFinite = items => {
+      const valid = items.filter(x=>typeof x==='number' && Number.isFinite(x));
+      return valid.length ? Math.max(...valid) : null;
+    };
+    const laeqG5 = summary?.laeq_g5 != null ? summary.laeq_g5 : maxFinite(samples.map(x=>x.LAeq_g5));
+    const laeqG30 = summary?.laeq_g30 != null ? summary.laeq_g30 : maxFinite(samples.map(x=>x.LAeq_g30));
+    const lcPeakMax = summary?.lcpeak_max != null ? summary.lcpeak_max : maxFinite(samples.map(x=>x.LCpk));
+    phase3AppendRow(tbody, ['LAeq_g30 (gleitend, informativ)', phase3Db(laeqG30), '—','—','Nicht beurteilbar']);
+    phase3AppendRow(tbody, ['LAeq_g5 (gleitend, informativ)', phase3Db(laeqG5), '—','—','Nicht beurteilbar']);
+    phase3AppendRow(tbody, ['LCpeak (informativ)', phase3Db(lcPeakMax), '—','—','Nicht beurteilbar']);
+    setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
+  }
 
   const ds = downsampleForDisplay(samples, 900);
   chartSamples = ds.data;
-  const peakInfo = ds.injectedPeaks ? ` inkl. ${ds.injectedPeaks} echtem Spitzenwert-Punkt` : '';
-  setText('chartInfo', `Diagramme: ${samples.length.toLocaleString()} Originalpunkte → ${chartSamples.length.toLocaleString()} Punkte${peakInfo} (je Punkt ~${ds.bucketSize*(header.logIntervalSec||1)}s).`);
-  setText('laeqChartLabel', 'LAeq_g30 Verlauf mit Grenzwert 99 dB(A)');
-
+  const peakInfo = ds.injectedPeaks ? ' inkl. ' + ds.injectedPeaks + ' echtem Spitzenwert-Punkt' : '';
+  setText('chartInfo', 'Diagramme (informativ): ' + samples.length.toLocaleString() +
+    ' Originalpunkte → ' + chartSamples.length.toLocaleString() + ' Punkte' + peakInfo +
+    ' (je Punkt ~' + ds.bucketSize*(header.logIntervalSec||1) + 's).');
   renderCharts();
-
-  if(hasSummary){ setDot('dotSummary','ok'); setText('chipSummary','Summary: verwendet'); }
-  else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden (Fallback)'); }
-
-  // update header compliance indicator based on table results
   updateComplianceStatus();
-
-  setPdfButtonsDisabled(false);
+  // Existing PDFs still use the legacy, non-normative summary calculation.
+  // Do not create a misleading DIN document before Phase 5 replaces this path.
+  setPdfButtonsDisabled(true);
 }
 
 function paRow(type="", qty=""){
