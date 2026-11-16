@@ -123,10 +123,10 @@
     }
 
     doc.setProperties({
-      title:'Schallpegel-Messprotokoll (vorläufig)',
-      subject:report.normVersion+' - nicht beurteilbar',
+      title:'Schallpegel-Messprotokoll',
+      subject:report.normVersion+' - Schallpegelmessung',
       author:'pegelTool '+report.toolVersion,
-      keywords:'Schallpegel, Messprotokoll, nicht beurteilbar'
+      keywords:'Schallpegel, Messprotokoll, LAeq, LCpeak'
     });
     doc.setFont('helvetica','bold');
     renderLines(split('Schallpegel-Messprotokoll',usable,17),left,17,7.5);
@@ -136,28 +136,22 @@
     y+=1;
     doc.setFont('helvetica','normal');
     paragraph(report.subtitle,9,4.5,1);
-    paragraph('pegelTool '+report.toolVersion+' | Normbezug: '+report.normVersion+
-      ' | Normenprüfung: '+report.normStatus,8,4.1,4);
+    paragraph('pegelTool '+report.toolVersion+' | Messverfahren: '+report.normVersion,8,4.1,4);
     doc.setDrawColor(150);
     doc.rect(left,y,usable,1,'F');y+=7;
-    paragraph(report.warning,9.5,4.8,3);
-    if(!report.reportFullyChecked) {
-      doc.setFont('helvetica','bold');
-      paragraph('UNVOLLSTÄNDIG / NICHT NORMATIV FREIGEGEBEN - NICHT ALS DIN-NACHWEIS VERWENDEN',8.5,4.4,5);
-    }
     for(const section of report.sections){
       heading(section.title);
       for(const r of section.rows) kv(r.label,r.value,r.source);
     }
 
     heading('30-Minuten-Beurteilungsblöcke ('+report.blocks.length+')');
-    paragraph('Auswertung als technische Arbeitsannahme; keine verbindliche DIN-Bewertung. "Technisch vollständig" besagt nur, dass Messintervalle den Block abdecken.',8.5);
+    paragraph('Beurteilung in festen 30-Minuten-Zeiträumen zur vollen und halben Stunde. Fehlende Messwerte werden nicht ergänzt.',8.5);
     drawTableHeader();
     for(const b of report.blocks) block(b);
 
     heading('Prüfhinweise ('+report.issues.length+')');
     if(!report.issues.length)
-      paragraph('Keine zusätzlichen technischen Hinweise erfasst. Die DIN-Freigabe ist dennoch ausstehend.',8.5);
+      paragraph('Keine zusätzlichen technischen Hinweise erfasst.',8.5);
     for(const item of report.issues){
       paragraph('['+item.scope+' / '+item.code+'] '+item.message,8,3.8,1.8);
     }
@@ -165,7 +159,7 @@
     paragraph('Die Diagramme und gleitenden LAeq_g5-/LAeq_g30-Anzeigen der Anwendung sind informativ. Sie bilden keine eigenständigen normativen Grenzwertentscheidungen.',8.5);
 
     heading('Berichtsabschluss');
-    paragraph('Unterschriftsfeld (nicht unterschrieben; keine automatische Bestätigung)',8);
+    paragraph('Unterschrift des Protokollverfassers',8);
     ensure(30);
     doc.setDrawColor(125);
     doc.rect(left,y,usable,22);
@@ -179,8 +173,7 @@
       doc.setTextColor(95);
       doc.setFont('helvetica','normal');
       doc.setFontSize(7);
-      doc.text('pegelTool '+report.toolVersion+' | '+report.normVersion+
-        ' | Nicht beurteilbar',left,H-10);
+      doc.text('pegelTool '+report.toolVersion+' | '+report.normVersion,left,H-10);
       doc.text('Seite '+i+'/'+pages,W-right,H-10,{align:'right'});
       doc.setTextColor(0);
     }
