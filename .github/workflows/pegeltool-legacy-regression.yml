@@ -33,3 +33,5 @@ jobs:
         run: node --test tests/pegelTool/phase3/evaluation.test.cjs
       - name: Run pegelTool Phase 4 protocol tests
         run: node --test tests/pegelTool/phase4/protocol.test.cjs
+      - name: Run pegelTool Phase 5 report and PDF tests
+        run: node --test tests/pegelTool/phase5/report.test.cjs
