@@ -34,7 +34,7 @@ const evaluation={
   blocks:[{start:'2026-11-16T18:00',end:'2026-11-16T18:30',dataQuality:'complete',
     laeq30Db:95,lcpeakMaxDb:120}],
   overall:{normativeStatus:'not-assessable',totalBlocks:1},
-  timestampAnchorEvidence:'verified'
+  assumptions:{timestampAnchorEvidence:'verified'}
 };
 const paItems=[{type:'custom',customType:'Musterlautsprecher',qty:2}];
 function input(changes={}) {
