@@ -286,7 +286,7 @@ label.label-required::after{
         <input id="eventName" placeholder="z.B. Verstärktes Musical" tabindex="1" autofocus />
 
         <label>Datum der Messung</label>
-        <input id="datumMessung" />
+        <input id="datumMessung" type="date" />
 
         <label>Location</label>
         <select id="location">
@@ -352,13 +352,13 @@ label.label-required::after{
         <div class="grid-2">
           <div>
             <label>Funktionsprüfung vor der Messung – Zeitpunkt</label>
-            <input id="kalVorZeit" placeholder="Datum, Uhrzeit" />
+            <input id="kalVorZeit" type="datetime-local" />
             <label>Angezeigter Pegel vor der Messung (dB)</label>
             <input id="kalVorWert" inputmode="decimal" placeholder="z.B. 94,0" />
           </div>
           <div>
             <label>Funktionsprüfung nach der Messung – Zeitpunkt</label>
-            <input id="kalNachZeit" placeholder="Datum, Uhrzeit" />
+            <input id="kalNachZeit" type="datetime-local" />
             <label>Angezeigter Pegel nach der Messung (dB)</label>
             <input id="kalNachWert" inputmode="decimal" placeholder="z.B. 94,0" />
           </div>
@@ -386,7 +386,7 @@ label.label-required::after{
           <label>Berichtsort</label>
           <input id="berichtsort" placeholder="z.B. Essen" />
           <label>Datum</label>
-          <input id="berichtDatum" />
+          <input id="berichtDatum" type="date" />
         </div>
         <div>
           <label>Name</label>
@@ -462,7 +462,12 @@ const MAX_LOG_BYTES = 8 * 1024 * 1024;
 const STATE_SCHEMA_VERSION = 2;
 const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
-const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD_IDS : [];
+const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD_IDS : [
+  // Legacy harness compatibility when the external protocol module is not loaded.
+  'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
+  'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN',
+  'berichtsort'
+];
 let recoverySaveTimer = null;
 let recoveryFallbackNotified = false;
 
@@ -1852,7 +1857,13 @@ function paRow(type="", qty=""){
   btnDel.className = 'secondary';
   btnDel.textContent = '✕';
   btnDel.style.padding = '10px 12px';
-  btnDel.addEventListener('click', ()=> row.remove());
+  btnDel.addEventListener('click', ()=>{
+    row.remove();
+    protocolOrigins.paItems='manual';
+    setVal('paBestaetigt','');
+    markRequiredFields();
+    scheduleRecoverySave();
+  });
 
   sel.addEventListener('change', ()=>{
     custom.style.display = (sel.value === 'custom') ? 'block' : 'none';
