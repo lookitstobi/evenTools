@@ -55,6 +55,15 @@ test('import errors outrank technical issues, which outrank field omissions',()=
   assert.equal(issues.at(-1).source,'Protokollangabe');
   assert.equal(UI.summarize(s).steps.quality,'Importfehler');
 });
+test('rejected imports remain prominent without replacing the previous loaded dataset',()=>{
+  const s=imported({lastImportAttempt:{errors:[{code:'REJECTED',message:'Neues Log abgewiesen'}]}});
+  const old=JSON.stringify(s.importModel);
+  const result=UI.summarize(s);
+  assert.equal(result.steps.quality,'Importfehler');
+  assert.equal(result.issues[0].source,'Letzter Importversuch');
+  assert.equal(result.status,'Nicht beurteilbar');
+  assert.equal(JSON.stringify(s.importModel),old);
+});
 test('missing half-hour blocks and unproven fields remain visible',()=>{
   const s=imported({evaluation:{blocks:[{dataQuality:'incomplete'}],quality:{warnings:[]}}});
   s.review.formIssues=[{code:'FIELD',message:'Ort fehlt'}];
@@ -100,7 +109,10 @@ function fakeDom(){
       querySelector(selector){
         const found=/data-workflow-section="([^"]+)"/.exec(selector);
         return found ? sections.get(found[1]) || null : null;
-      }
+      },
+      querySelectorAll(selector){return selector==='.workflow-panel' ?
+        el.children.filter(n=>n.className==='workflow-panel') : [];}
+      
     };
     if(id)lookup.set(id,el);
     return el;
@@ -116,7 +128,9 @@ function fakeDom(){
     const pos=body.children.indexOf(target);body.children.splice(pos,0,e);e.parent=body;
   };
   return {doc:{body,getElementById:id=>lookup.get(id) || null,
-    querySelector:selector=>selector==='header.header' ? header:null,createElement:tag=>make(tag)},
+    querySelector:selector=>selector==='header.header' ? header :
+      selector==='.workflow-shell' ? body.children.find(n=>n.className==='workflow-shell') || null :
+      null,createElement:tag=>make(tag)},
     main,body,lookup};
 }
 test('guided panels move original sections without dropping any and remain keyboard buttons',()=>{
@@ -148,4 +162,18 @@ test('navigation and status updates do not modify acoustic measurements',()=>{
   ctrl.go('export');ctrl.go('quality');ctrl.refresh();
   assert.equal(JSON.stringify(snapshot),before);
   assert.equal(UI.summarize(snapshot).status,'Nicht beurteilbar');
+});
+
+test('HTML project rehydration does not leave duplicate navigation shells or panels',()=>{
+  const x=fakeDom(),snapshot=imported();
+  const first=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  first.go('assessment');
+  const second=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  assert.ok(second);
+  assert.equal(x.body.children.filter(n=>n.className==='workflow-shell').length,1);
+  assert.equal(x.main.children.filter(n=>n.className==='workflow-panel').length,6);
+  assert.equal(second.currentStep(),'import');
+  const tabs=x.body.children[1].children[0];
+  tabs.children[5].click();
+  assert.equal(second.currentStep(),'export');
 });
