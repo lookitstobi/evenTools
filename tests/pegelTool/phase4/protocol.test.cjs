@@ -155,3 +155,11 @@ test('Integration: neue Formularfelder, Quelle, Speicherstatus und gesperrter PD
   assert.doesNotMatch(html,/<input id="umwelt" value=/);
   assert.doesNotMatch(html,/Geschäftsführer: Fritz/);
 });
+
+test('Unverifizierte Gerätezusammenfassung blockiert korrekte Zeitintervalle nicht',()=>{
+  const m=structuredClone(model);
+  m.quality={status:'restricted',errors:[],warnings:[{code:'SUMMARY_LAYOUT_UNVERIFIED',message:'Summary nicht zuordenbar'}]};
+  const result=protocol.validate(input({importModel:m}));
+  assert.equal(result.evidenceComplete,true);
+  assert.ok(!hasIssue(result.evidenceIssues,'IMPORT_QUALITY'));
+});
