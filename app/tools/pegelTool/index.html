@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
+<script src="/toolserve.php?name=pegelTool&file=import/nti-xl3.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -351,12 +352,13 @@ let chartLCpeak = null;
 let lastLogText = '';
 let lastLogFileName = '';
 let logLoaded = false;
+let importModel = null; // Versioned Phase-2 model; no normative judgement.
 let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
 const LIMIT_LCPEAK  = 135;
 const MAX_LOG_BYTES = 8 * 1024 * 1024;
-const STATE_SCHEMA_VERSION = 1;
+const STATE_SCHEMA_VERSION = 2;
 const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
 const FORM_FIELD_IDS = [
@@ -508,6 +510,8 @@ function buildStateObject(options = {}){
     sourceApp: 'pegelTool',
     savedAt: new Date().toISOString(),
     header: header,
+    importModel: includeSamples ? importModel : null,
+    recoveryPartial: !includeSamples,
     samples: includeSamples ? samples : [],
     chartSamples: includeChartSamples ? chartSamples : [],
     summary: summary,
@@ -521,6 +525,8 @@ function buildStateObject(options = {}){
 
 function normalizeState(raw){
   if(!raw || typeof raw !== 'object') return null;
+  const version = Number(raw.schemaVersion);
+  if(version !== 1 && version !== 2) throw new Error('Nicht unterstützte Projektversion: '+String(raw.schemaVersion));
 
   const normalizedForm = {};
   const srcForm = (raw.form && typeof raw.form === 'object') ? raw.form : {};
@@ -545,7 +551,10 @@ function normalizeState(raw){
     : [];
 
   return {
-    schemaVersion: Number(raw.schemaVersion) || 0,
+    schemaVersion: STATE_SCHEMA_VERSION,
+    migratedFrom: version === 1 ? 1 : null,
+    recoveryPartial: !!raw.recoveryPartial,
+    importModel: version === 2 && raw.importModel && raw.importModel.schemaVersion === PegelToolImport.MODEL_VERSION ? raw.importModel : null,
     sourceApp: String(raw.sourceApp || ''),
     savedAt: String(raw.savedAt || ''),
     header: normalizedHeader,
@@ -637,6 +646,7 @@ function applySavedState(rawState, options = {}){
   restorePAItems(state.paItems);
 
   header = state.header;
+  importModel = state.importModel;
   summary = state.summary;
   samples = state.samples;
   chartSamples = state.chartSamples;
@@ -660,6 +670,9 @@ function applySavedState(rawState, options = {}){
   }
 
   markRequiredFields();
+  if(state.recoveryPartial) setText('parseInfo', 'Nur Formulardaten wiederhergestellt – Messdaten fehlen; erneuter Import erforderlich.');
+  else if(state.migratedFrom) setText('parseInfo', 'Altes Projekt geladen: Herkunftsnachweis fehlt. Für eine nachvollziehbare Auswertung das Original-XL3-Log neu importieren.');
+  else if(importModel) showImportQuality(importModel);
   if(options.persistRecovery !== false) scheduleRecoverySave();
 }
 
@@ -678,7 +691,8 @@ function recoverLastSession(){
     const parsed = JSON.parse(raw);
     applySavedState(parsed, { persistRecovery:false });
     const stamp = parsed && parsed.savedAt ? new Date(parsed.savedAt).toLocaleString('de-DE') : null;
-    setText('parseInfo', stamp ? `Lokale Session wiederhergestellt (${stamp}).` : 'Lokale Session wiederhergestellt.');
+    if(!parsed.recoveryPartial && parsed.schemaVersion !== 1)
+      setText('parseInfo', stamp ? `Lokale Session wiederhergestellt (${stamp}).` : 'Lokale Session wiederhergestellt.');
   }catch(err){
     console.error(err);
     alert('Lokale Session konnte nicht wiederhergestellt werden.');
@@ -882,7 +896,8 @@ function handleStateFileInputChange(e){
       const text = String(evt.target.result || '');
       const parsed = parseStateFromText(f.name, text);
       applySavedState(parsed, { persistRecovery:true });
-      setText('parseInfo', `Gespeicherter Stand geladen (${f.name}).`);
+      if(!parsed.recoveryPartial && parsed.schemaVersion !== 1)
+        setText('parseInfo', `Gespeicherter Stand geladen (${f.name}).`);
     }catch(err){
       console.error(err);
       alert('Stand konnte nicht geladen werden: ' + String(err && err.message ? err.message : err));
@@ -1444,6 +1459,8 @@ function updateComplianceStatus(){
     dot.classList.add('status-empty');
     return;
   }
+  // Phase 2 has no confirmed DIN assessment engine. Never claim a pass for new imports.
+  if(importModel){ dot.classList.add('status-warn'); dot.title = 'Keine normative Freigabe – Messdatenqualität prüfen'; return; }
   if(badCount === 0){
     dot.classList.add('status-ok');
   } else if(badCount === 1){
@@ -2705,71 +2722,63 @@ el('btnImport').addEventListener('click', ()=>{
   const inp = el('fileInput'); if(inp) inp.click();
 });
 
+function showImportQuality(model){
+  if(!model) return;
+  const entries = [...model.quality.errors, ...model.quality.warnings];
+  const codes = entries.slice(0, 5).map(x => x.code + (x.line ? ' (Zeile '+x.line+')' : '')).join(', ');
+  setText('parseInfo', 'Importdaten: '+model.quality.status+'; '+model.samples.length+' Zeitreihen-Zeilen; '+entries.length+
+    ' Hinweis(e)'+(codes ? ': '+codes : '')+'. Keine normative Prüfung; Details im gespeicherten Importmodell.');
+  setDot('dotLog', model.quality.status === 'usable' ? 'ok' : model.quality.status === 'rejected' ? 'bad' : 'warn');
+  setText('chipLog', model.quality.status === 'usable' ? 'Log: eingelesen (ungeprüft)' :
+    model.quality.status === 'rejected' ? 'Log: Import abgelehnt' : 'Log: eingeschränkt auswertbar');
+}
+
 el('fileInput').addEventListener('change', (e)=>{
   const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
   if(!f) return;
-
   if(f.size > MAX_LOG_BYTES){
     setDot('dotLog','bad');
-    setText('chipLog', `Log: Datei zu groß (${f.name})`);
-    setText('parseInfo', `Datei ist zu groß: ${(f.size/1024/1024).toFixed(1)} MB. Maximum: ${(MAX_LOG_BYTES/1024/1024).toFixed(0)} MB.`);
-    if(e.target) e.target.value = '';
+    setText('chipLog', 'Log: Datei zu groß ('+f.name+')');
+    setText('parseInfo', 'Logdatei über 8 MiB – nicht importiert.');
+    e.target.value = '';
     return;
   }
-
   const reader = new FileReader();
   reader.onload = (evt)=>{
     try{
+      if(!window.PegelToolImport) throw new Error('XL3-Importmodul nicht geladen.');
       const text = String(evt.target.result || '');
-
-      setDot('dotLog','warn');
-      setText('chipLog', `Log: parsing… (${f.name})`);
-
-      parseHeaderAndMeta(text);
-      const ts = parseBroadbandTimeSeries(text);
-      const sm = parseBroadbandSummary(text);
+      const result = window.PegelToolImport.parse(text, {fileName:f.name});
+      // Preserve previous project on rejected imports. No silent partial replacement.
+      if(!result.ok){
+        showImportQuality(result.model);
+        return;
+      }
+      const compat = window.PegelToolImport.toLegacy(result.model);
+      importModel = result.model;
+      header = compat.header;
+      samples = compat.samples;
+      summary = compat.summary;
+      parsedColumns = {available:Object.values(importModel.columns).map(x=>x.column),used:{}};
+      lastLogText = text;
+      lastLogFileName = f.name;
+      logLoaded = true;
       writeHeaderToUI();
-
-      // Auto-fill "Datum der Messung" from header start date if user left it empty.
       if(!getVal('datumMessung').trim() && header.start){
         const m = String(header.start).match(/\d{4}-\d{2}-\d{2}/);
         if(m) setVal('datumMessung', m[0]);
       }
-
-      if(sm.ok){ setDot('dotSummary','ok'); setText('chipSummary','Summary: gefunden'); }
-      else { setDot('dotSummary','warn'); setText('chipSummary','Summary: nicht gefunden'); }
-
-      // store original log text for export
-      lastLogText = text;
-
       markRequiredFields();
-
-      if(!ts.ok || !samples.length){
-        logLoaded = false;
-        lastLogFileName = '';
-        setDot('dotLog','bad');
-        setText('chipLog','Log: Fehler (keine Daten)');
-        setPdfButtonsDisabled(true);
-        updateComplianceStatus();
-        return;
-      }
-
-      logLoaded = true;
-      lastLogFileName = f.name;
-      setDot('dotLog','ok');
-      setText('chipLog', `Log: geladen (${f.name})`);
       calculateAndRender();
+      showImportQuality(importModel);
       scheduleRecoverySave();
-
     }catch(err){
       console.error(err);
-      logLoaded = false;
-      lastLogFileName = '';
       setDot('dotLog','bad');
-      setText('chipLog','Log: Fehler');
-      setText('parseInfo', 'Fehler beim Parsen: ' + String(err && err.message ? err.message : err));
-      setPdfButtonsDisabled(true);
-      updateComplianceStatus();
+      setText('chipLog','Log: Importfehler');
+      setText('parseInfo','Import fehlgeschlagen: '+String(err?.message || err));
+    }finally{
+      if(e.target) e.target.value = '';
     }
   };
   reader.readAsText(f);
