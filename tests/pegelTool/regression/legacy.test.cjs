@@ -139,10 +139,10 @@ test('invalid log is rejected, all-missing log has no samples', () => {
   assert.equal(missing.samples.length, 0);
 });
 
-test('legacy UI status turns green without any populated result rows', () => {
+test('Phase 3 safety: legacy UI cannot turn green without verified assessment data', () => {
   const h=createHarness();
   h.run('logLoaded=true; updateComplianceStatus();');
-  assert.equal(h.document.getElementById('complianceDot').classList.contains('status-ok'), true);
+  assert.equal(h.document.getElementById('complianceDot').classList.contains('status-warn'), true);
 });
 
 test('legacy UI marks LAeq_g5 >99 as a bad result even when LAeq_g30 <=99', () => {
