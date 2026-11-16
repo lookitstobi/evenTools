@@ -10,10 +10,10 @@
 | Gate | Nachweis | Status |
 | --- | --- | --- |
 | Ausgangsstand Phase 6 | 90 automatisierte Tests im letzten Phase-6-Lauf erfolgreich | Bestand bekannt |
-| Phase 7 technische Referenz | 18 gespeicherte Referenzfälle; zusätzlich Herkunfts-/Pipeline-Tests | CI-Lauf und Ergebnis im PR prüfen |
-| Regressionen Phase 1–6 | unveränderte Testsuites müssen auf Phase-7-HEAD erneut grün sein | CI-Lauf prüfen |
-| Echter Browserablauf | Headless Chromium: Import, Rejected-Import-Erhalt, JSON/HTML, Reload, PDF, Mobile | CI-Lauf prüfen; produktiver Login zusätzlich manuell |
-| PDF-Technik | PDF-Bytes und Poppler-Rendering, Desktop/Mobil-Screenshots als CI-Artefakte | CI-Lauf prüfen; externe Sichtprüfung ausstehend |
+| Phase 7 technische Referenz | 18 gespeicherte Referenzfälle; zusätzlich Herkunfts-/Pipeline-Tests | **Bestanden: 28/28 Phase-7-Tests** (GitHub Actions #43896067894) |
+| Regressionen Phase 1–6 | Ausgangsstand 90 Tests | **Bestanden: 90/90** (GitHub Actions #43896067894) |
+| Echter Browserablauf | Headless Chromium: Import, Rejected-Import-Erhalt, JSON/HTML, Reload, PDF, Mobile | **Bestanden** (GitHub Actions #43896067894); produktiver Login weiterhin manuell |
+| PDF-Technik | PDF-Bytes, Poppler-Rendering, Desktop/Mobil-Screenshots | **Bestanden**; vierseitiges synthetisches PDF gerendert und visuell auf Lesbarkeit geprüft; externer Viewer und realer Bericht noch offen |
 | Messgerätereferenz | Vergleiche mit verifizierten NTi-XL3-Ausgaben inkl. Zeitstempel-Semantik | **Offen – fachlicher P0-Blocker** |
 | Normenbezug | Originalnorm DIN 15905-5:2022-07, Normenmatrix, insbesondere 30-min-Logik und Protokollpflichten | **Offen – fachlicher P0-Blocker** |
 | Abnahme in authentifizierter Umgebung | Anmeldung, reale CSP, Browser-/Mobilzugriff, große Messdatei und Wiederaufnahme | **Offen** |
@@ -35,6 +35,25 @@ Es wurde kein Grenzwert und keine Rechenregel verändert.
 **Regression:** `tests/pegelTool/phase7/release.test.cjs` –
 Szenario `INVALID_TIME`. Erwartung: leere Blöcke, `no-data`,
 durchgehend `not-assessable`.
+
+### F7-002 – Anzeige bei abgewiesenem Folgeimport
+
+Die erste Chromium-Sichtprüfung zeigte eine irreführende Kopfzeilenanzeige
+`Log: Import abgelehnt`, obwohl der vorherige Datensatz erhalten blieb und
+weiterhin als Grundlage des vorläufigen Berichts diente.
+Der Branch zeigt jetzt explizit `Log: vorherige Messung geladen (neuer Import abgewiesen)`.
+Der End-to-End-Test prüft sowohl die unveränderten Rohdaten als auch den Chiptext.
+Dies ist eine Status-/UI-Korrektur, **keine** Änderung an Messwerten oder Normregeln.
+
+### Technische Sichtkontrolle des Testexports
+
+Artefakt: `pegeltool-phase7-browser-review` aus
+[Actions #43896067894](https://github.com/lookitstobi/evenTools/actions/runs/43896067894).
+Das PDF enthält vier A4-Seiten. Alle vier wurden mit Poppler gerendert und
+hier auf Lesbarkeit, sichtbare Blocktabelle, Warnungen, Seitennummern und
+Unterschriftsplatzhalter geprüft; keine erkennbare Textabschneidung im
+**synthetischen** Testfall. Das ist **keine** Fachabnahme eines echten XL3-Protokolls
+und ersetzt nicht die Prüfung im externen PDF-Viewer.
 
 ## 3. Fachliche Prüfsperren
 
