@@ -280,9 +280,9 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 .pa-check{display:flex;justify-content:center;align-items:center;flex:0 0 17px;width:17px;height:17px;
  border:1px solid currentColor;border-radius:3px}
 .pa-qty-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
-.pa-qty-label{flex:1 1 115px;text-transform:none;letter-spacing:0;font-size:11px;margin:0}
-#main.workflow-single-page .pa-qty-label input{height:35px;font-size:13px;padding:6px 8px;margin-top:3px}
-.pa-qty-label input:disabled{opacity:.4}
+.pa-qty-label,.pa-variant-label{flex:1 1 175px;text-transform:none;letter-spacing:0;font-size:11px;margin:0}
+#main.workflow-single-page .pa-qty-label input,#main.workflow-single-page .pa-variant-label select{height:38px;font-size:12px;padding:6px 8px;margin-top:3px}
+.pa-qty-label input:disabled,.pa-variant-label select:disabled{opacity:.4}
 .pa-unresolved{color:#ffdf80;font-size:12px;margin-top:10px}
 .pa-extra-block{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
 .pa-empty{color:var(--text-secondary);font-size:13px}
@@ -701,7 +701,7 @@ function restorePAItems(items,savedSelection,savedExtras){
   }
   // Saved selectors contain aggregate paItems for backwards compatibility.
   // Only restore explicit extras to avoid counting selected speakers twice.
-  const legacy=!savedSelection || savedSelection.schemaVersion!==1;
+  const legacy=!savedSelection || savedSelection.schemaVersion!==2;
   const rows=legacy ? items : savedExtras;
   for(const it of Array.isArray(rows)?rows:[]){
     const row=paRow('', '');
@@ -800,7 +800,7 @@ function normalizeState(raw){
     form: normalizedForm,
     protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
-    paSelection: raw.paSelection && raw.paSelection.schemaVersion===1
+    paSelection: raw.paSelection && [1,2].includes(raw.paSelection.schemaVersion)
       ? raw.paSelection : null,
     paExtras: Array.isArray(raw.paExtras)
       ? raw.paExtras.map(it=>({
@@ -2047,7 +2047,7 @@ function applyLocationPreset(loc){
     });
     else paController.setLocation(loc);
     el('paExtras').replaceChildren();
-    setText('paPresetInfo','Bitte tatsächlich verwendete Lautsprecher auswählen');
+    setText('paPresetInfo',window.PegelToolPA.PRESETS[loc] ? 'Standardaufbau vorausgewählt – vor Ort prüfen' : 'PA-Auswahl manuell erfassen');
   }else{
     container.innerHTML='';
     el('paExtras').replaceChildren();
