@@ -82,6 +82,11 @@
         row('Messorttyp',v.messortTyp === 'ersatz' ? 'Ersatzmessort' : v.messortTyp === 'direkt' ? 'Direktmessung' : EMPTY,o.messortTyp),
         row('Ersatzmessort',places.substitute,o.ersatzMessort),
         row('PA-Aufstellung',v.paAnordnung,o.paAnordnung),
+        row('Ausgewählte Lautsprechergruppen',(record.paGroups || []).map(group=>{
+          const speakers=(group.items || []).map(it=>asText(it.qty)+' × '+asText(it.type)).join(', ');
+          const missing=(group.unresolved || []).length ? ' [Stückzahlen offen: '+group.unresolved.join(', ')+']' : '';
+          return group.label+': '+(speakers || 'Stückzahl nicht belegt')+missing;
+        }).join('; ')),
         row('PA-Aufstellung geprüft',v.paBestaetigt === 'ja' ? 'Manuell bestätigt' : 'Nicht bestätigt',o.paBestaetigt),
         row('PA-Komponenten',(record.paItems || []).map(x =>
           ((x.type === 'custom' ? x.customType : x.type) || '?') + ' (' + asText(x.qty) + 'x)').join('; ')),

@@ -58,7 +58,8 @@ function makeRecord(changes={}) {
   return protocol.buildRecord({
     form:{...form,...(changes.form||{})},
     origins:{eventName:'user-input',...(changes.origins||{})},
-    paItems:[{type:'custom',customType:'Musterlautsprecher',qty:2}],
+    paItems:changes.paItems || [{type:'custom',customType:'Musterlautsprecher',qty:2}],
+    paGroups:changes.paGroups || [],
     importModel:changes.model===undefined ? structuredClone(model) : changes.model,
     evaluation:changes.evaluation===undefined ? structuredClone(evaluation) : changes.evaluation
   });
@@ -88,6 +89,24 @@ class FakePDF {
   output(){return this.pages.map(p=>p.join('\n')).join('\n===NEW PAGE===\n');}
 }
 
+test('PDF-Berichtsmodell nennt nur ausgewählte Lautsprechergruppen und ihre Mengen',()=>{
+  const groups=[
+    {id:'main',label:'Main PA L/R – 2 × 12 Kara II',
+      items:[{type:'L-ACOUSTIC KARA II',qty:24}],unresolved:[]},
+    {id:'ff19',label:'Frontfill 1 + 9',
+      items:[{type:'L-ACOUSTIC 5XT',qty:2}],unresolved:[]}
+  ];
+  const report=makeReport({
+    paGroups:groups,
+    paItems:[{type:'L-ACOUSTIC KARA II',qty:24},{type:'L-ACOUSTIC 5XT',qty:2}]
+  });
+  const pa=report.sections.flatMap(section=>section.rows).find(row=>row.label==='Ausgewählte Lautsprechergruppen');
+  assert.match(pa.value,/Main PA L\/R/);
+  assert.match(pa.value,/Frontfill 1 \+ 9/);
+  assert.match(pa.value,/24 × L-ACOUSTIC KARA II/);
+  assert.match(pa.value,/2 × L-ACOUSTIC 5XT/);
+  assert.doesNotMatch(pa.value,/KS21/);
+});
 test('Bericht übernimmt feste Zeitblöcke und enthält keine normative Freigabe',()=>{
   const report=makeReport();
   assert.equal(report.blocks.length,2);

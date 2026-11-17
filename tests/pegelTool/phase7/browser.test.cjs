@@ -51,6 +51,41 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.doesNotMatch(await page.locator('body').innerText(),/Keine DIN-Konformitätsbescheinigung|DIN-Konformitätsbescheinigung/i);
       const first=await page.evaluate(()=>buildStateObject());
       assert.ok(!first.importModel);
+      // Before import the UI must already be one scrollable page, not six tabs.
+      assert.equal(await page.locator('.workflow-group').count(),5);
+      assert.equal(await page.locator('.workflow-nav,.workflow-tab,.workflow-panel').count(),0);
+      assert.equal(await page.locator('#workflow-group-setup').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-quality').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
+      const layout=await page.evaluate(()=>({
+        bodyOverflow:getComputedStyle(document.body).overflowY,
+        scrollHeight:document.scrollingElement.scrollHeight,
+        viewportHeight:document.scrollingElement.clientHeight
+      }));
+      assert.equal(layout.bodyOverflow,'auto');
+      assert.ok(layout.scrollHeight>layout.viewportHeight,'Single-page content must scroll');
+      // Defaults come from "Manuelle Eingaben prüfen": editable, never fabricated measurements.
+      assert.equal(first.form.organisator,
+        'Theater und Philharmonie Essen GmbH\nOpernplatz 10\n45128 Essen\n'+
+        'Geschäftsführer: Fritz Frömming\nIntendanz Philharmonie Essen: Babette Nierenz');
+      assert.equal(first.form.ortAdresse,'Huyssenallee 53, 45128 Essen');
+      assert.equal(first.form.umwelt,'Indoor, 21°C');
+      assert.equal(first.form.kalibratorModell,'CENTER 326');
+      assert.equal(first.form.kalibratorSN,'140408454');
+      assert.equal(first.form.berichtsort,'Essen');
+      assert.match(first.form.berichtDatum,/^\d{4}-\d{2}-\d{2}$/);
+      assert.equal(first.form.datumMessung,'');
+      assert.equal(first.form.kalVorZeit,'');
+      assert.equal(first.form.kalVorWert,'');
+      assert.equal(first.form.kalNachZeit,'');
+      assert.equal(first.form.kalNachWert,'');
+      assert.equal(first.protocolMeta.origins.organisator,'preset-unverified');
+      assert.equal(first.paSelection.schemaVersion,2);
+      assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
+      assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,8);
+      assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,7);
+      assert.equal(first.paSelection.variants.sideL,'ks4');
+      assert.equal(first.paSelection.variants.sideR,'ks4');
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),true);
 
       await page.locator('#fileInput').setInputFiles(SOURCE);
@@ -70,6 +105,24 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(await page.evaluate(()=>JSON.stringify(buildStateObject().importModel.samples)),originalRows);
       assert.match(await page.locator('#chipLog').innerText(),/vorherige Messung geladen/i);
 
+      // The two sides start with 4 × KS21 + Focus + Wide each; each side can change.
+      await page.locator('#paContainer [data-pa-variant="sideL"]').selectOption('ks2');
+      let changed=await page.evaluate(()=>buildStateObject());
+      assert.equal(changed.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,6);
+      assert.equal(changed.paSelection.variants.sideR,'ks4');
+      // AKS frontfill 1+9 is not in the 7-fill default; adding it adds exactly two.
+      assert.equal(await page.locator('#paContainer .pa-node[data-pa-group="ff19"]').count(),2);
+      await page.locator('#paContainer .pa-node[data-pa-group="ff19"]').first().click();
+      assert.equal(await page.locator('#paContainer .pa-node[data-pa-group="ff19"][aria-pressed="true"]').count(),2);
+      const paBeforeSave=await page.evaluate(()=>buildStateObject());
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,9);
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,6);
+      assert.ok(paBeforeSave.paSelection.selected.includes('ff19'));
+      assert.ok(paBeforeSave.paSelection.selected.includes('mainL'));
+      assert.ok(paBeforeSave.paSelection.selected.includes('mainR'));
+      assert.equal(paBeforeSave.paExtras.length,0);
+
       await page.locator('#eventName').fill('Phase 7 Browserprüfung');
       assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
       assert.equal(await page.locator('#workflow-group-export').isVisible(),true);
@@ -84,6 +137,10 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await jsonDownload.saveAs(downloadPath('projekt.nti.json'));
       const saved=JSON.parse(fs.readFileSync(downloadPath('projekt.nti.json'),'utf8'));
       assert.equal(saved.form.eventName,'Phase 7 Browserprüfung');
+      assert.deepEqual(saved.paSelection.selected,paBeforeSave.paSelection.selected);
+      assert.equal(saved.paSelection.schemaVersion,2);
+      assert.equal(saved.paSelection.variants.sideL,'ks2');
+
       assert.equal(JSON.stringify(saved.importModel.samples),originalRows);
 
       const htmlWaiting=page.waitForEvent('download',{timeout:15000});
@@ -116,6 +173,9 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       const loaded=await page.evaluate(()=>buildStateObject());
       assert.equal(JSON.stringify(loaded.importModel.samples),originalRows);
       assert.equal(loaded.form.eventName,'Phase 7 Browserprüfung');
+      assert.deepEqual(loaded.paSelection.selected,saved.paSelection.selected);
+      assert.equal(loaded.paSelection.variants.sideL,'ks2');
+      assert.equal(loaded.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,9);
       assert.equal(documentedStatus(await page.locator('body').innerText()),true);
 
       // HTML export is also an importable project carrier, no duplicate UI.
@@ -124,6 +184,30 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await page.waitForFunction(()=>buildStateObject().form.eventName==='Phase 7 Browserprüfung');
       assert.equal(await page.locator('.workflow-shell').count(),1);
       assert.equal(await page.locator('.workflow-group').count(),5);
+      // Pavillon main L/R each have 2 KS21, 2 Focus and 1 Wide. Center adds one Wide.
+      await page.locator('#location').selectOption({label:'Philharmonie Essen, Nationalbank-Pavillon'});
+      const pv=await page.evaluate(()=>buildStateObject());
+      assert.equal(pv.paSelection.location,'Philharmonie Essen, Nationalbank-Pavillon');
+      assert.ok(!pv.paSelection.selected.includes('ff19'));
+      assert.deepEqual(pv.paSelection.selected,['mainL','mainR','center','ff17','ff35','ff4']);
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,4);
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC A10 Focus').qty,4);
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC A10 Wide').qty,3);
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,5);
+      assert.equal(await page.locator('#paContainer .pa-unresolved').isVisible(),false);
+      assert.equal(pv.paExtras.length,0);
+      // Removing only one side removes precisely its components.
+      await page.locator('#paContainer .pa-group-toggle[data-pa-group="mainL"]').click();
+      const pvOneSide=await page.evaluate(()=>buildStateObject());
+      assert.equal(pvOneSide.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,2);
+      assert.equal(pvOneSide.paItems.find(x=>x.type==='L-ACOUSTIC A10 Focus').qty,2);
+      assert.equal(pvOneSide.paItems.find(x=>x.type==='L-ACOUSTIC A10 Wide').qty,2);
+      // Custom locations must not inherit the Essen venue address as evidence.
+      await page.locator('#location').selectOption({label:'Eigene Angabe'});
+      assert.equal(await page.locator('#ortAdresse').inputValue(),'');
+      await page.locator('#ortAdresse').fill('Eigene Straße 1, 12345 Beispielstadt');
+      await page.locator('#location').selectOption({label:'Philharmonie Essen, Alfried-Krupp-Saal'});
+      assert.equal(await page.locator('#ortAdresse').inputValue(),'Eigene Straße 1, 12345 Beispielstadt');
       assert.deepEqual(pageErrors,[],'Unhandled browser JS exceptions: '+pageErrors.join('; '));
     } finally {
       await browser.close();
