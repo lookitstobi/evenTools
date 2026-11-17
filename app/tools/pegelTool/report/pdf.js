@@ -261,11 +261,11 @@
 
     section('Berichtsabschluss');
     paragraph('Unterschriftsbereich (nicht unterschrieben; keine automatische Bestätigung)',8.2,4.1,6,'muted');
-    ensure(34);
-    rule();doc.line(L,y+19,L+81,y+19);doc.line(L+96,y+19,W-R,y+19);
-    txt('Ort, Datum',L,y+24,7.6,'normal','muted');
-    txt('Name und Unterschrift',L+96,y+24,7.6,'normal','muted');
-    y+=31;
+    ensure(22);
+    rule();doc.line(L,y+12,L+81,y+12);doc.line(L+96,y+12,W-R,y+12);
+    txt('Ort, Datum',L,y+17,7.6,'normal','muted');
+    txt('Name und Unterschrift',L+96,y+17,7.6,'normal','muted');
+    y+=21;
 
     const pages=doc.internal.getNumberOfPages();
     for(let i=1;i<=pages;i++){
