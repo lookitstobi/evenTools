@@ -13,6 +13,7 @@
 <script src="/toolserve.php?name=pegelTool&file=report/report.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=report/pdf.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=ui/workflow.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=ui/pa-selection.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -240,6 +241,55 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 #main.workflow-single-page textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .workflow-export .workflow-actions{margin-top:10px}
 @media(max-width:900px){#main.workflow-single-page{padding:12px}.workflow-group-title{font-size:19px}}
+
+/* Selectable PA plans; neutral grey / green states and keyboard-visible focus. */
+.pa-picker{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,1fr);gap:18px;margin-top:12px}
+.pa-plan,.pa-options{border:1px solid var(--border);border-radius:12px;background:var(--primary-panel);padding:15px;min-width:0}
+.pa-plan-heading,.pa-options-heading{font-size:16px;font-weight:750}
+.pa-plan-heading span{display:block;margin-top:4px;color:var(--text-secondary);font-size:11px;font-weight:450}
+.pa-stage-plan{position:relative;height:375px;max-width:620px;margin:10px auto 0;border-radius:10px;
+ background:linear-gradient(180deg,#242424 0%,#303030 55%,#363636 100%);border:1px solid var(--border)}
+.pa-stage-marker{position:absolute;left:28%;width:44%;top:6%;height:17%;background:#4b4b4b;
+ border:1px solid #777;border-radius:4px;display:flex;justify-content:center;align-items:center;
+ letter-spacing:3px;font-size:12px;font-weight:700;color:#eee}
+.pa-audience-marker{position:absolute;bottom:6%;width:100%;text-align:center;letter-spacing:3px;
+ color:#aaa;font-size:11px}
+.pa-node{position:absolute;transform:translate(-50%,-50%);width:69px;min-height:64px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+ padding:4px;border:2px solid #626262;border-radius:8px;background:#555;color:#ededed;
+ font-size:10px;line-height:1.2;font-weight:550;box-shadow:none}
+.pa-node:hover,.pa-group-toggle:hover{border-color:#9ef58b}
+.pa-node.is-selected,.pa-group-toggle.is-selected{background:#137b29;border-color:#0d6924;color:white}
+.pa-node:focus-visible,.pa-group-toggle:focus-visible{outline:3px solid #b9ff9d;outline-offset:2px}
+.pa-device-icon{width:25px;height:30px;display:block;flex-shrink:0}
+.pa-node-label{display:block;overflow-wrap:anywhere;text-align:center;max-width:100%}
+.pa-node--fill{width:34px;min-height:45px;padding:2px;gap:0}
+.pa-node--fill .pa-device-icon{width:17px;height:21px}
+.pa-node--fill .pa-node-label{font-size:10px}
+.pa-node--array{min-height:78px}
+.pa-node--sub{min-height:65px}
+.pa-plan-legend{display:flex;gap:16px;flex-wrap:wrap;padding-top:10px;color:var(--text-secondary);font-size:11px}
+.pa-plan-legend span{display:inline-flex;gap:6px;align-items:center}
+.pa-plan-legend i{width:12px;height:12px;border-radius:3px;border:1px solid #777;background:#555;display:inline-block}
+.pa-plan-legend i.active{background:#137b29;border-color:#0d6924}
+.pa-options-help{font-size:12px;color:var(--text-secondary);line-height:1.45;margin:5px 0 11px}
+.pa-group-row{margin:0 0 8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.pa-group-toggle{width:100%;display:flex;align-items:center;gap:9px;text-align:left;
+ background:#454545;color:white;font-size:12px;font-weight:650;min-height:37px;padding:8px;
+ border:1px solid #636363;border-radius:7px}
+.pa-check{display:flex;justify-content:center;align-items:center;flex:0 0 17px;width:17px;height:17px;
+ border:1px solid currentColor;border-radius:3px}
+.pa-qty-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+.pa-qty-label{flex:1 1 115px;text-transform:none;letter-spacing:0;font-size:11px;margin:0}
+#main.workflow-single-page .pa-qty-label input{height:35px;font-size:13px;padding:6px 8px;margin-top:3px}
+.pa-qty-label input:disabled{opacity:.4}
+.pa-unresolved{color:#ffdf80;font-size:12px;margin-top:10px}
+.pa-extra-block{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.pa-empty{color:var(--text-secondary);font-size:13px}
+@media(max-width:950px){.pa-picker{grid-template-columns:1fr}.pa-stage-plan{max-width:600px}}
+@media(max-width:520px){.pa-stage-plan{height:310px}.pa-node{width:51px;min-height:53px;font-size:9px}
+ .pa-node--fill{width:29px;min-height:42px}.pa-node--fill .pa-node-label{font-size:9px}
+ .pa-device-icon{height:23px;width:21px}.pa-node--fill .pa-device-icon{height:17px;width:15px}}
 </style>
 </head>
 <body>
@@ -486,6 +536,10 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         <div class="small" id="paPresetInfo"></div>
       </div>
       <div id="paContainer"></div>
+      <div class="pa-extra-block">
+        <label>Sonstiges / zusätzliche Lautsprecher</label>
+        <div id="paExtras"></div>
+      </div>
       <label>Aufstellung / Anordnung der Beschallungsanlage</label>
       <textarea id="paAnordnung" placeholder="Positionen, Ausrichtung, Delays, Subs und weitere relevante Anlagenkomponenten"></textarea>
       <label>Ist die PA-Konfiguration für diese Veranstaltung geprüft?</label>
@@ -508,7 +562,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       </select>
       <div class="compact-row mt-8">
         <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
-        <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
+        <button class="secondary" id="btnClearPA" type="button">Auswahl zurücksetzen</button>
       </div>
     </div>
     <div class="section" data-workflow-section="corrections">
@@ -537,6 +591,7 @@ let logLoaded = false;
 let importModel = null; // Versioned Phase-2 model; no normative judgement.
 let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
 let workflowController = null; // Phase 6 view controller; never changes normative results.
+let paController = null; // Interactive PA diagram; source for selected speaker groups.
 let lastImportAttempt = null; // Ephemeral rejected-import feedback; never overwrites existing data.
 let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
 let reservedPdfPreviewWindow = null;
@@ -592,22 +647,6 @@ const PA_DEFAULT_QTY = {
   "L-ACOUSTIC 5XT": 8
 };
 
-const PA_PRESETS = {
-  "Philharmonie Essen, Alfried-Krupp-Saal": [
-    {type:"L-ACOUSTIC KARA II", qty:24},
-    {type:"L-ACOUSTIC KS21", qty:4},
-    {type:"L-ACOUSTIC A10 Wide", qty:2},
-    {type:"L-ACOUSTIC A10 Focus", qty:2},
-    {type:"L-ACOUSTIC 5XT", qty:8}
-  ],
-  "Philharmonie Essen, Nationalbank-Pavillon": [
-    {type:"L-ACOUSTIC A10 Focus", qty:4},
-    {type:"L-ACOUSTIC A10 Wide", qty:2},
-    {type:"L-ACOUSTIC KS21", qty:4},
-    {type:"L-ACOUSTIC 5XT", qty:6}
-  ]
-};
-
 function makeEmptyHeader(){
   return {
     deviceModel:"", deviceSN:"", firmware:"",
@@ -643,49 +682,50 @@ function setFormState(form){
   for(const id of FORM_FIELD_IDS){ if(Object.prototype.hasOwnProperty.call(form, id)) setVal(id, form[id]); }
 }
 
-function collectPAItems(){
-  const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
+function collectExtraPAItems(){
+  const rows = Array.from(document.querySelectorAll('#paExtras .compact-row'));
   return rows.map(r=>{
-    const sel = r.querySelector('select');
-    const custom = r.querySelector('input[placeholder="Eigener Typ"]');
-    const num = r.querySelector('input[type="number"]');
-    const type = sel ? sel.value : '';
-    const customType = custom ? custom.value : '';
-    const qtyRaw = num ? String(num.value || '').trim() : '';
-    const qty = qtyRaw ? Number(qtyRaw) : null;
-    if(!type && !customType && (qtyRaw === '')) return null;
-    return { type, customType, qty: (qty!=null && Number.isFinite(qty)) ? qty : null };
+    const sel=r.querySelector('select');
+    const custom=r.querySelector('input[placeholder="Eigener Typ"]');
+    const num=r.querySelector('input[type="number"]');
+    const type=sel?.value || '';
+    const customType=custom?.value || '';
+    const raw=String(num?.value || '').trim();
+    const qty=raw ? Number(raw) : null;
+    if(!type && !customType && !raw)return null;
+    return {type,customType,qty:Number.isFinite(qty)?qty:null};
   }).filter(Boolean);
 }
-
-function restorePAItems(items){
-  const container = el('paContainer');
-  if(!container) return;
-  container.innerHTML = '';
-
-  if(!Array.isArray(items) || !items.length){
-    applyLocationPreset(getVal('location'));
-    return;
+function collectPAItems(){
+  return [...(paController?.getItems() || []),...collectExtraPAItems()];
+}
+function restorePAItems(items,savedSelection,savedExtras){
+  const extras=el('paExtras');
+  if(!extras)return;
+  extras.replaceChildren();
+  if(paController){
+    paController.setLocation(getVal('location'));
+    paController.setState(savedSelection);
   }
-
-  for(const it of items){
-    const row = paRow('', '');
-    const sel = row.querySelector('select');
-    const custom = row.querySelector('input[placeholder="Eigener Typ"]');
-    const num = row.querySelector('input[type="number"]');
-    const isCustom = it.type === 'custom' || (it.customType && it.type !== 'custom');
+  // Saved selectors contain aggregate paItems for backwards compatibility.
+  // Only restore explicit extras to avoid counting selected speakers twice.
+  const legacy=!savedSelection || savedSelection.schemaVersion!==1;
+  const rows=legacy ? items : savedExtras;
+  for(const it of Array.isArray(rows)?rows:[]){
+    const row=paRow('', '');
+    const sel=row.querySelector('select');
+    const custom=row.querySelector('input[placeholder="Eigener Typ"]');
+    const num=row.querySelector('input[type="number"]');
+    const isCustom=it.type==='custom'||!!it.customType;
     if(sel){
-      sel.value = isCustom ? 'custom' : (it.type || '');
-      try{ sel.dispatchEvent(new Event('change')); }catch(e){}
+      sel.value=isCustom?'custom':(it.type||'');
+      sel.dispatchEvent(new Event('change'));
     }
-    if(custom && isCustom){
-      custom.value = it.customType || '';
-      custom.style.display = 'block';
-    }
-    if(num && it.qty!=null && Number.isFinite(Number(it.qty))) num.value = Number(it.qty);
-    container.appendChild(row);
+    if(custom && isCustom){custom.value=it.customType||'';custom.style.display='block';}
+    if(num && it.qty!=null && Number.isFinite(Number(it.qty)))num.value=Number(it.qty);
+    extras.appendChild(row);
   }
-  setText('paPresetInfo', 'Preset: gespeichert');
+  setText('paPresetInfo',legacy?'Alte PA-Liste übernommen – bitte prüfen':'Gespeicherte Auswahl geladen');
 }
 
 function buildStateObject(options = {}){
@@ -706,6 +746,8 @@ function buildStateObject(options = {}){
     form: getFormState(),
     protocolMeta: { schemaVersion: 1, origins: {...protocolOrigins} },
     paItems: collectPAItems(),
+    paSelection: paController?.getState() || null,
+    paExtras: collectExtraPAItems(),
     logText: includeLogText ? lastLogText : '',
     logFileName: lastLogFileName || ''
   };
@@ -762,6 +804,13 @@ function normalizeState(raw){
     form: normalizedForm,
     protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
+    paSelection: raw.paSelection && raw.paSelection.schemaVersion===1
+      ? raw.paSelection : null,
+    paExtras: Array.isArray(raw.paExtras)
+      ? raw.paExtras.map(it=>({
+        type:String(it?.type||''),customType:String(it?.customType||''),
+        qty:it?.qty!=null && Number.isFinite(Number(it.qty)) ? Number(it.qty) : null
+      })) : [],
     logText: String(raw.logText || ''),
     logFileName: String(raw.logFileName || ''),
     logLoaded: !!raw.logLoaded
@@ -842,7 +891,7 @@ function applySavedState(rawState, options = {}){
   if(!state) throw new Error('Ungueltiger Stand: keine gueltigen Zustandsdaten gefunden.');
 
   setFormState(state.form);
-  restorePAItems(state.paItems);
+  restorePAItems(state.paItems,state.paSelection,state.paExtras);
   protocolOrigins = state.protocolMeta.origins;
   lastImportAttempt = null;
 
@@ -1124,6 +1173,8 @@ function getProtocolReportData(){
     form:getFormState(),
     origins:protocolOrigins,
     paItems:collectPAItems(),
+    paGroups:paController?.getSummary() || [],
+    paSelectionIssues:paController?.getUnresolved() || [],
     importModel:importModel,
     evaluation:phase3Evaluation
   });
@@ -1992,49 +2043,54 @@ function paRow(type="", qty=""){
 }
 
 function applyLocationPreset(loc){
-  const preset = PA_PRESETS[loc];
-  const container = el('paContainer');
-  container.innerHTML = '';
-  if(preset && preset.length){
-    for(const it of preset){ container.appendChild(paRow(it.type, it.qty)); }
-    setText('paPresetInfo', `Preset aktiv: ${loc}`);
-  } else {
-    container.appendChild(paRow('', ''));
-    setText('paPresetInfo', 'Kein gültiger Preset-Nachweis – PA manuell erfassen');
+  const container=el('paContainer');
+  if(window.PegelToolPA){
+    if(!paController)paController=window.PegelToolPA.mount({
+      root:container,location:loc,
+      onChange:()=>{
+        protocolOrigins.paItems='manual';
+        setVal('paBestaetigt','');
+        markRequiredFields();scheduleRecoverySave();
+      }
+    });
+    else paController.setLocation(loc);
+    el('paExtras').replaceChildren();
+    setText('paPresetInfo','Bitte tatsächlich verwendete Lautsprecher auswählen');
+  }else{
+    container.innerHTML='';
+    el('paExtras').replaceChildren();
+    el('paExtras').appendChild(paRow('', ''));
+    setText('paPresetInfo','Saalübersicht nicht verfügbar – PA manuell eingeben');
   }
 }
 
-el('btnAddPA').addEventListener('click', ()=> {
-  el('paContainer').appendChild(paRow('', ''));
+el('btnAddPA').addEventListener('click',()=>{
+  const row=paRow('', '');
+  el('paExtras').appendChild(row);
+  row.querySelector('select')?.focus();
   protocolOrigins.paItems='manual';
   setVal('paBestaetigt','');
-  markRequiredFields();
-  scheduleRecoverySave();
+  markRequiredFields();scheduleRecoverySave();
 });
-el('btnClearPA').addEventListener('click', ()=> {
+el('btnClearPA').addEventListener('click',()=>{
+  applyLocationPreset(getVal('location'));
+  protocolOrigins.paItems='manual';
+  setVal('paBestaetigt','');
+  markRequiredFields();scheduleRecoverySave();
+});
+el('location').addEventListener('change',()=>{
   applyLocationPreset(getVal('location'));
   protocolOrigins.paItems='preset-unverified';
   setVal('paBestaetigt','');
-  markRequiredFields();
-  scheduleRecoverySave();
+  markRequiredFields();scheduleRecoverySave();
 });
-el('location').addEventListener('change', ()=> {
-  applyLocationPreset(getVal('location'));
-  protocolOrigins.paItems='preset-unverified';
-  markRequiredFields();
-  scheduleRecoverySave();
-});
-
-el('paContainer').addEventListener('input', ()=>{
-  protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
-  markRequiredFields(); scheduleRecoverySave();
-});
-el('paContainer').addEventListener('change', ()=>{
-  protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
-  markRequiredFields(); scheduleRecoverySave();
-});
+for(const event of ['input','change']){
+  el('paExtras').addEventListener(event,()=>{
+    protocolOrigins.paItems='manual';
+    setVal('paBestaetigt','');
+    markRequiredFields();scheduleRecoverySave();
+  });
+}
 for(const id of FORM_FIELD_IDS){
   const field = el(id);
   if(!field) continue;
@@ -2053,19 +2109,10 @@ for(const id of FORM_FIELD_IDS){
 }
 
 function getPASetupInline(){
-  const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
-  const items = [];
-  for(const r of rows){
-    const sel = r.querySelector('select');
-    const custom = r.querySelector('input[placeholder="Eigener Typ"]');
-    const num = r.querySelector('input[type="number"]');
-    const type = sel.value === 'custom' ? (custom.value || 'Eigener Typ') : (sel.value || '');
-    const qtyRaw = String(num.value || '').trim();
-    const qty = qtyRaw ? Number(qtyRaw) : null;
-    if(!type) continue;
-    items.push({ type, qty: (qty!=null && Number.isFinite(qty)) ? qty : null });
-  }
-  return items.map(x => x.qty!=null ? `${x.qty}x ${x.type}` : `${x.type}`).join(', ');
+  return collectPAItems().map(it=>{
+    const type=it.type==='custom'?it.customType:it.type;
+    return it.qty!=null ? it.qty+'x '+type : type;
+  }).join(', ');
 }
 
 function wrap(doc, text, maxWidth){ return doc.splitTextToSize(String(text ?? ''), maxWidth); }
