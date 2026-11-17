@@ -708,12 +708,16 @@ function restorePAItems(items,savedSelection,savedExtras){
     const sel=row.querySelector('select');
     const custom=row.querySelector('input[placeholder="Eigener Typ"]');
     const num=row.querySelector('input[type="number"]');
-    const isCustom=it.type==='custom'||!!it.customType;
+    const known=sel && Array.from(sel.options).some(o=>o.value===it.type);
+    const isCustom=it.type==='custom'||!!it.customType||(!known && !!it.type);
     if(sel){
       sel.value=isCustom?'custom':(it.type||'');
       sel.dispatchEvent(new Event('change'));
     }
-    if(custom && isCustom){custom.value=it.customType||'';custom.style.display='block';}
+    if(custom && isCustom){
+      custom.value=it.customType || (it.type==='custom'?'':it.type);
+      custom.style.display='block';
+    }
     if(num && it.qty!=null && Number.isFinite(Number(it.qty)))num.value=Number(it.qty);
     extras.appendChild(row);
   }
