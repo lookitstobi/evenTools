@@ -146,7 +146,7 @@
     exportArea.append(exportText,actions);
     groupsById.export=exportArea;
     main.appendChild(exportArea);
-    // Read-only log fields and buttons remain available but are not part of the entry tab chain.
+    // Skip automatic read-only values; manual inputs use ordinary DOM tab order.
     const allFields=Array.from(main.querySelectorAll('input,select,textarea'));
     for(const field of allFields){
       if(field.hasAttribute('readonly') || field.readOnly || field.disabled){
