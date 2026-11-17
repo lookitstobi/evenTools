@@ -639,14 +639,6 @@ const CHART_THEMES = {
 };
 let currentChartTheme = 'dark';
 
-const PA_DEFAULT_QTY = {
-  "L-ACOUSTIC KARA II": 24,
-  "L-ACOUSTIC KS21": 4,
-  "L-ACOUSTIC A10 Wide": 2,
-  "L-ACOUSTIC A10 Focus": 2,
-  "L-ACOUSTIC 5XT": 8
-};
-
 function makeEmptyHeader(){
   return {
     deviceModel:"", deviceSN:"", firmware:"",
@@ -2028,10 +2020,6 @@ function paRow(type="", qty=""){
   sel.addEventListener('change', ()=>{
     custom.style.display = (sel.value === 'custom') ? 'block' : 'none';
     if(sel.value !== 'custom') custom.value = '';
-    const t = (sel.value === 'custom') ? '' : sel.value;
-    if(t && !String(num.value||'').trim() && PA_DEFAULT_QTY[t] != null){
-      num.value = PA_DEFAULT_QTY[t];
-    }
   });
 
   row.appendChild(sel);
