@@ -290,6 +290,13 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 @media(max-width:520px){.pa-stage-plan{height:310px}.pa-node{width:51px;min-height:53px;font-size:9px}
  .pa-node--fill{width:29px;min-height:42px}.pa-node--fill .pa-node-label{font-size:9px}
  .pa-device-icon{height:23px;width:21px}.pa-node--fill .pa-device-icon{height:17px;width:15px}}
+
+/* Single-page layout from first render; no legacy tab strip or clipped desktop scrolling. */
+html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+.header{position:sticky;top:0}
+#main{position:relative;top:auto;bottom:auto;left:auto;right:auto}
+#main.workflow-main,#main.workflow-single-page{position:relative;top:auto;bottom:auto;overflow:visible}
+.workflow-nav,.workflow-tab,.workflow-panel,.workflow-footer{display:none!important}
 </style>
 </head>
 <body>
@@ -594,6 +601,53 @@ let workflowController = null; // Phase 6 view controller; never changes normati
 let paController = null; // Interactive PA diagram; source for selected speaker groups.
 let lastImportAttempt = null; // Ephemeral rejected-import feedback; never overwrites existing data.
 let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
+// Editable, explicitly unverified defaults from "Manuelle Eingaben prüfen".
+const DEFAULT_VENUE_ADDRESS = 'Huyssenallee 53, 45128 Essen';
+const DEFAULT_ORGANIZER = [
+  'Theater und Philharmonie Essen GmbH',
+  'Opernplatz 10',
+  '45128 Essen',
+  'Geschäftsführer: Fritz Frömming',
+  'Intendanz Philharmonie Essen: Babette Nierenz'
+].join('\\n');
+const MANUAL_ENTRY_PRESETS = Object.freeze({
+  organisator: DEFAULT_ORGANIZER,
+  ortAdresse: DEFAULT_VENUE_ADDRESS,
+  umwelt: 'Indoor, 21°C',
+  kalibratorModell: 'CENTER 326',
+  kalibratorSN: '140408454',
+  berichtsort: 'Essen'
+});
+function todayLocalDate(){
+  const now=new Date();
+  return [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),
+    String(now.getDate()).padStart(2,'0')].join('-');
+}
+function applyNewFormDefaults(){
+  for(const [id,value] of Object.entries(MANUAL_ENTRY_PRESETS)){
+    if(!getVal(id).trim() && (id!=='ortAdresse' || getVal('location')!=='Eigene Angabe')){
+      setVal(id,value);
+      protocolOrigins[id]='preset-unverified';
+    }
+  }
+  if(!getVal('berichtDatum')){
+    setVal('berichtDatum',todayLocalDate());
+    protocolOrigins.berichtDatum='auto-date';
+  }
+}
+function reconcileVenueAddress(){
+  if(getVal('location')==='Eigene Angabe'){
+    if(getVal('ortAdresse')===DEFAULT_VENUE_ADDRESS){
+      setVal('ortAdresse','');
+      delete protocolOrigins.ortAdresse;
+    }
+    return;
+  }
+  if(!getVal('ortAdresse').trim()){
+    setVal('ortAdresse',DEFAULT_VENUE_ADDRESS);
+    protocolOrigins.ortAdresse='preset-unverified';
+  }
+}
 let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
@@ -2071,6 +2125,7 @@ el('btnClearPA').addEventListener('click',()=>{
   markRequiredFields();scheduleRecoverySave();
 });
 el('location').addEventListener('change',()=>{
+  reconcileVenueAddress();
   applyLocationPreset(getVal('location'));
   protocolOrigins.paItems='preset-unverified';
   setVal('paBestaetigt','');
@@ -2338,7 +2393,8 @@ el('fileInput').addEventListener('change', (e)=>{
 });
 
 (function init(){
-  // No sample date or instrument/organiser defaults may become accidental evidence.
+  // The defaults are editable presets, not proof of a measurement or on-site checks.
+  applyNewFormDefaults();
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
   setPdfButtonsDisabled(true);
   markRequiredFields();
