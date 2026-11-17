@@ -221,15 +221,15 @@
         for(let i=0;i<items.length;i++){
           const item=items[i];
           const textLines=lines('['+item.code+']  '+item.message,CW-8,7.8);
-          const height=textLines.length*3.95+2.2;
+          const height=textLines.length*3.75+1.0;
           if(y+height>BOTTOM) page();
           if(i%2===0){fill('pale');doc.rect(L,y,CW,Math.min(height,BOTTOM-y),'F');}
           for(const s of textLines){
             ensure(4.2);
-            txt(s,L+3,y+3.0,7.8);
-            y+=3.95;
+            txt(s,L+3,y+2.7,7.8);
+            y+=3.75;
           }
-          y+=2.2;
+          y+=1.0;
         }
         y+=2;
       }
