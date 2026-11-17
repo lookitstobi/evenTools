@@ -70,6 +70,18 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(await page.evaluate(()=>JSON.stringify(buildStateObject().importModel.samples)),originalRows);
       assert.match(await page.locator('#chipLog').innerText(),/vorherige Messung geladen/i);
 
+      // AKS schematic: selecting one frontfill selects its symmetric partner.
+      assert.equal(await page.locator('#paContainer .pa-node[data-pa-group="ff19"]').count(),2);
+      await page.locator('#paContainer .pa-node[data-pa-group="ff19"]').first().click();
+      assert.equal(await page.locator('#paContainer .pa-node[data-pa-group="ff19"][aria-pressed="true"]').count(),2);
+      await page.locator('#paContainer .pa-group-toggle[data-pa-group="main"]').click();
+      const paBeforeSave=await page.evaluate(()=>buildStateObject());
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,2);
+      assert.ok(paBeforeSave.paSelection.selected.includes('ff19'));
+      assert.ok(paBeforeSave.paSelection.selected.includes('main'));
+      assert.equal(paBeforeSave.paExtras.length,0);
+
       await page.locator('#eventName').fill('Phase 7 Browserprüfung');
       assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
       assert.equal(await page.locator('#workflow-group-export').isVisible(),true);
@@ -84,6 +96,8 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await jsonDownload.saveAs(downloadPath('projekt.nti.json'));
       const saved=JSON.parse(fs.readFileSync(downloadPath('projekt.nti.json'),'utf8'));
       assert.equal(saved.form.eventName,'Phase 7 Browserprüfung');
+      assert.deepEqual(saved.paSelection.selected,['ff19','main']);
+
       assert.equal(JSON.stringify(saved.importModel.samples),originalRows);
 
       const htmlWaiting=page.waitForEvent('download',{timeout:15000});
@@ -116,6 +130,8 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       const loaded=await page.evaluate(()=>buildStateObject());
       assert.equal(JSON.stringify(loaded.importModel.samples),originalRows);
       assert.equal(loaded.form.eventName,'Phase 7 Browserprüfung');
+      assert.deepEqual(loaded.paSelection.selected,['ff19','main']);
+      assert.equal(loaded.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,2);
       assert.equal(documentedStatus(await page.locator('body').innerText()),true);
 
       // HTML export is also an importable project carrier, no duplicate UI.
@@ -124,6 +140,22 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await page.waitForFunction(()=>buildStateObject().form.eventName==='Phase 7 Browserprüfung');
       assert.equal(await page.locator('.workflow-shell').count(),1);
       assert.equal(await page.locator('.workflow-group').count(),5);
+      // Pavillon has its own independent layout. No guessed A10 main counts.
+      await page.locator('#location').selectOption({label:'Philharmonie Essen, Nationalbank-Pavillon'});
+      await page.locator('#paContainer .pa-group-toggle[data-pa-group="main"]').click();
+      await page.locator('#paContainer .pa-group-toggle[data-pa-group="subs"]').click();
+      let pv=await page.evaluate(()=>buildStateObject());
+      assert.equal(pv.paSelection.location,'Philharmonie Essen, Nationalbank-Pavillon');
+      assert.ok(!pv.paSelection.selected.includes('ff19'));
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,4);
+      assert.equal(await page.locator('#paContainer .pa-unresolved').isVisible(),true);
+      await page.locator('#paContainer [data-pa-count="mainFocus"]').fill('4');
+      await page.locator('#paContainer [data-pa-count="mainWide"]').fill('2');
+      assert.equal(await page.locator('#paContainer .pa-unresolved').isVisible(),false);
+      pv=await page.evaluate(()=>buildStateObject());
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC A10 Focus').qty,4);
+      assert.equal(pv.paItems.find(x=>x.type==='L-ACOUSTIC A10 Wide').qty,2);
+      assert.equal(pv.paExtras.length,0);
       assert.deepEqual(pageErrors,[],'Unhandled browser JS exceptions: '+pageErrors.join('; '));
     } finally {
       await browser.close();
