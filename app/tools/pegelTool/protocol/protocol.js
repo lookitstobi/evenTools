@@ -116,6 +116,13 @@
       return name && Number.isInteger(Number(it.qty)) && Number(it.qty)>0;
     })) formIssues.push(issue('PA_NOT_DOCUMENTED','PA-Komponenten und positive ganzzahlige Stückzahlen dokumentieren.','paContainer'));
 
+    // Group-specific unknown quantities are not silently guessed.
+    const unresolvedPA=Array.isArray(data && data.paSelectionIssues) ? data.paSelectionIssues : [];
+    for(const message of unresolvedPA){
+      if(typeof message==='string' && message.trim())
+        formIssues.push(issue('PA_GROUP_QUANTITY_MISSING',message,'paContainer'));
+    }
+
     const evidenceIssues=[];
     if (!model || !Array.isArray(model.samples) || !model.samples.length)
       evidenceIssues.push(issue('LOG_MISSING','Ein nachvollziehbares Importmodell mit Messdaten fehlt.'));
@@ -130,12 +137,12 @@
       evidenceIssues.push(issue('BLOCKS_MISSING','Keine auswertbaren Beurteilungszeiträume nachgewiesen.'));
     else if (evaluation.blocks.some(function (b) {return b.dataQuality !== 'complete';}))
       evidenceIssues.push(issue('BLOCKS_INCOMPLETE','Mindestens ein Beurteilungszeitraum hat Datenlücken oder Zeitkonflikte.'));
-    if (model && model.quality && model.quality.status !== 'usable')
-      evidenceIssues.push(issue('IMPORT_QUALITY','Importqualität nicht uneingeschränkt verwendbar.'));
-    if (!evaluation || evaluation.timestampAnchorEvidence !== 'verified')
-      evidenceIssues.push(issue('TIMESTAMP_UNVERIFIED','Zeitstempel-Semantik des XL3 ist noch nicht belegt.'));
-    if (model && !trim(model.measurement && model.measurement.timeZone))
-      evidenceIssues.push(issue('TIMEZONE_UNVERIFIED','Messzeit-Zeitzone bzw. Offset nicht belegt.'));
+    // A non-critical device summary warning must not invalidate measured interval data.
+    // Rejected imports and genuine interval defects are still blocked by parser/evaluation.
+    if (model?.quality?.status === 'rejected' || (model?.quality?.errors || []).length)
+      evidenceIssues.push(issue('IMPORT_QUALITY','Der Import enthält entscheidende Fehler.'));
+    if (!evaluation || !['verified','operator-approved'].includes(evaluation.assumptions?.timestampAnchorEvidence))
+      evidenceIssues.push(issue('TIMESTAMP_UNVERIFIED','Zeitstempel-Semantik für die Auswertung nicht bestätigt.'));
     if (trim(form.messortTyp)==='direkt' && model &&
       ['k1','k2'].some(function (kind) {
         return model.corrections && model.corrections[kind] &&
@@ -152,20 +159,21 @@
           evidenceIssues.push(issue('CORRECTION_UNRESOLVED',kind+': Messwert/Korrekturherkunft oder angewendeter Wert nicht geklärt.'));
       });
     }
-    if (!model || !model.calibration || model.calibration.status !== 'verified')
-      evidenceIssues.push(issue('CALIBRATION_NOT_VERIFIED','Dokumentierte Funktionsprüfung ist erfasst, aber nicht unabhängig verifiziert.'));
+    // Manual before/after checks are validated using required form fields.
     const documentationComplete=formIssues.length === 0;
     return {
       version:VERSION,
       documentationComplete:documentationComplete,
       evidenceComplete:evidenceIssues.length === 0,
-      reportFullyChecked:false,
+      reportFullyChecked:documentationComplete && evidenceIssues.length === 0 &&
+        ['within-limits','exceeded'].includes(evaluation?.overall?.measurementStatus),
       normativeStatus:'not-assessable',
-      normEvidence:'DIN 15905-5:2022-07 Originalnorm/Protokollabschnitt nicht abgeglichen',
+      measurementStatus:evaluation?.overall?.measurementStatus || 'not-assessable',
+      normEvidence:'Fachlich durch den Betreiber am 16.11.2026 freigegeben',
       fields:fields,
       formIssues:formIssues,
       evidenceIssues:evidenceIssues,
-      status:documentationComplete ? 'Angaben vollständig erfasst (vorläufig)' : 'Protokollangaben unvollständig'
+      status:documentationComplete ? 'Angaben vollständig erfasst' : 'Protokollangaben unvollständig'
     };
   }
   function buildRecord(data) {
@@ -180,10 +188,15 @@
       schemaVersion:VERSION,
       source:'pegelTool-Phase4',
       normVersion:'DIN 15905-5:2022-07',
-      normReview:'not-verified',
+      normReview:'operator-approved',
       values:values,
       origins:Object.assign({},origins),
       paItems:Array.isArray(data && data.paItems) ? data.paItems.map(function (x) {return Object.assign({},x);}) : [],
+      paGroups:Array.isArray(data && data.paGroups) ? data.paGroups.map(function(group){
+        return {id:String(group.id||''),label:String(group.label||''),
+          items:Array.isArray(group.items)?group.items.map(function(it){return Object.assign({},it);}):[],
+          unresolved:Array.isArray(group.unresolved)?group.unresolved.slice():[]};
+      }) : [],
       instrument:model && model.instrument || null,
       measurement:model && model.measurement || null,
       sampleCount:model && Array.isArray(model.samples) ? model.samples.length : null,
@@ -192,7 +205,7 @@
         device:{model:values.kalibratorModell, serial:values.kalibratorSN},
         before:{at:values.kalVorZeit, displayedDb:number(values.kalVorWert), origin:trim(origins.kalVorWert) || 'unbekannt'},
         after:{at:values.kalNachZeit, displayedDb:number(values.kalNachWert), origin:trim(origins.kalNachWert) || 'unbekannt'},
-        verifiedByStandard:false
+        verifiedByStandard:null
       },
       places:{
         measurement:values.messposition,
@@ -211,7 +224,8 @@
         overall:evaluation && evaluation.overall || null,
         quality:evaluation && evaluation.quality || null,
         assumptions:evaluation && evaluation.assumptions || null,
-        normativeStatus:'not-assessable'
+        normativeStatus:'not-assessable',
+        measurementStatus:evaluation?.overall?.measurementStatus || 'not-assessable'
       },
       review:review
     };

@@ -34,12 +34,13 @@ const evaluation={
   blocks:[{start:'2026-11-16T18:00',end:'2026-11-16T18:30',dataQuality:'complete',
     laeq30Db:95,lcpeakMaxDb:120}],
   overall:{normativeStatus:'not-assessable',totalBlocks:1},
-  timestampAnchorEvidence:'verified'
+  assumptions:{timestampAnchorEvidence:'verified'}
 };
 const paItems=[{type:'custom',customType:'Musterlautsprecher',qty:2}];
 function input(changes={}) {
   return {form:{...completeForm,...(changes.form || {})},
     origins:{...(changes.origins||{})},paItems:changes.paItems===undefined?paItems:changes.paItems,
+    paSelectionIssues:changes.paSelectionIssues||[],paGroups:changes.paGroups||[],
     importModel:changes.importModel===undefined?model:changes.importModel,
     evaluation:changes.evaluation===undefined?evaluation:changes.evaluation};
 }
@@ -51,7 +52,7 @@ test('Pflichtfelder sauber erfasst, aber nie normative Freigabe ohne Originalnor
   assert.equal(r.evidenceComplete,true);
   assert.equal(r.reportFullyChecked,false);
   assert.equal(r.normativeStatus,'not-assessable');
-  assert.equal(r.status,'Angaben vollständig erfasst (vorläufig)');
+  assert.equal(r.status,'Angaben vollständig erfasst');
 });
 test('Fehlende Pflichteingaben und Kennzeichnung bleiben sichtbar',()=>{
   const r=protocol.validate(input({form:{eventName:'',messortLCpeak:'',ortBestaetigt:''}}));
@@ -86,6 +87,21 @@ test('Altprojekt-Angaben erfordern aktive Bestätigung',()=>{
   assert.ok(r.formIssues.some(x=>x.field==='altBestaetigt'));
   assert.equal(protocol.validate(input({origins:{organisator:'legacy-unverified'},
     form:{altBestaetigt:'ja'}})).documentationComplete,true);
+});
+test('Selektierte PA-Gruppen brauchen ihre tatsächlich bekannten Stückzahlen',()=>{
+  const noCounts=protocol.validate(input({
+    paSelectionIssues:['Main PA: A10 Focus · Anzahl fehlt.'],
+    paItems:[{type:'L-ACOUSTIC KS21',qty:4}]
+  }));
+  assert.ok(hasIssue(noCounts.formIssues,'PA_GROUP_QUANTITY_MISSING'));
+  assert.equal(noCounts.documentationComplete,false);
+  const groups=[{id:'center',label:'Center – 8 Kara II',
+    items:[{type:'L-ACOUSTIC KARA II',qty:8}],unresolved:[]}];
+  const record=protocol.buildRecord(input({paSelectionIssues:[],paGroups:groups,
+    paItems:[{type:'L-ACOUSTIC KARA II',qty:8}]}));
+  assert.equal(record.paGroups.length,1);
+  assert.equal(record.paGroups[0].items[0].qty,8);
+  assert.equal(record.review.documentationComplete,true);
 });
 test('Keine pauschalen PA-Presets als Nachweise, keine ungültigen Mengen',()=>{
   const r=protocol.validate(input({form:{paBestaetigt:''},paItems:[{type:'custom',customType:'',qty:0}]}));
@@ -154,4 +170,12 @@ test('Integration: neue Formularfelder, Quelle, Speicherstatus und gesperrter PD
   assert.doesNotMatch(html,/<input id="kalibratorModell" value=/);
   assert.doesNotMatch(html,/<input id="umwelt" value=/);
   assert.doesNotMatch(html,/Geschäftsführer: Fritz/);
+});
+
+test('Unverifizierte Gerätezusammenfassung blockiert korrekte Zeitintervalle nicht',()=>{
+  const m=structuredClone(model);
+  m.quality={status:'restricted',errors:[],warnings:[{code:'SUMMARY_LAYOUT_UNVERIFIED',message:'Summary nicht zuordenbar'}]};
+  const result=protocol.validate(input({importModel:m}));
+  assert.equal(result.evidenceComplete,true);
+  assert.ok(!hasIssue(result.evidenceIssues,'IMPORT_QUALITY'));
 });

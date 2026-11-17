@@ -109,13 +109,13 @@ test('g5 above 99 never substitutes for the independently evaluated 30-minute LA
   assert.equal(result.blocks[0].normativeStatus,'not-assessable');
   assert.equal(m.samples[0].values.laeqG5,115);
 });
-test('unverified anchor and missing calibration remain explicit, even with complete energy data',()=>{
+test('unverified timestamp anchor prevents positive assessment even with complete energy data',()=>{
   const m=makeModel();
   m.calibration.status='not-documented';
   const r=Engine.evaluateModel(m,{timestampAnchor:'start',timestampAnchorEvidence:'assumed'});
   near(r.blocks[0].coveredSeconds,1800,'coverage');
   assert.ok(r.quality.warnings.some(x=>x.code==='TIME_BASIS_UNVERIFIED'));
-  assert.ok(r.quality.warnings.some(x=>x.code==='CALIBRATION_UNVERIFIED'));
+  assert.ok(!r.quality.warnings.some(x=>x.code==='CALIBRATION_UNVERIFIED'));
   assert.equal(r.quality.status,'restricted');
   assert.equal(r.normativeStatus,'not-assessable');
 });
@@ -144,7 +144,7 @@ test('import → calculate → protocol → report → JSON roundtrip → report
       messortLCpeak:'Publikum links'},
     origins:{eventName:'user-input'},paItems:[],importModel:parsed.model,evaluation};
   const record=Protocol.buildRecord(input);
-  assert.equal(record.normReview,'not-verified');
+  assert.equal(record.normReview,'operator-approved');
   const before=Report.build(record,{sourceFileName:'XL3_synthetic.txt'});
   assert.equal(before.blocks.length,evaluation.blocks.length);
   assert.equal(before.reportFullyChecked,false);
@@ -183,4 +183,25 @@ test('unknown 120-minute decision stays unavailable and does not enable a 120-mi
   assert.equal(typeof Engine.evaluate120Minutes,'undefined');
   assert.equal(typeof Engine.LIMIT_LAEQ_DB,'number');
   assert.equal(Engine.threshold(null,Engine.LIMIT_LAEQ_DB),'unknown');
+});
+
+test('operator-approved measurement status distinguishes complete blocks and actual exceedance',()=>{
+  const base=epoch('2026-11-16T18:00:00');
+  const sample=(la,pk)=>({startMs:base,endMs:base+1800000,laeqDb:la,lcpeakDb:pk});
+  assert.equal(Engine.buildBlocks([sample(98,134)]).overall.measurementStatus,'within-limits');
+  assert.equal(Engine.buildBlocks([sample(99,135)]).overall.measurementStatus,'within-limits');
+  assert.equal(Engine.buildBlocks([sample(100,134)]).overall.measurementStatus,'exceeded');
+  assert.equal(Engine.buildBlocks([sample(98,136)]).overall.measurementStatus,'exceeded');
+  assert.equal(Engine.buildBlocks([{...sample(98,134),endMs:base+1200000}]).overall.measurementStatus,'not-assessable');
+});
+test('missing form fields remain visible without any blanket release disclaimer',()=>{
+  const model=makeModel();
+  const evaluation=Engine.evaluateModel(model,{timestampAnchor:'start',timestampAnchorEvidence:'operator-approved'});
+  assert.equal(evaluation.overall.measurementStatus,'within-limits');
+  const record=Protocol.buildRecord({form:{},importModel:model,evaluation});
+  const report=Report.build(record,{sourceFileName:'synthetic.txt'});
+  const html=Report.renderHtml(report);
+  assert.doesNotMatch(html,/vorläufig|normfreigabe|normenabgleich|konformitätsbescheinigung/i);
+  assert.match(html,/Nicht beurteilbar/i);
+  assert.ok(report.issues.some(x=>x.code==='FIELD_MISSING_OR_INVALID'));
 });

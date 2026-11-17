@@ -14,6 +14,7 @@ ASSETS = [
     "report/report.js",
     "report/pdf.js",
     "ui/workflow.js",
+    "ui/pa-selection.js",
     "vendor/chart.umd.min.js",
     "vendor/jspdf.umd.min.js",
     "vendor/pdf-lib.min.js",

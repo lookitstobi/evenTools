@@ -25,7 +25,7 @@ test('imported values alone never imply DIN compliance, even far below limits',(
   const s=imported();
   s.evaluation.overall={laeqMaxDb:70,lcpeakMaxDb:90};
   assert.equal(UI.assessmentStatus(s),'Nicht beurteilbar');
-  assert.match(UI.summarize(s).normNotice,/keine DIN-Konformitätsbescheinigung/i);
+  assert.equal(UI.summarize(s).normNotice,'');
 });
 test('an open original-norm gate blocks positive and negative DIN judgements',()=>{
   for(const hypothetical of ['compliant','exceeded']) {
@@ -35,10 +35,10 @@ test('an open original-norm gate blocks positive and negative DIN judgements',()
   }
 });
 test('hypothetical fully verified future status maps only from an authorised result',()=>{
-  const s=imported({record:{normReview:'verified',assessment:{normativeStatus:'compliant'}}});
+  const s=imported({record:{normReview:'verified',assessment:{measurementStatus:'within-limits'}}});
   s.review={documentationComplete:true,evidenceComplete:true,reportFullyChecked:true};
-  assert.equal(UI.assessmentStatus(s),'Grenzwert eingehalten');
-  s.record.assessment.normativeStatus='exceeded';
+  assert.equal(UI.assessmentStatus(s),'Grenzwerte eingehalten');
+  s.record.assessment.measurementStatus='exceeded';
   assert.equal(UI.assessmentStatus(s),'Grenzwert überschritten');
   s.review.evidenceComplete=false;
   assert.equal(UI.assessmentStatus(s),'Nicht beurteilbar');
@@ -110,8 +110,11 @@ function fakeDom(){
         const found=/data-workflow-section="([^"]+)"/.exec(selector);
         return found ? sections.get(found[1]) || null : null;
       },
-      querySelectorAll(selector){return selector==='.workflow-panel' ?
-        el.children.filter(n=>n.className==='workflow-panel') : [];}
+      querySelectorAll(selector){
+        if(selector==='.workflow-panel')return el.children.filter(n=>n.className==='workflow-panel');
+        if(selector==='.workflow-group')return el.children.filter(n=>n.className.includes('workflow-group'));
+        return [];
+      }
       
     };
     if(id)lookup.set(id,el);
@@ -133,28 +136,34 @@ function fakeDom(){
       null,createElement:tag=>make(tag)},
     main,body,lookup};
 }
-test('guided panels move original sections without dropping any and remain keyboard buttons',()=>{
-  const x=fakeDom(), snapshot=imported();
+test('single-page layout retains every section without tab navigation',()=>{
+  const x=fakeDom(),snapshot=imported();
   const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
   assert.ok(ctrl);
-  const panels=x.main.children.filter(n=>n.className==='workflow-panel');
-  assert.equal(panels.length,6);
-  assert.equal(ctrl.currentStep(),'import');
-  assert.equal(panels[0].hidden,false);
-  assert.equal(panels[3].hidden,true);
-  const tabs=x.body.children[1].children[0];
-  assert.equal(tabs.tagName,'NAV');
-  assert.equal(tabs.children.length,6);
-  tabs.children[3].click();
-  assert.equal(ctrl.currentStep(),'assessment');
-  assert.equal(panels[0].hidden,true);
-  assert.equal(panels[3].hidden,false);
-  assert.equal(tabs.children[3].getAttribute('aria-current'),'step');
+  assert.equal(ctrl.currentStep(),'all');
+  assert.equal(x.body.children.filter(n=>n.className==='workflow-shell').length,1);
+  assert.equal(x.main.children.filter(n=>n.className==='workflow-panel').length,0);
+  assert.equal(x.main.children.filter(n=>n.className.includes('workflow-group')).length,5);
+  assert.equal(ctrl.go('setup'),true);
+  assert.equal(ctrl.go('quality'),true);
+  assert.equal(ctrl.go('assessment'),true);
+  assert.equal(ctrl.go('protocol'),true);
+  assert.equal(ctrl.go('export'),true);
   assert.equal(ctrl.go('wrong-step'),false);
-  assert.equal(ctrl.currentStep(),'assessment');
   assert.equal(x.main.children.some(n=>n.id==='leftColumn'),false);
-  const allSections=panels.flatMap(p=>p.children).filter(n=>n.id?.endsWith('Section'));
-  assert.equal(allSections.length,11);
+});
+test('compact status hides detailed issue list in a disclosure',()=>{
+  const x=fakeDom(),snapshot=imported();
+  snapshot.review.formIssues=[{message:'Angabe fehlt'}];
+  const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  assert.ok(ctrl);
+  const overview=x.body.children[1].children[0];
+  assert.equal(overview.children[0].textContent.includes('Prüfhinweise'),true);
+  assert.equal(overview.children[1].tagName,'DETAILS');
+});
+test('no positive tabindex remains in the HTML',()=>{
+  assert.doesNotMatch(HTML,/tabindex="\\d+"/);
+  assert.match(HTML,/workflow-single-page/);
 });
 test('navigation and status updates do not modify acoustic measurements',()=>{
   const x=fakeDom(),snapshot=imported(),before=JSON.stringify(snapshot);
@@ -164,16 +173,10 @@ test('navigation and status updates do not modify acoustic measurements',()=>{
   assert.equal(UI.summarize(snapshot).status,'Nicht beurteilbar');
 });
 
-test('HTML project rehydration does not leave duplicate navigation shells or panels',()=>{
+test('rehydration keeps only one shell and one set of groups',()=>{
   const x=fakeDom(),snapshot=imported();
-  const first=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
-  first.go('assessment');
-  const second=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
-  assert.ok(second);
+  UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  UI.mount({document:x.doc,getSnapshot:()=>snapshot});
   assert.equal(x.body.children.filter(n=>n.className==='workflow-shell').length,1);
-  assert.equal(x.main.children.filter(n=>n.className==='workflow-panel').length,6);
-  assert.equal(second.currentStep(),'import');
-  const tabs=x.body.children[1].children[0];
-  tabs.children[5].click();
-  assert.equal(second.currentStep(),'export');
+  assert.equal(x.main.children.filter(n=>n.className.includes('workflow-group')).length,5);
 });
