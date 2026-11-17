@@ -1,4 +1,5 @@
 name: pegelTool – GitHub Pages preview
+# Preview deployment is isolated from the production branch.
 
 on:
   push:
