@@ -247,5 +247,146 @@
     go('import');refresh();
     return Object.freeze({go,refresh,currentStep:()=>current});
   }
-  return Object.freeze({STEPS,assessmentStatus,collectIssues,summarize,mount});
+
+  // Single continuous desktop form; existing calculations and export handlers remain untouched.
+  function mountSinglePage(opts){
+    const doc=opts.document;
+    doc.getElementById('singlePageStyle')?.remove();
+    doc.getElementById('singlePageNavigation')?.remove();
+    doc.getElementById('singlePageAutoData')?.remove();
+    const original=mount(opts);
+    if(!original)return null;
+    const main=doc.getElementById('main'),shell=doc.querySelector('.workflow-shell');
+    const section=name=>main.querySelector('[data-workflow-section="'+name+'"]');
+    const create=(tag,cls,value)=>{
+      const node=doc.createElement(tag);
+      if(cls)node.className=cls;
+      if(value!==undefined)node.textContent=value;
+      return node;
+    };
+    const style=create('style');style.id='singlePageStyle';
+    style.textContent=[
+      'html,body{height:auto!important;overflow:auto!important;scroll-behavior:smooth}',
+      '.header{position:sticky!important;top:0!important;z-index:100;min-height:0!important;height:auto!important;padding:10px 24px!important}',
+      '.header h1{font-size:19px}.header-controls{margin-left:12px;gap:8px}',
+      '.header-main-actions,.header-secondary-actions{gap:7px}',
+      '.header-menu>summary{display:none}.header-menu .header-dropdown{display:block!important;position:static!important;min-width:0!important;padding:0!important;box-shadow:none!important;border:0!important;background:transparent!important}',
+      '.header-menu .menu-list{flex-direction:row!important;flex-wrap:wrap!important;gap:7px}',
+      '.header-menu .menu-item-btn{width:auto!important;padding:9px 12px}',
+      '.workflow-shell,.workflow-panel,.workflow-nav{display:none!important}',
+      '#main.workflow-main{position:static!important;display:flex!important;flex-direction:column!important;gap:0!important;width:min(100%,1220px)!important;max-width:1220px!important;margin:auto!important;padding:16px 24px 50px!important;overflow:visible!important}',
+      '#main .section{padding:16px 20px!important;margin:0 0 12px!important;box-shadow:none!important;border-radius:11px!important}',
+      '#main h3{font-size:17px;margin-bottom:12px!important}',
+      '#main .grid-2{gap:16px!important}#main .grid-2 .grid-2{gap:10px!important}',
+      '#main label{margin-top:9px;margin-bottom:5px}',
+      '#main textarea{min-height:66px!important}#main input,#main select,#main textarea{max-width:100%}',
+      '#main [data-workflow-section]{scroll-margin-top:145px}',
+      '#main [data-workflow-section="blocks"] .table-wrap,#main [data-workflow-section="metrics"] .table-wrap{max-height:290px;overflow:auto}',
+      '.single-nav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}',
+      '.single-nav a{font-size:13px;color:var(--text);text-decoration:none;background:var(--primary-panel);padding:9px 12px;border-radius:8px;border:1px solid var(--border)}',
+      '.single-nav a:hover,.single-nav a:focus-visible{border-color:var(--accent)}',
+      '.single-heading{font-size:16px;margin:14px 0 9px;font-weight:750}',
+      '.single-status{padding:13px 17px;background:var(--primary-panel);border:1px solid var(--border);border-radius:11px;margin-bottom:12px}',
+      '.single-status .workflow-overall-status{font-size:17px}',
+      '.single-status .workflow-norm-note{font-size:12px;margin:5px 0;color:var(--text-secondary)}',
+      '.single-status .workflow-issue-heading{font-size:12px;margin:5px 0}',
+      '.single-status .workflow-issues{margin:5px 0 0;max-height:100px;overflow:auto;padding-left:22px;font-size:13px}',
+      '.single-auto{padding:12px 16px;background:var(--primary-panel);border:1px solid var(--border);border-radius:11px;margin-bottom:12px}',
+      '.single-auto h3{font-size:15px;margin:0 0 8px!important}',
+      '.single-auto-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 15px}',
+      '.single-auto-item{display:flex;gap:7px;min-width:0;font-size:12px;line-height:1.35}',
+      '.single-auto-item b{font-weight:600;color:var(--text-secondary);flex-shrink:0}',
+      '.single-auto-item span{overflow-wrap:anywhere}',
+      '.single-expand{background:var(--primary-panel);border:1px solid var(--border);border-radius:11px;margin-bottom:12px}',
+      '.single-expand>summary{font-size:15px;font-weight:700;padding:13px 18px;cursor:pointer}',
+      '.single-expand>.section{border:0!important;margin:0!important}',
+      '.single-end-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}',
+      '.single-end-actions button{padding:11px 15px;min-height:42px}',
+      '@media(max-width:1100px){.header-controls{margin-left:0;width:100%}#main.workflow-main{padding:14px!important}}',
+      '@media(max-width:780px){.single-auto-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#main .grid-2{grid-template-columns:1fr!important}.header{position:relative!important}}'
+    ].join('\n');
+    doc.head.appendChild(style);
+    const nav=create('nav','single-nav');nav.id='singlePageNavigation';
+    nav.setAttribute('aria-label','Zu Abschnitt springen');
+    for(const [name,title] of [
+      ['eventAndEvidence','Veranstaltung'],['pa','Messaufbau'],['blocks','Messwerte'],
+      ['review','Prüfung'],['signature','Abschluss']
+    ]){
+      const link=create('a','',title);link.href='#single-'+name;nav.appendChild(link);
+    }
+    main.prepend(nav);
+    const overview=shell?.querySelector('.workflow-overview');
+    if(overview){overview.classList.add('single-status');nav.after(overview);}
+    const auto=create('section','single-auto');auto.id='singlePageAutoData';
+    auto.appendChild(create('h3','','Aus dem XL3-Log übernommen'));
+    const autoGrid=create('div','single-auto-grid');
+    const fields=[
+      ['startMessung','Messbeginn'],['endeMessung','Messende'],
+      ['messgeraet','Messgerät'],['messgeraetSN','Seriennr.'],
+      ['mikrofon','Mikrofon'],['logInterval','Intervall'],
+      ['k1','k1'],['k2','k2']
+    ];
+    const values=[];
+    for(const [id,title] of fields){
+      const item=create('div','single-auto-item');
+      item.appendChild(create('b','',title+':'));
+      const value=create('span','','–');item.appendChild(value);autoGrid.appendChild(item);
+      values.push([id,value]);
+    }
+    auto.appendChild(autoGrid);overview?.after(auto);
+    function heading(text){main.appendChild(create('h2','single-heading',text));}
+    function place(name){
+      const node=section(name);if(!node)return;
+      node.id=node.id||'single-'+name;main.appendChild(node);
+    }
+    heading('01 · Veranstaltung und Personal');
+    place('eventAndEvidence');place('description');
+    heading('02 · Beschallung und Messbedingungen');
+    place('pa');place('corrections');
+    heading('03 · Messwerte');
+    place('blocks');place('metrics');
+    const technical=create('details','single-expand');
+    technical.appendChild(create('summary','','Diagramme und vollständige Logdaten'));
+    for(const name of ['charts','log']){const node=section(name);if(node)technical.appendChild(node);}
+    main.appendChild(technical);
+    heading('04 · Prüfung und Protokoll');
+    place('review');place('preview');
+    heading('05 · Unterschrift und Export');
+    place('signature');
+    const actions=create('div','single-end-actions');
+    let bottomPdf;
+    for(const [label,id] of [
+      ['Messprotokoll als PDF exportieren','btnPdfTemplate'],
+      ['Projekt speichern (JSON)','btnSaveState'],
+      ['Projekt speichern (HTML)','btnExportHtml']
+    ]){
+      const button=create('button',id==='btnPdfTemplate'?'':'secondary',label);
+      button.type='button';button.addEventListener('click',()=>doc.getElementById(id)?.click());
+      actions.appendChild(button);
+      if(id==='btnPdfTemplate')bottomPdf=button;
+    }
+    section('signature')?.appendChild(actions);
+    const menu=doc.querySelector('.header-menu');if(menu)menu.open=true;
+    // Keep hidden workflow panels in the DOM because refresh() updates their state.
+    function refresh(){
+      const summary=original.refresh();
+      for(const [id,node] of values){
+        const source=doc.getElementById(id);
+        node.textContent=source?.value?.trim()||'–';
+      }
+      bottomPdf.disabled=!summary.canExport;
+      return summary;
+    }
+    function go(step){
+      const target={import:nav,quality:technical,setup:section('eventAndEvidence'),
+        assessment:section('blocks'),protocol:section('review'),export:section('signature')}[step]||nav;
+      if(step==='quality')technical.open=true;
+      target.scrollIntoView?.({block:'start',behavior:'auto'});
+      return true;
+    }
+    refresh();
+    return Object.freeze({refresh,go,currentStep:()=> 'single-page'});
+  }
+
+  return Object.freeze({STEPS,assessmentStatus,collectIssues,summarize,mount:mountSinglePage});
 });
