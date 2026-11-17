@@ -218,6 +218,11 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 }
 
 /* UI update 2: continuous desktop form and compact status. */
+#main.workflow-single-page .manual-fields{display:block;max-width:860px}
+#main.workflow-single-page .manual-fields>div{margin-bottom:14px}
+#main.workflow-single-page .manual-fields .grid-2{gap:16px}
+#main.workflow-single-page .manual-fields label{margin-top:10px}
+#main.workflow-single-page .manual-fields input,#main.workflow-single-page .manual-fields select,#main.workflow-single-page .manual-fields textarea{margin-bottom:2px}
 .workflow-shell{max-width:1180px;margin:10px auto 0}
 .workflow-overview{margin:0;padding:10px 15px;border-left-width:3px}
 .workflow-overall-status{font-size:14px;line-height:1.5}
@@ -358,7 +363,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Fehlende Angaben werden im Bericht gekennzeichnet.</p>
       <div id="reportPreviewContent" class="report-preview-wrap" aria-live="polite"></div>
     </details>
-    <div class="section grid-2" data-workflow-section="eventAndEvidence">
+    <div class="section manual-fields" data-workflow-section="eventAndEvidence">
       <div>
         <label>Veranstaltung (Name)</label>
         <input id="eventName" placeholder="z.B. Verstärktes Musical" />
@@ -446,7 +451,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       </div>
     </div>
 
-    <div class="section grid-2" data-workflow-section="description">
+    <div class="section manual-fields" data-workflow-section="description">
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
         <textarea id="organisator" class="min-h-140" placeholder="Veranstalter mit Ansprechpartner / Adresse"></textarea>
