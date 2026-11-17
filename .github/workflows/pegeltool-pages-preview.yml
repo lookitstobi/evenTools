@@ -1,0 +1,42 @@
+name: pegelTool – GitHub Pages preview
+
+on:
+  push:
+    branches:
+      - deploy/pegeltool-pages-preview-20261117
+    paths:
+      - 'app/tools/pegelTool/**'
+      - 'assets/app.css'
+      - 'scripts/build-pegeltool-pages.py'
+      - '.github/workflows/pegeltool-pages-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pegeltool-pages-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}pegeltool-preview/
+    steps:
+      - name: Checkout selected preview branch
+        uses: actions/checkout@v4
+      - name: Prepare static pegelTool files
+        run: python3 scripts/build-pegeltool-pages.py
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload preview
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Deploy preview
+        id: deployment
+        uses: actions/deploy-pages@v4
