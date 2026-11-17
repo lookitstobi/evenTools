@@ -51,6 +51,36 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.doesNotMatch(await page.locator('body').innerText(),/Keine DIN-Konformitätsbescheinigung|DIN-Konformitätsbescheinigung/i);
       const first=await page.evaluate(()=>buildStateObject());
       assert.ok(!first.importModel);
+      // Before import the UI must already be one scrollable page, not six tabs.
+      assert.equal(await page.locator('.workflow-group').count(),5);
+      assert.equal(await page.locator('.workflow-nav,.workflow-tab,.workflow-panel').count(),0);
+      assert.equal(await page.locator('#workflow-group-setup').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-quality').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
+      const layout=await page.evaluate(()=>({
+        bodyOverflow:getComputedStyle(document.body).overflowY,
+        scrollHeight:document.scrollingElement.scrollHeight,
+        viewportHeight:document.scrollingElement.clientHeight
+      }));
+      assert.equal(layout.bodyOverflow,'auto');
+      assert.ok(layout.scrollHeight>layout.viewportHeight,'Single-page content must scroll');
+      // Defaults come from "Manuelle Eingaben prüfen": editable, never fabricated measurements.
+      assert.equal(first.form.organisator,
+        'Theater und Philharmonie Essen GmbH\\nOpernplatz 10\\n45128 Essen\\n'+
+        'Geschäftsführer: Fritz Frömming\\nIntendanz Philharmonie Essen: Babette Nierenz');
+      assert.equal(first.form.ortAdresse,'Huyssenallee 53, 45128 Essen');
+      assert.equal(first.form.umwelt,'Indoor, 21°C');
+      assert.equal(first.form.kalibratorModell,'CENTER 326');
+      assert.equal(first.form.kalibratorSN,'140408454');
+      assert.equal(first.form.berichtsort,'Essen');
+      assert.match(first.form.berichtDatum,/^\\d{4}-\\d{2}-\\d{2}$/);
+      assert.equal(first.form.datumMessung,'');
+      assert.equal(first.form.kalVorZeit,'');
+      assert.equal(first.form.kalVorWert,'');
+      assert.equal(first.form.kalNachZeit,'');
+      assert.equal(first.form.kalNachWert,'');
+      assert.equal(first.protocolMeta.origins.organistor,undefined);
+      assert.equal(first.protocolMeta.origins.organisator,'preset-unverified');
       assert.equal(first.paSelection.schemaVersion,2);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,8);
@@ -173,6 +203,12 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(pvOneSide.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,2);
       assert.equal(pvOneSide.paItems.find(x=>x.type==='L-ACOUSTIC A10 Focus').qty,2);
       assert.equal(pvOneSide.paItems.find(x=>x.type==='L-ACOUSTIC A10 Wide').qty,2);
+      // Custom locations must not inherit the Essen venue address as evidence.
+      await page.locator('#location').selectOption({label:'Eigene Angabe'});
+      assert.equal(await page.locator('#ortAdresse').inputValue(),'');
+      await page.locator('#ortAdresse').fill('Eigene Straße 1, 12345 Beispielstadt');
+      await page.locator('#location').selectOption({label:'Philharmonie Essen, Alfried-Krupp-Saal'});
+      assert.equal(await page.locator('#ortAdresse').inputValue(),'Eigene Straße 1, 12345 Beispielstadt');
       assert.deepEqual(pageErrors,[],'Unhandled browser JS exceptions: '+pageErrors.join('; '));
     } finally {
       await browser.close();
