@@ -205,16 +205,33 @@
         paragraph('Keine zusätzlichen technischen Hinweise erfasst. Die DIN-Freigabe ist dennoch ausstehend.',8.5);
         return;
       }
-      for(const item of report.issues){
-        const head='['+item.scope+' / '+item.code+']';
-        const messageLines=lines(item.message,CW-7,8.2);
-        const headLines=lines(head,CW-7,7.4,'bold');
-        ensure(7);
-        y+=2;
-        headLines.forEach(s=>{ensure(4.1);txt(s,L+3,y+3,7.4,'bold','blue');y+=4.1;});
-        messageLines.forEach(s=>{ensure(4.3);txt(s,L+3,y+3,8.2);y+=4.3;});
+      // Group identical sources instead of repeating the same scope in every line.
+      // Scope, code and the original unabridged message are all retained.
+      const groups=new Map();
+      report.issues.forEach(item=>{
+        if(!groups.has(item.scope)) groups.set(item.scope,[]);
+        groups.get(item.scope).push(item);
+      });
+      for(const [scope,items] of groups){
+        ensure(13);
         y+=3;
-        rule();doc.line(L,y,W-R,y);y+=1;
+        fill('paleBlue');doc.rect(L,y,CW,7,'F');
+        txt(scope.toUpperCase()+'   /   '+items.length+' Hinweise',L+3,y+4.9,7.9,'bold','blue');
+        y+=9;
+        for(let i=0;i<items.length;i++){
+          const item=items[i];
+          const textLines=lines('['+item.code+']  '+item.message,CW-8,7.8);
+          const height=textLines.length*3.95+2.2;
+          if(y+height>BOTTOM) page();
+          if(i%2===0){fill('pale');doc.rect(L,y,CW,Math.min(height,BOTTOM-y),'F');}
+          for(const s of textLines){
+            ensure(4.2);
+            txt(s,L+3,y+3.0,7.8);
+            y+=3.95;
+          }
+          y+=2.2;
+        }
+        y+=2;
       }
     }
 
