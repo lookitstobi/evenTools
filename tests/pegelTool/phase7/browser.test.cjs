@@ -47,7 +47,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
     const entry='http://127.0.0.1:'+server.address().port+'/toolserve.php?name=pegelTool';
     try {
       await page.goto(entry,{waitUntil:'networkidle'});
-      await page.waitForFunction(()=>document.querySelectorAll('.workflow-panel').length===6);
+      await page.waitForFunction(()=>document.querySelectorAll('.workflow-group').length===5);
       assert.doesNotMatch(await page.locator('body').innerText(),/Keine DIN-Konformitätsbescheinigung|DIN-Konformitätsbescheinigung/i);
       const first=await page.evaluate(()=>buildStateObject());
       assert.ok(!first.importModel);
@@ -70,15 +70,16 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(await page.evaluate(()=>JSON.stringify(buildStateObject().importModel.samples)),originalRows);
       assert.match(await page.locator('#chipLog').innerText(),/vorherige Messung geladen/i);
 
-      await page.locator('.workflow-nav button').filter({hasText:'Messaufbau'}).first().click();
       await page.locator('#eventName').fill('Phase 7 Browserprüfung');
-      await page.locator('.workflow-nav button').filter({hasText:'Bewertung'}).first().click();
-      assert.equal(await page.locator('#workflow-panel-assessment').isVisible(),true);
-      await page.locator('.workflow-nav button').filter({hasText:'Export'}).first().click();
-      assert.equal(await page.locator('#workflow-panel-export').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-export').isVisible(),true);
+      // Tabbing from a manual entry must not land on automatic read-only fields.
+      await page.locator('#eventName').focus();
+      await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'datumMessung');
 
       const jsonWaiting=page.waitForEvent('download',{timeout:15000});
-      await page.locator('#workflow-panel-export button').filter({hasText:'Projekt speichern (JSON)'}).click();
+      await page.locator('#workflow-group-export button').filter({hasText:'Projekt speichern (JSON)'}).click();
       const jsonDownload=await jsonWaiting;
       await jsonDownload.saveAs(downloadPath('projekt.nti.json'));
       const saved=JSON.parse(fs.readFileSync(downloadPath('projekt.nti.json'),'utf8'));
@@ -86,7 +87,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(JSON.stringify(saved.importModel.samples),originalRows);
 
       const htmlWaiting=page.waitForEvent('download',{timeout:15000});
-      await page.locator('#workflow-panel-export button').filter({hasText:'Projekt speichern (HTML)'}).click();
+      await page.locator('#workflow-group-export button').filter({hasText:'Projekt speichern (HTML)'}).click();
       const htmlDownload=await htmlWaiting;
       await htmlDownload.saveAs(downloadPath('projekt.html'));
       const html=fs.readFileSync(downloadPath('projekt.html'),'utf8');
@@ -94,7 +95,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.ok(html.includes('Phase 7 Browserprüfung'));
 
       const pdfWaiting=page.waitForEvent('download',{timeout:15000});
-      await page.locator('#workflow-panel-export button').filter({hasText:'Messbericht als PDF exportieren'}).click();
+      await page.locator('#workflow-group-export button').filter({hasText:'Messbericht als PDF exportieren'}).click();
       const pdfDownload=await pdfWaiting;
       await pdfDownload.saveAs(downloadPath('bericht.pdf'));
       const bytes=fs.readFileSync(downloadPath('bericht.pdf'));
@@ -104,8 +105,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
 
       await page.screenshot({path:downloadPath('desktop.png'),fullPage:true});
       await page.setViewportSize({width:390,height:844});
-      await page.locator('.workflow-nav button').filter({hasText:'Bewertung'}).first().click();
-      assert.equal(await page.locator('#workflow-panel-assessment').isVisible(),true);
+      assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
       await page.screenshot({path:downloadPath('mobile.png'),fullPage:true});
 
       // New page simulates opening an older working session from a JSON export.
@@ -123,7 +123,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
         name:'projekt.html',mimeType:'text/html',buffer:Buffer.from(html)});
       await page.waitForFunction(()=>buildStateObject().form.eventName==='Phase 7 Browserprüfung');
       assert.equal(await page.locator('.workflow-shell').count(),1);
-      assert.equal(await page.locator('.workflow-panel').count(),6);
+      assert.equal(await page.locator('.workflow-group').count(),5);
       assert.deepEqual(pageErrors,[],'Unhandled browser JS exceptions: '+pageErrors.join('; '));
     } finally {
       await browser.close();
