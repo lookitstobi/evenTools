@@ -116,6 +116,13 @@
       return name && Number.isInteger(Number(it.qty)) && Number(it.qty)>0;
     })) formIssues.push(issue('PA_NOT_DOCUMENTED','PA-Komponenten und positive ganzzahlige Stückzahlen dokumentieren.','paContainer'));
 
+    // Group-specific unknown quantities are not silently guessed.
+    const unresolvedPA=Array.isArray(data && data.paSelectionIssues) ? data.paSelectionIssues : [];
+    for(const message of unresolvedPA){
+      if(typeof message==='string' && message.trim())
+        formIssues.push(issue('PA_GROUP_QUANTITY_MISSING',message,'paContainer'));
+    }
+
     const evidenceIssues=[];
     if (!model || !Array.isArray(model.samples) || !model.samples.length)
       evidenceIssues.push(issue('LOG_MISSING','Ein nachvollziehbares Importmodell mit Messdaten fehlt.'));
@@ -185,6 +192,11 @@
       values:values,
       origins:Object.assign({},origins),
       paItems:Array.isArray(data && data.paItems) ? data.paItems.map(function (x) {return Object.assign({},x);}) : [],
+      paGroups:Array.isArray(data && data.paGroups) ? data.paGroups.map(function(group){
+        return {id:String(group.id||''),label:String(group.label||''),
+          items:Array.isArray(group.items)?group.items.map(function(it){return Object.assign({},it);}):[],
+          unresolved:Array.isArray(group.unresolved)?group.unresolved.slice():[]};
+      }) : [],
       instrument:model && model.instrument || null,
       measurement:model && model.measurement || null,
       sampleCount:model && Array.isArray(model.samples) ? model.samples.length : null,
