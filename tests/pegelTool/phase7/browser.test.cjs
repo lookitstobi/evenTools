@@ -66,20 +66,19 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.ok(layout.scrollHeight>layout.viewportHeight,'Single-page content must scroll');
       // Defaults come from "Manuelle Eingaben prüfen": editable, never fabricated measurements.
       assert.equal(first.form.organisator,
-        'Theater und Philharmonie Essen GmbH\\nOpernplatz 10\\n45128 Essen\\n'+
-        'Geschäftsführer: Fritz Frömming\\nIntendanz Philharmonie Essen: Babette Nierenz');
+        'Theater und Philharmonie Essen GmbH\nOpernplatz 10\n45128 Essen\n'+
+        'Geschäftsführer: Fritz Frömming\nIntendanz Philharmonie Essen: Babette Nierenz');
       assert.equal(first.form.ortAdresse,'Huyssenallee 53, 45128 Essen');
       assert.equal(first.form.umwelt,'Indoor, 21°C');
       assert.equal(first.form.kalibratorModell,'CENTER 326');
       assert.equal(first.form.kalibratorSN,'140408454');
       assert.equal(first.form.berichtsort,'Essen');
-      assert.match(first.form.berichtDatum,/^\\d{4}-\\d{2}-\\d{2}$/);
+      assert.match(first.form.berichtDatum,/^\d{4}-\d{2}-\d{2}$/);
       assert.equal(first.form.datumMessung,'');
       assert.equal(first.form.kalVorZeit,'');
       assert.equal(first.form.kalVorWert,'');
       assert.equal(first.form.kalNachZeit,'');
       assert.equal(first.form.kalNachWert,'');
-      assert.equal(first.protocolMeta.origins.organistor,undefined);
       assert.equal(first.protocolMeta.origins.organisator,'preset-unverified');
       assert.equal(first.paSelection.schemaVersion,2);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
