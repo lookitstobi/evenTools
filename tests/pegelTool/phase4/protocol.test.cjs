@@ -167,9 +167,13 @@ test('Integration: neue Formularfelder, Quelle, Speicherstatus und gesperrter PD
   assert.match(html,/protocolMeta: \{ schemaVersion: 1, origins:/);
   assert.match(html,/getProtocolReportData\(\)/);
   assert.match(html,/setPdfButtonsDisabled\(true\)/);
+  // User-authorized manual presets are unverified editable values, not evidence.
   assert.doesNotMatch(html,/<input id="kalibratorModell" value=/);
   assert.doesNotMatch(html,/<input id="umwelt" value=/);
-  assert.doesNotMatch(html,/Geschäftsführer: Fritz/);
+  assert.match(html,/Geschäftsführer: Fritz Frömming/);
+  assert.match(html,/MANUAL_ENTRY_PRESETS/);
+  assert.match(html,/preset-unverified/);
+  assert.match(html,/applyNewFormDefaults\(\)/);
 });
 
 test('Unverifizierte Gerätezusammenfassung blockiert korrekte Zeitintervalle nicht',()=>{
