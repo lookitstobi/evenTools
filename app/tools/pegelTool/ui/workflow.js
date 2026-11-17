@@ -102,6 +102,7 @@
     // Exported standalone HTML may contain the previously mounted workflow shell.
     const staleShell=doc.querySelector('.workflow-shell');
     const oldPanels=Array.from(main.querySelectorAll('.workflow-panel'));
+    const oldGroups=Array.from(main.querySelectorAll('.workflow-group'));
     const shell=make('div','workflow-shell');
     const overview=make('section','workflow-overview');
     overview.setAttribute('aria-live','polite');
@@ -156,6 +157,7 @@
       }
     }
     for(const old of oldPanels)old.remove();
+    for(const old of oldGroups)old.remove();
     if(staleShell)staleShell.remove();
     for(const id of ['leftColumn','rightColumn'])doc.getElementById(id)?.remove();
     main.classList.add('workflow-main','workflow-single-page');
