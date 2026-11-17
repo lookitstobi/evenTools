@@ -216,6 +216,25 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   .workflow-overview{padding:12px}
   .workflow-overall-status{font-size:16px}
 }
+
+/* UI update 2: continuous desktop form and compact status. */
+.workflow-shell{max-width:1180px;margin:10px auto 0}
+.workflow-overview{margin:0;padding:10px 15px;border-left-width:3px}
+.workflow-overall-status{font-size:14px;line-height:1.5}
+.workflow-issue-details{margin-top:3px;font-size:12px;color:var(--text-secondary)}
+.workflow-issue-summary{font-weight:500;color:var(--text-secondary)}
+.workflow-issue-details .workflow-issues{max-height:220px;overflow:auto;padding:5px 5px 5px 20px;margin:4px 0}
+#main.workflow-single-page{display:block;padding-top:12px}
+.workflow-group{scroll-margin-top:18px;margin-bottom:25px}
+.workflow-group-title{font-size:21px;font-weight:700;margin:4px 0 12px}
+#main.workflow-single-page .section{margin-bottom:12px;padding:18px}
+#main.workflow-single-page .section.grid-2{gap:22px}
+#main.workflow-single-page input[readonly]{opacity:.75}
+#main.workflow-single-page input:focus-visible,
+#main.workflow-single-page select:focus-visible,
+#main.workflow-single-page textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.workflow-export .workflow-actions{margin-top:10px}
+@media(max-width:900px){#main.workflow-single-page{padding:12px}.workflow-group-title{font-size:19px}}
 </style>
 </head>
 <body>
@@ -342,7 +361,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
     <div class="section grid-2" data-workflow-section="eventAndEvidence">
       <div>
         <label>Veranstaltung (Name)</label>
-        <input id="eventName" placeholder="z.B. Verstärktes Musical" tabindex="1" autofocus />
+        <input id="eventName" placeholder="z.B. Verstärktes Musical" />
 
         <label>Datum der Messung</label>
         <input id="datumMessung" type="date" />
@@ -371,16 +390,16 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 
       <div>
         <label>Messung durchgeführt von (Firma, Person)</label>
-        <input id="messungVon" tabindex="2" />
+        <input id="messungVon" />
 
         <div class="grid-2">
           <div>
             <label>Messposition</label>
-            <input id="messposition" tabindex="3" />
+            <input id="messposition" />
           </div>
           <div>
             <label>Lauteste Position</label>
-            <input id="lautestePosition" tabindex="4" placeholder="Altfeld; nicht als Nachweis verwenden" />
+            <input id="lautestePosition" placeholder="Altfeld; nicht als Nachweis verwenden" />
           </div>
         </div>
 
@@ -396,7 +415,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         </select>
 
         <label>Zuständiger FOH-Techniker</label>
-        <input id="foh" tabindex="5" />
+        <input id="foh" />
 
         <div class="grid-2">
           <div>
@@ -434,7 +453,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       </div>
       <div>
         <label>Beschreibung</label>
-        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band" tabindex="6"></textarea>
+        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band"></textarea>
       </div>
     </div>
 
@@ -449,7 +468,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         </div>
         <div>
           <label>Name</label>
-          <input id="berichtName" tabindex="7" />
+          <input id="berichtName" />
         </div>
       </div>
       <label>Unterschrift (Platzhalter)</label>
