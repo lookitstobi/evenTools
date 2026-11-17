@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build a static pegelTool preview without modifying the production application."""
 from pathlib import Path
+import hashlib
 import re
 import shutil
 
@@ -34,13 +35,15 @@ for relative in ASSETS:
     remote = f"/toolserve.php?name=pegelTool&file={relative}"
     if remote not in html:
         raise ValueError(f"Missing expected script reference: {remote}")
-    html = html.replace(remote, relative)
+    fingerprint = hashlib.sha256(file.read_bytes()).hexdigest()[:12]
+    html = html.replace(remote, f"{relative}?v={fingerprint}")
 css = ROOT / "assets" / "app.css"
 if not css.is_file():
     raise FileNotFoundError(css)
 (DEST / "assets").mkdir(exist_ok=True)
 shutil.copy2(css, DEST / "assets" / "app.css")
-html = html.replace('href="/assets/app.css"', 'href="assets/app.css"')
+css_fingerprint = hashlib.sha256(css.read_bytes()).hexdigest()[:12]
+html = html.replace('href="/assets/app.css"', f'href="assets/app.css?v={css_fingerprint}"')
 # The legacy server-side PDF preview endpoint is not supported by static hosting.
 # Phase 5's client-side jsPDF export remains available.
 html = html.replace("</head>", '<meta name="robots" content="noindex,nofollow" />\n</head>', 1)
@@ -48,4 +51,6 @@ html = html.replace("</head>", '<meta name="robots" content="noindex,nofollow" /
 (DEST / ".nojekyll").write_text("", encoding="utf-8")
 if re.search(r'<script[^>]+src="/toolserve\\.php', html):
     raise RuntimeError("Server-dependent script reference remained in preview")
+if 'ui/pa-selection.js?v=' not in html:
+    raise RuntimeError('Versioned PA selection asset missing from preview')
 print(f"Static preview built at {DEST}")
