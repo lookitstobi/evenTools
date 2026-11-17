@@ -110,8 +110,11 @@ function fakeDom(){
         const found=/data-workflow-section="([^"]+)"/.exec(selector);
         return found ? sections.get(found[1]) || null : null;
       },
-      querySelectorAll(selector){return selector==='.workflow-panel' ?
-        el.children.filter(n=>n.className==='workflow-panel') : [];}
+      querySelectorAll(selector){
+        if(selector==='.workflow-panel')return el.children.filter(n=>n.className==='workflow-panel');
+        if(selector==='.workflow-group')return el.children.filter(n=>n.className.includes('workflow-group'));
+        return [];
+      }
       
     };
     if(id)lookup.set(id,el);
