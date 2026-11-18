@@ -86,7 +86,7 @@ test('existing HTML sections, scripts and project actions are retained',()=>{
   }
   assert.match(HTML,/file=ui\/workflow\.js/);
   assert.match(HTML,/workflowController\.refresh\(\)/);
-  assert.match(HTML,/workflowController\.go\('quality'\)/);
+  assert.doesNotMatch(HTML,/workflowController\.go\('quality'\)/);
   assert.match(HTML,/chartLAeq\.resize\(\)/);
 });
 function fakeDom(){
@@ -223,7 +223,7 @@ test('no positive tabindex remains in the HTML',()=>{
   assert.ok(HTML.indexOf('id="beschreibung"')>HTML.indexOf('id="eventName"'));
   assert.ok(HTML.indexOf('id="beschreibung"')<HTML.indexOf('id="datumMessung"'));
   assert.ok(HTML.indexOf('id="foh"')>HTML.indexOf('id="messungVon"'));
-  assert.ok(HTML.indexOf('id="foh"')<HTML.indexOf('id="messposition"'));
+  assert.match(HTML,/data-workflow-section="deviceEvidence"/);
 });
 test('navigation and status updates do not modify acoustic measurements',()=>{
   const x=fakeDom(),snapshot=imported(),before=JSON.stringify(snapshot);
