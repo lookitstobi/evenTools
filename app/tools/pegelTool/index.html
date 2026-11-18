@@ -311,6 +311,21 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 #main.workflow-single-page #paZusatz{min-height:65px}
 @media(max-width:850px){.workflow-shortinfo-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.workflow-shortinfo-values{grid-template-columns:1fr}}
+/* Consistent form widths and equal columns across the continuous workspace. */
+#main.workflow-single-page .section.manual-fields{width:100%;max-width:100%}
+#main.workflow-single-page .manual-fields > div{width:100%;min-width:0}
+#main.workflow-single-page .manual-fields .grid-2,
+#main.workflow-single-page .section .grid-2{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#main.workflow-single-page .grid-2 > div{min-width:0;width:100%}
+#main.workflow-single-page .manual-fields input:not([type="checkbox"]),
+#main.workflow-single-page .manual-fields select,
+#main.workflow-single-page .manual-fields textarea{display:block;width:100%;min-width:0;max-width:100%}
+#main.workflow-single-page > [data-workflow-section="charts"]{width:100%;margin-bottom:24px;padding:18px}
+@media(max-width:720px){
+ #main.workflow-single-page .manual-fields .grid-2,
+ #main.workflow-single-page .section .grid-2{grid-template-columns:minmax(0,1fr)}
+}
+
 /* Single-page layout from first render; no legacy tab strip or clipped desktop scrolling. */
 html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 .header{position:sticky;top:0}
@@ -442,8 +457,11 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
     </details>
     <div class="section manual-fields" data-workflow-section="eventAndEvidence">
       <div>
-        <label>Veranstaltung (Name)</label>
+        <label for="eventName">Veranstaltung (Name)</label>
         <input id="eventName" placeholder="z.B. Verstärktes Musical" />
+
+        <label for="beschreibung">Beschreibung der Veranstaltung</label>
+        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band"></textarea>
 
         <label>Datum der Messung</label>
         <input id="datumMessung" type="date" />
@@ -461,31 +479,28 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       </div>
 
       <div>
-        <label>Messung durchgeführt von (Firma, Person)</label>
+        <label for="messungVon">Messung durchgeführt von (Firma, Person)</label>
         <input id="messungVon" />
+
+        <label for="foh">Zuständiger FOH-Techniker</label>
+        <input id="foh" />
 
         <div class="grid-2">
           <div>
-            <label>Messposition</label>
+            <label for="messposition">Messposition</label>
             <input id="messposition" />
           </div>
           <div>
-            <label>Lauteste Position</label>
-            <input id="lautestePosition" placeholder="Altfeld; nicht als Nachweis verwenden" />
+            <label for="messort">Maßgeblicher Immissionsort</label>
+            <input id="messort" type="text" placeholder="Position im Publikum / maßgeblicher Immissionsort" />
           </div>
         </div>
-
-        <label for="messort">Maßgeblicher Immissionsort</label>
-        <input id="messort" type="text" placeholder="Position im Publikum / maßgeblicher Immissionsort" />
         <label>Art des Messorts</label>
         <select id="messortTyp">
           <option value="">Bitte auswählen</option>
           <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
           <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
         </select>
-
-        <label>Zuständiger FOH-Techniker</label>
-        <input id="foh" />
 
         <div class="grid-2">
           <div>
@@ -510,10 +525,6 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
         <textarea id="organisator" class="min-h-140" placeholder="Veranstalter mit Ansprechpartner / Adresse"></textarea>
-      </div>
-      <div>
-        <label>Beschreibung</label>
-        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band"></textarea>
       </div>
     </div>
 
@@ -632,7 +643,7 @@ const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
 const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD_IDS : [
   // Legacy harness compatibility when the external protocol module is not loaded.
-  'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
+  'eventName','datumMessung','location','umwelt','messungVon','messposition','messort',
   'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN',
   'berichtsort'
 ];
