@@ -112,7 +112,7 @@
     const status=make('strong','workflow-overall-status');
     overview.append(status);
     const short=make('section','workflow-shortinfo');
-    const shortTitle=make('h3','workflow-shortinfo-title','Aus dem XL3-Log übernommen');
+    const shortTitle=make('h3','workflow-shortinfo-title','Messdaten und Ergebnisse');
     const shortValues=make('div','workflow-shortinfo-values');
     const shortFields=[
       ['Messbeginn','start'],['Messende','end'],
