@@ -88,7 +88,7 @@
     const main=doc.getElementById('main'),header=doc.querySelector('header.header');
     if(!main || !header || !doc.body) return null;
     const names=['eventAndEvidence','description','signature','pa','corrections',
-      'log','review','blocks','metrics','charts','preview'];
+      'log','deviceEvidence','review','blocks','metrics','charts','preview'];
     const sections={};
     for(const name of names) {
       sections[name]=main.querySelector('[data-workflow-section="'+name+'"]');
@@ -137,21 +137,32 @@
     const groups=[
       {id:'setup',title:'01 · Veranstaltung und Personal',sections:['eventAndEvidence','description']},
       {id:'quality',title:'02 · Beschallung und Messbedingungen',sections:['pa','corrections']},
-      {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','log']},
+      {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','log','deviceEvidence']},
       {id:'protocol',title:'04 · Prüfung und Protokoll',sections:['review','preview']}
     ];
-    const groupsById={};
+    const groupsById={},alerts={};
+    function createCollapsibleGroup(id,title,extraClass=''){
+      const part=make('details','workflow-group'+(extraClass?' '+extraClass:''));
+      part.id='workflow-group-'+id;
+      part.open=true; // Only the nested PDF preview and parser details start closed.
+      const heading=make('summary','workflow-group-heading');
+      heading.appendChild(make('h2','workflow-group-title',title));
+      const alert=make('span','workflow-group-alert','!');
+      alert.setAttribute('aria-label','Angaben fehlen');
+      alert.title='Erforderliche Angaben fehlen';
+      alert.hidden=true;
+      heading.appendChild(alert);
+      part.appendChild(heading);
+      alerts[id]=alert;
+      return part;
+    }
     for(const group of groups){
-      const part=make('section','workflow-group');
-      part.id='workflow-group-'+group.id;
-      part.appendChild(make('h2','workflow-group-title',group.title));
+      const part=createCollapsibleGroup(group.id,group.title);
       for(const name of group.sections)part.appendChild(sections[name]);
       groupsById[group.id]=part;
       main.appendChild(part);
     }
-    const exportArea=make('section','workflow-group workflow-export');
-    exportArea.id='workflow-group-export';
-    exportArea.appendChild(make('h2','workflow-group-title','05 · Unterschrift und Export'));
+    const exportArea=createCollapsibleGroup('export','05 · Unterschrift und Export','workflow-export');
     const exportText=make('p','workflow-inline-status','Ohne überprüfbaren Import noch kein PDF möglich.');
     const actions=make('div','workflow-actions');
     function action(label,target,secondary){
@@ -188,13 +199,18 @@
       const mapped=id==='import'?'setup':id;
       if(!groupsById[mapped])return false;
       const target=groupsById[mapped];
+      target.open=true;
       if(typeof opts.onActivate==='function')opts.onActivate(mapped);
       if(target.scrollIntoView)target.scrollIntoView({behavior:'auto',block:'start'});
       return true;
     }
     function refresh(){
       const snapshot=getSnapshot(),summary=summarize(snapshot);
-      status.textContent='Beurteilungsstatus: '+summary.status;
+      const overall=snapshot.evaluation?.overall || {};
+      const laeq=overall.comparisonLAeq,peak=overall.comparisonLCpeak;
+      const hasExceedance=laeq==='above'||peak==='above';
+      const bothAssessed=laeq==='at-or-below'&&peak==='at-or-below';
+      status.textContent=hasExceedance?'Grenzwerte überschritten':bothAssessed?'Keine Überschreitung':'—';
       const model=snapshot.importModel || {};
       const measurement=model.measurement || {}, corrections=model.corrections || {};
       const dateText=value=>value ? String(value).replace('T',' ') : '—';
@@ -206,14 +222,27 @@
       shortNodes.k2.textContent=fmtDb(corrections.k2);
       // Use fixed 30-minute interval assessments, not the informational
       // rolling traces and not a zero fallback when no block was assessed.
-      const overall=snapshot.evaluation?.overall || {};
       const fmtLevel=(value,unit)=>Number.isFinite(value)
         ? value.toFixed(1).replace('.',',')+' '+unit : '—';
       shortNodes.laeq.textContent=fmtLevel(overall.laeqMaxDb,'dB(A)');
       shortNodes.lcpeak.textContent=fmtLevel(overall.lcpeakMaxDb,'dB(C)');
-      status.dataset.state=summary.status==='Noch nicht geprüft'?'empty':
-        summary.status==='Nicht beurteilbar'||summary.status==='Nur teilweise auswertbar'?'unknown':
-        summary.status==='Grenzwert überschritten'?'bad':'ok';
+      status.dataset.state=hasExceedance?'bad':bothAssessed?'ok':'empty';
+      const review=snapshot.review||{};
+      const issues=Array.isArray(review.formIssues)?review.formIssues:[];
+      const evidence=Array.isArray(review.evidenceIssues)?review.evidenceIssues:[];
+      const fields=new Set(issues.map(item=>item.field).filter(Boolean));
+      const any=(...ids)=>ids.some(id=>fields.has(id));
+      const missing={
+        setup:any('eventName','datumMessung','location','ortAdresse','organisator','messungVon'),
+        quality:any('paContainer','paAnordnung','paZusatz','ersatzMessort')||
+          issues.some(item=>String(item.code||'').startsWith('PA_')),
+        assessment:any('messposition','messort','messortTyp','kalibratorModell',
+          'kalibratorSN','kalVorBestaetigt','kalNachBestaetigt')||
+          evidence.some(item=>/METER_|MIC_|CALIBRATION_|LOG_MISSING|MEASUREMENT_TIME_MISSING/.test(item.code||'')),
+        protocol:issues.length>0||evidence.length>0,
+        export:any('berichtName','berichtDatum','berichtsort')
+      };
+      for(const [id,alert] of Object.entries(alerts))alert.hidden=!missing[id];
       exportButton.disabled=!summary.canExport;
       exportText.textContent=summary.canExport?'PDF-Export verfügbar.':
         'PDF noch nicht verfügbar: Import, Bewertung oder PDF-Modul fehlen.';
