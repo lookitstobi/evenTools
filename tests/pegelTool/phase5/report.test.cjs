@@ -156,7 +156,7 @@ test('Kompaktes PDF enthält relevante Messergebnisse und zwei Diagrammüberschr
     assert.ok(text.includes(key), 'Fehlt im PDF: '+key);
   assert.equal(doc.pages.length,2);
   assert.match(text,/Keine Überschreitung in auswertbaren Messwerten/);
-  assert.doesNotMatch(text,/DIN-konform/i);
+  assert.match(text,/keine DIN-Konformitätsbescheinigung/i);
   assert.equal(doc.props.author,'pegelTool '+r.toolVersion);
 });
 test('PDF-Aufbau verändert das gemeinsame Berichtsmodell nicht',()=>{
