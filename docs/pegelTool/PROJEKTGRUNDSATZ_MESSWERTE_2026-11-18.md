@@ -21,6 +21,8 @@ Das pegelTool ist in erster Linie eine **schnell erfassbare, technisch korrekte 
 9. **Keine falschen Konformitätsversprechen.** Das Tool behauptet ohne gesicherte Grundlage weder vollständige DIN-Konformität noch rechtssicheren Nachweis; es muss dazu aber **nicht funktionsunfähig** sein. Die DIN ist fachlicher Bezugspunkt, nicht der globale Freigabeschalter der Anwendung.
 10. **Vorhandene UI-Beschlüsse bleiben bestehen.** Insbesondere die Einseitenansicht und gezielte Bereinigung aus dem UI-Beschluss vom 18.11.2026 gelten weiter, soweit sie diesem neueren Auswertungsgrundsatz nicht entgegenstehen.
 
+**Konkrete Umsetzung:** [UMSETZUNG_MESSWERTBEWERTUNG_2026-11-18.md](./UMSETZUNG_MESSWERTBEWERTUNG_2026-11-18.md) (Datenmodell, Code-Stellen, Statuslogik, Oberfläche, PDF und reproduzierbare Testfälle). Diese Spezifikation ist für die Implementierung verbindlich.
+
 ## Abnahmekriterien
 
 - Ein importierter XL3-Datensatz zeigt für vollständige 30-Minuten-Blöcke die Werte **und** einen echten technischen Grenzwertvergleich statt pauschalem „Nicht beurteilbar“.
