@@ -168,6 +168,8 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       // Tabbing from a manual entry must not land on automatic read-only fields.
       await page.locator('#eventName').focus();
       await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'beschreibung');
+      await page.keyboard.press('Tab');
       assert.equal(await page.evaluate(()=>document.activeElement.id),'datumMessung');
 
       const jsonWaiting=page.waitForEvent('download',{timeout:15000});
