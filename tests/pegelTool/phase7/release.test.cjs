@@ -109,13 +109,13 @@ test('g5 above 99 never substitutes for the independently evaluated 30-minute LA
   assert.equal(result.blocks[0].normativeStatus,'not-assessable');
   assert.equal(m.samples[0].values.laeqG5,115);
 });
-test('unverified anchor and missing calibration remain explicit, even with complete energy data',()=>{
+test('unverified timestamp anchor prevents positive assessment even with complete energy data',()=>{
   const m=makeModel();
   m.calibration.status='not-documented';
   const r=Engine.evaluateModel(m,{timestampAnchor:'start',timestampAnchorEvidence:'assumed'});
   near(r.blocks[0].coveredSeconds,1800,'coverage');
   assert.ok(r.quality.warnings.some(x=>x.code==='TIME_BASIS_UNVERIFIED'));
-  assert.ok(r.quality.warnings.some(x=>x.code==='CALIBRATION_UNVERIFIED'));
+  assert.ok(!r.quality.warnings.some(x=>x.code==='CALIBRATION_UNVERIFIED'));
   assert.equal(r.quality.status,'restricted');
   assert.equal(r.normativeStatus,'not-assessable');
 });
@@ -144,12 +144,12 @@ test('import → calculate → protocol → report → JSON roundtrip → report
       messortLCpeak:'Publikum links'},
     origins:{eventName:'user-input'},paItems:[],importModel:parsed.model,evaluation};
   const record=Protocol.buildRecord(input);
-  assert.equal(record.normReview,'not-verified');
+  assert.equal(record.normReview,'operator-approved');
   const before=Report.build(record,{sourceFileName:'XL3_synthetic.txt'});
   assert.equal(before.blocks.length,evaluation.blocks.length);
   assert.equal(before.reportFullyChecked,false);
-  assert.match(before.status,/NICHT BEURTEILBAR/i);
-  assert.ok(before.blocks.some(b=>b.laeq==='Nicht ermittelt'));
+  assert.equal(before.status,'Grenzwert überschritten');
+  assert.ok(before.blocks.some(b=>b.laeq!=='Nicht ermittelt' && b.quality.includes('Teilzeit')));
   const saved=JSON.stringify({schemaVersion:2,importModel:parsed.model,
     evaluation,form:input.form,origins:input.origins,paItems:input.paItems,sourceFileName:'XL3_synthetic.txt'});
   const restored=JSON.parse(saved);
@@ -162,7 +162,7 @@ test('import → calculate → protocol → report → JSON roundtrip → report
   assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
   assert.ok(bytes.includes(Buffer.from('%%EOF')));
   assert.equal(after.blocks.length,before.blocks.length);
-  assert.match(Report.renderHtml(after),/Nicht beurteilbar/i);
+  assert.match(Report.renderHtml(after),/Grenzwert überschritten/i);
 });
 test('real archived XL3 file can generate an honest provisional report',()=>{
   const archive=path.join(ROOT,'archive/housekeeping_2026-04-28/2025-03-14_SLM_001_Log.txt');
@@ -177,10 +177,31 @@ test('real archived XL3 file can generate an honest provisional report',()=>{
   assert.equal(report.blocks.length,evaluated.blocks.length);
   assert.equal(report.reportFullyChecked,false);
   assert.equal(report.sourceLog,path.basename(archive));
-  assert.match(report.status,/NICHT BEURTEILBAR/);
+  assert.match(report.status,/Keine Überschreitung in auswertbaren Messdaten/);
 });
 test('unknown 120-minute decision stays unavailable and does not enable a 120-minute test result',()=>{
   assert.equal(typeof Engine.evaluate120Minutes,'undefined');
   assert.equal(typeof Engine.LIMIT_LAEQ_DB,'number');
   assert.equal(Engine.threshold(null,Engine.LIMIT_LAEQ_DB),'unknown');
+});
+
+test('operator-approved measurement status distinguishes complete blocks and actual exceedance',()=>{
+  const base=epoch('2026-11-16T18:00:00');
+  const sample=(la,pk)=>({startMs:base,endMs:base+1800000,laeqDb:la,lcpeakDb:pk});
+  assert.equal(Engine.buildBlocks([sample(98,134)]).overall.measurementStatus,'within-limits');
+  assert.equal(Engine.buildBlocks([sample(99,135)]).overall.measurementStatus,'within-limits');
+  assert.equal(Engine.buildBlocks([sample(100,134)]).overall.measurementStatus,'exceeded');
+  assert.equal(Engine.buildBlocks([sample(98,136)]).overall.measurementStatus,'exceeded');
+  assert.equal(Engine.buildBlocks([{...sample(98,134),endMs:base+1200000}]).overall.measurementStatus,'partial');
+});
+test('missing form fields remain visible without any blanket release disclaimer',()=>{
+  const model=makeModel();
+  const evaluation=Engine.evaluateModel(model,{timestampAnchor:'start',timestampAnchorEvidence:'operator-approved'});
+  assert.equal(evaluation.overall.measurementStatus,'within-limits');
+  const record=Protocol.buildRecord({form:{},importModel:model,evaluation});
+  const report=Report.build(record,{sourceFileName:'synthetic.txt'});
+  const html=Report.renderHtml(report);
+  assert.doesNotMatch(html,/vorläufig|normfreigabe|normenabgleich|konformitätsbescheinigung/i);
+  assert.match(html,/Keine Überschreitung in auswertbaren Messdaten/i);
+  assert.ok(report.issues.some(x=>x.code==='FIELD_MISSING_OR_INVALID'));
 });

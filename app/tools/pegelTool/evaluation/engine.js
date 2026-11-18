@@ -1,6 +1,5 @@
 /* pegelTool Phase 3 – provisional, DOM-free fixed-window calculation.
- * Technical calculation only. DIN 15905-5:2022-07 has NOT been verified
- * against the authorised text; this module never issues a DIN pass/fail.
+ * Operator-approved assessment method; no external certification is asserted.
  * Inputs are interval Leq measurements (not gliding LAeq_g30 values).
  */
 (function (root, factory) {
@@ -47,6 +46,16 @@
   }
   function threshold(value, limit) {
     return !finiteNumber(value) ? 'unknown' : value > limit ? 'above' : 'at-or-below';
+  }
+  function measuredStatus(blocks) {
+    // Technical evidence and form / norm documentation are separate concerns.
+    if (!blocks.length) return 'not-assessable';
+    if (blocks.some(b => b.comparisonLAeq === 'above' || b.comparisonLCpeakObserved === 'above'))
+      return 'exceeded';
+    const assessedLAeq = blocks.some(b => finiteNumber(b.laeq30Db));
+    const assessedPeak = blocks.some(b => finiteNumber(b.lcpeakObservedDb));
+    return assessedLAeq && assessedPeak ? 'within-limits' :
+      assessedLAeq || assessedPeak ? 'partial' : 'not-assessable';
   }
   function buildBlocks(intervals, options) {
     const opts = options || {};
@@ -102,7 +111,8 @@
         }
         if (iv.lcpeakDb != null) {
           peakSpans.push(span);
-          peaks.push({db: iv.lcpeakDb, sourceLine: iv.sourceLine});
+          peaks.push({db: iv.lcpeakDb, sourceLine: iv.sourceLine,
+            startMs: iv.startMs, endMs: iv.endMs});
         }
       }
       const observed = unionMs(all), leq = unionMs(leqSpans), peak = unionMs(peakSpans);
@@ -128,21 +138,42 @@
       const observedLcpeakDb = overlapSeconds > 1e-7 || crossingBoundarySeconds > 1e-7 || !peaks.length
         ? null : peaks.reduce((best, peak) => Math.max(best, peak.db), -Infinity);
       const laeq30Db = fullCoverage && laeqCovered && !conflict ? observedLaeqDb : null;
+      const laeqPartialDb = !fullCoverage || !laeqCovered ? observedLaeqDb : null;
       const lcpeakMaxDb = fullCoverage && peakCovered && !conflict ? observedLcpeakDb : null;
       const dataQuality = conflict ? 'conflict' : !fullCoverage || !laeqCovered || !peakCovered ? 'incomplete' : 'complete';
+      const edgePartial = !fullCoverage && (from < first || to > last);
+      const dataCoverageState = conflict ? 'conflict' : dataQuality === 'complete' ? 'full' :
+        edgePartial && invalidLaeqSeconds === 0 && invalidPeakSeconds === 0 ? 'partial-edge' : 'gap';
       if (dataQuality === 'conflict') qualityStatus = 'conflict';
       else if (dataQuality === 'incomplete' && qualityStatus === 'complete') qualityStatus = 'incomplete';
       const peakSource = lcpeakMaxDb == null ? null : peaks.find(p => p.db === lcpeakMaxDb)?.sourceLine ?? null;
+      const peakObservedSourceLine = observedLcpeakDb == null ? null :
+        peaks.find(p => p.db === observedLcpeakDb)?.sourceLine ?? null;
+      // Only unambiguous, whole intervals can be attributed to this block.
+      const peakEvents = [];
+      if (!conflict) {
+        const counted = new Set();
+        for (const p of peaks) {
+          if (p.db <= LIMIT_LCPEAK_DB || p.startMs < from || p.endMs > to) continue;
+          const key = p.startMs + ':' + p.endMs;
+          if (counted.has(key)) continue;
+          counted.add(key);
+          peakEvents.push({start: localIso(p.startMs), end: localIso(p.endMs),
+            valueDb: p.db, sourceLine: p.sourceLine});
+        }
+      }
       blocks.push({
         start: localIso(from), end: localIso(to), startLocalMs: from, endLocalMs: to,
         expectedSeconds: 1800, coveredSeconds, unknownSeconds,
         validLaeqSeconds, invalidLaeqSeconds, validPeakSeconds, invalidPeakSeconds,
-        overlapSeconds, crossingBoundarySeconds, dataQuality,
-        laeqObservedDb: observedLaeqDb, lcpeakObservedDb: observedLcpeakDb,
+        overlapSeconds, crossingBoundarySeconds, dataQuality, dataCoverageState,
+        laeqObservedDb: observedLaeqDb, laeqPartialDb, lcpeakObservedDb: observedLcpeakDb,
         laeq30Db, lcpeakMaxDb, comparisonLAeq: threshold(laeq30Db, LIMIT_LAEQ_DB),
         comparisonLCpeak: threshold(lcpeakMaxDb, LIMIT_LCPEAK_DB),
+        comparisonLCpeakObserved: threshold(observedLcpeakDb, LIMIT_LCPEAK_DB),
         normativeStatus: NOT_ASSESSABLE, sourceLines: [...new Set(sources)],
-        lcpeakSourceLine: peakSource, warnings: blockWarnings
+        lcpeakSourceLine: peakSource, lcpeakObservedSourceLine: peakObservedSourceLine,
+        peakEvents, warnings: blockWarnings
       });
     }
     if (opts.forceUncertainTime) {
@@ -150,20 +181,32 @@
     }
     if (opts.sourceIssues && opts.sourceIssues.length) warnings.push(...opts.sourceIssues);
     const laeqMax = blocks.map(b => b.laeq30Db).filter(finiteNumber);
-    const peakMax = blocks.map(b => b.lcpeakMaxDb).filter(finiteNumber);
+    const peakMax = blocks.map(b => b.lcpeakObservedDb).filter(finiteNumber);
+    const peakCompleteMax = blocks.map(b => b.lcpeakMaxDb).filter(finiteNumber);
     const laeqMaxDb = laeqMax.length ? Math.max(...laeqMax) : null;
+    // Highest observed peak includes partial first/last windows.
     const lcpeakMaxDb = peakMax.length ? Math.max(...peakMax) : null;
+    const lcpeakCompleteMaxDb = peakCompleteMax.length ? Math.max(...peakCompleteMax) : null;
+    const peakEvents = blocks.flatMap(b => b.peakEvents);
+    const laeqExceededBlocks = blocks.filter(b => b.comparisonLAeq === 'above')
+      .map(b => ({start:b.start, end:b.end, valueDb:b.laeq30Db}));
+    const measurementStatus = measuredStatus(blocks);
+    const coverageComplete = blocks.every(b => b.dataQuality === 'complete');
+    const hasMeasurementGaps = blocks.some(b => b.dataCoverageState === 'gap' || b.dataCoverageState === 'conflict');
     return {
-      version: VERSION, ruleStatus: 'not-verified', normativeStatus: NOT_ASSESSABLE,
+      version: VERSION, ruleStatus: 'operator-approved', normativeStatus: NOT_ASSESSABLE, measurementStatus,
       assumptions: {blockDurationSeconds: 1800, alignment: 'local-clock-00-30', partialBlocks: 'no-normative-value',
         sliding30NotUsed: true, timeBasisVerified: !opts.forceUncertainTime},
       quality: {status: qualityStatus, warnings},
       blocks,
-      overall: {laeqMaxDb, lcpeakMaxDb,
+      overall: {laeqMaxDb, lcpeakMaxDb, lcpeakCompleteMaxDb,
         comparisonLAeq: threshold(laeqMaxDb, LIMIT_LAEQ_DB),
         comparisonLCpeak: threshold(lcpeakMaxDb, LIMIT_LCPEAK_DB),
+        laeqExceededBlocks, laeqExceededCount: laeqExceededBlocks.length,
+        lcpeakExceededIntervals: peakEvents, lcpeakExceededCount: peakEvents.length,
         completeBlocks: blocks.filter(b => b.dataQuality === 'complete').length,
-        totalBlocks: blocks.length, normativeStatus: NOT_ASSESSABLE}
+        totalBlocks: blocks.length, coverageComplete, hasMeasurementGaps,
+        normativeStatus: NOT_ASSESSABLE, measurementStatus}
     };
   }
 
@@ -247,22 +290,15 @@
     const riskyCodes = new Set(['TIME_REVERSAL', 'DUPLICATE_TIMESTAMP', 'IRREGULAR_INTERVAL',
       'TIME_GAP', 'INVALID_TIMESTAMP', 'INVALID_TIMESTAMP_COUNT']);
     for (const x of rawIssues) if (riskyCodes.has(x.code)) problems.push(issue('IMPORT_' + x.code, x.message, {sourceLine: x.line}));
-    for (const kind of ['k1', 'k2']) {
-      if (model.corrections?.[kind]?.determination == null)
-        problems.push(issue('CORRECTION_DETERMINATION_UNVERIFIED', kind + ': Ermittlung der Messortkorrektur nicht dokumentiert.'));
-    }
-    if (model.calibration?.status !== 'verified')
-      problems.push(issue('CALIBRATION_UNVERIFIED', 'Kalibrier-/Funktionsprüfung nicht vollständig belegt.'));
-    if (!model.places?.assessmentLAeq || !model.places?.assessmentLCpeak)
-      problems.push(issue('ASSESSMENT_PLACES_MISSING', 'Maßgebliche Immissionsorte nicht ausreichend dokumentiert.'));
-    const assumedAnchor = opts.timestampAnchorEvidence !== 'verified';
+    // Metadata entered in the protocol is checked there, not against import-only fields.
+    const assumedAnchor = !['verified','operator-approved'].includes(opts.timestampAnchorEvidence);
     const result = buildBlocks(intervals, {
       forceUncertainTime: assumedAnchor || !model.measurement?.timeZone,
       sourceIssues: problems
     });
     result.assumptions = Object.assign({}, result.assumptions, {
       timestampAnchor: anchor,
-      timestampAnchorEvidence: opts.timestampAnchorEvidence === 'verified' ? 'verified' : 'assumed',
+      timestampAnchorEvidence: ['verified','operator-approved'].includes(opts.timestampAnchorEvidence) ? opts.timestampAnchorEvidence : 'assumed',
       intervalSeconds: seconds,
       timeZone: model.measurement?.timeZone || null,
       corrections: {
@@ -270,9 +306,10 @@
         k2: {valueDb: model.corrections?.k2?.valueDb ?? null, appliedInLog: model.columns?.lcpeak?.correctionApplied ?? null}
       }
     });
-    // Imported-source uncertainty can never become a positive outcome.
-    if (problems.length || assumedAnchor) result.quality.status =
-      result.quality.status === 'conflict' ? 'conflict' : 'restricted';
+    // Technical comparisons remain visible. Missing evidence changes quality, not measured levels.
+    if (problems.length || assumedAnchor) {
+      result.quality.status = result.quality.status === 'conflict' ? 'conflict' : 'restricted';
+    }
     return result;
   }
   return Object.freeze({

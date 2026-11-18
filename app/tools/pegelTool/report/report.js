@@ -8,7 +8,7 @@
   else root.PegelToolReport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const VERSION = '0.5.0-dev';
+  const VERSION = '1.0.0';
   const EMPTY = 'Nicht angegeben';
   const asText = v => (v === null || v === undefined || String(v).trim() === '') ? EMPTY : String(v).trim();
   const num = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -47,24 +47,25 @@
     const places=record.places || {}, corr=record.corrections || {};
     const blocks=Array.isArray(record.assessment.periods) ? record.assessment.periods : [];
     const overall=record.assessment.overall || {};
-    const checked=record.review.reportFullyChecked === true && record.normReview === 'verified' &&
-      record.assessment.normativeStatus !== 'not-assessable';
+    const checked=record.review.reportFullyChecked === true;
+    const measured=record.assessment.measurementStatus || 'not-assessable';
+    const resultStatus=measured === 'exceeded' ? 'Grenzwert überschritten' :
+      measured === 'within-limits' ? 'Keine Überschreitung in auswertbaren Messdaten' :
+      measured === 'partial' ? 'Nur teilweise auswertbar' : 'NICHT BEURTEILBAR';
     const sections=[
       {title:'Veranstaltung und Verantwortliche',rows:[
         row('Veranstaltung',v.eventName,o.eventName), row('Messdatum',v.datumMessung,o.datumMessung),
         row('Veranstalter / Anschrift',v.organisator,o.organisator),
         row('Veranstaltungsort',v.location,o.location),row('Anschrift / Ortsangabe',v.ortAdresse,o.ortAdresse),
-        row('Ort vor Ort geprüft',v.ortBestaetigt === 'ja' ? 'Manuell bestätigt' : 'Nicht bestätigt',o.ortBestaetigt),
         row('Messperson',v.messungVon,o.messungVon), row('Veranstaltungsbeschreibung',v.beschreibung,o.beschreibung),
-        row('Veranstaltungsbeginn',v.veranstaltungsBeginn,o.veranstaltungsBeginn),
-        row('Veranstaltungsende',v.veranstaltungsEnde,o.veranstaltungsEnde)]},
+        row('FOH-Techniker',v.foh,o.foh)]},
       {title:'Messverfahren und Datenbasis',rows:[
-        row('Methode',num(record.sampleCount) !== null && record.sampleCount > 0 ? 'Importierter NTi-XL3-Logdatensatz; uhrzeitfeste 30-Minuten-Blöcke (Arbeitsannahme)' : 'Keine ausreichende importierte Messdatenbasis'),
-        row('LAeq-Berechnung','10 log10(Summe aus Intervallzeit mal 10^(LAeq/10), geteilt durch die gesamte bewertbare Intervallzeit); nur bei vollständiger, widerspruchsfreier Blockabdeckung'),
+        row('Methode',num(record.sampleCount) !== null && record.sampleCount > 0 ? 'Importierter NTi-XL3-Logdatensatz; feste 30-Minuten-Blöcke zur vollen und halben Stunde' : 'Keine ausreichende importierte Messdatenbasis'),
+        row('LAeq-Berechnung','Energetischer, zeitgewichteter Mittelungspegel über den tatsächlich erfassten Zeitraum; Vergleich gegen 99 dB(A) nur für vollständige 30-Minuten-Fenster'),
         row('LCpeak-Berechnung','Höchster gültiger Intervall-Spitzenwert im Block, keine Mittelung'),
-        row('Regelstatus','Blockzeit und Grenzwertbewertung mangels vollständig verifizierter Originalnorm nicht freigegeben'),
         row('Quell-Logdatei',opts.sourceFileName || 'Nicht vermerkt'),
         row('Messbeginn laut Log',measurement.start),row('Messende laut Log',measurement.end),
+         row('kset date (XL3)',measurement.ksetDate),
         row('Logintervall',num(measurement.intervalSeconds) === null ? EMPTY : measurement.intervalSeconds + ' s'),
         row('Zeitzone / Offset',measurement.timeZone),
         row('Zeitstempel-Anker',record.assessment.assumptions && record.assessment.assumptions.timestampAnchor),
@@ -76,49 +77,68 @@
         row('Messreihen-Anzahl',num(record.sampleCount) === null ? EMPTY : String(record.sampleCount))]},
       {title:'Messstellen und Beschallungsanlage',rows:[
         row('Tatsächlicher Messort',places.measurement,o.messposition),
-        row('Maßgeblicher Immissionsort LAeq',places.assessmentLAeq,o.messortLAeq),
-        row('Maßgeblicher Immissionsort LCpeak',places.assessmentLCpeak,o.messortLCpeak),
+        row('Maßgeblicher Immissionsort',places.assessment,o.messort),
+        ...(places.legacyAssessmentLAeq && places.legacyAssessmentLCpeak &&
+          places.legacyAssessmentLAeq!==places.legacyAssessmentLCpeak
+          ? [row('Altprojekt: Immissionsort LAeq (ungeklärt)',places.legacyAssessmentLAeq),
+             row('Altprojekt: Immissionsort LCpeak (ungeklärt)',places.legacyAssessmentLCpeak)] : []),
         row('Messorttyp',v.messortTyp === 'ersatz' ? 'Ersatzmessort' : v.messortTyp === 'direkt' ? 'Direktmessung' : EMPTY,o.messortTyp),
         row('Ersatzmessort',places.substitute,o.ersatzMessort),
         row('PA-Aufstellung',v.paAnordnung,o.paAnordnung),
-        row('PA-Aufstellung geprüft',v.paBestaetigt === 'ja' ? 'Manuell bestätigt' : 'Nicht bestätigt',o.paBestaetigt),
+        row('Ausgewählte Lautsprechergruppen',(record.paGroups || []).map(group=>{
+          const speakers=(group.items || []).map(it=>asText(it.qty)+' × '+asText(it.type)).join(', ');
+          const missing=(group.unresolved || []).length ? ' [Stückzahlen offen: '+group.unresolved.join(', ')+']' : '';
+          return group.label+': '+(speakers || 'Stückzahl nicht belegt')+missing;
+        }).join('; ')),
         row('PA-Komponenten',(record.paItems || []).map(x =>
           ((x.type === 'custom' ? x.customType : x.type) || '?') + ' (' + asText(x.qty) + 'x)').join('; ')),
-        row('Abweichungen',v.abweichungVorhanden === 'ja' ? 'Ja' : v.abweichungVorhanden === 'nein' ? 'Nein' : EMPTY,o.abweichungVorhanden),
-        row('Abweichungsbegründung',v.abweichungBeschreibung,o.abweichungBeschreibung)]},
+        row('Zusätzliche Lautsprecher / Sonderaufbau',v.paZusatz,o.paZusatz),
+        row('Abweichungen / besondere Ereignisse',v.abweichungBeschreibung,o.abweichungBeschreibung)]},
       {title:'Korrekturen und Funktionsprüfung',rows:[
         row('k1 – LAeq',db(corr.k1 && corr.k1.device && corr.k1.device.valueDb)),
         row('k1 – im Gerätelog angewandt?',correctionState(corr.k1)),
-        row('k1 – Herkunft / Ermittlung',corr.k1 && corr.k1.determination,o.k1Ermittlung),
+        ...(corr.k1 && corr.k1.determination ? [row('k1 – Ermittlung aus Altprojekt',corr.k1.determination)] : []),
         row('k1 – Originalspalte',corr.k1 && corr.k1.column && corr.k1.column.column),
         row('k2 – LCpeak',db(corr.k2 && corr.k2.device && corr.k2.device.valueDb)),
         row('k2 – im Gerätelog angewandt?',correctionState(corr.k2)),
-        row('k2 – Herkunft / Ermittlung',corr.k2 && corr.k2.determination,o.k2Ermittlung),
+        ...(corr.k2 && corr.k2.determination ? [row('k2 – Ermittlung aus Altprojekt',corr.k2.determination)] : []),
         row('k2 – Originalspalte',corr.k2 && corr.k2.column && corr.k2.column.column),
         row('Kalibrator',calibration.device && calibration.device.model),
         row('Kalibrator-Seriennummer',calibration.device && calibration.device.serial),
-        row('Vor der Messung – Zeitpunkt',asDate(before.at),o.kalVorZeit),
-        row('Vor der Messung – Anzeige',db(before.displayedDb),before.origin),
-        row('Nach der Messung – Zeitpunkt',asDate(after.at),o.kalNachZeit),
-        row('Nach der Messung – Anzeige',db(after.displayedDb),after.origin),
-        row('Kalibrier-Normnachweis',calibration.verifiedByStandard ? 'Nachgewiesen' : 'Nicht unabhängig nachgewiesen')]},
+        row('Funktionsprüfung vor Messung',before.confirmed?'Bestätigt':'Nicht bestätigt',o.kalVorBestaetigt),
+        row('Funktionsprüfung nach Messung',after.confirmed?'Bestätigt':'Nicht bestätigt',o.kalNachBestaetigt),
+        ...(before.at ? [row('Altbeleg: Zeitpunkt vorher',asDate(before.at))] : []),
+        ...(num(before.displayedDb)!==null ? [row('Altbeleg: Anzeige vorher',db(before.displayedDb),before.origin)] : []),
+        ...(after.at ? [row('Altbeleg: Zeitpunkt nachher',asDate(after.at))] : []),
+        ...(num(after.displayedDb)!==null ? [row('Altbeleg: Anzeige nachher',db(after.displayedDb),after.origin)] : []),
+        row('Nachweisumfang','Checkboxen allein ersetzen keine dokumentierte Pegelanzeige mit Zeitangabe')]},
       {title:'Auswertung und Berichtsabschluss',rows:[
-        row('Höchster berechenbarer LAeq-Blockwert (nur informativ)',db(overall.laeqMaxDb)),
-        row('Höchster berechenbarer LCpeak-Blockwert (nur informativ)',db(overall.lcpeakMaxDb)),
+        row('Maximaler LAeq,30min-Beurteilungspegel',db(overall.laeqMaxDb)),
+        row('Maximaler LCpeak-Spitzenpegel (alle gemessenen Intervalle)',db(overall.lcpeakMaxDb)),
+        row('LAeq: 30-Minuten-Blöcke über 99 dB(A)',String(overall.laeqExceededCount ?? 0)+' von '+String(overall.completeBlocks ?? 0)),
+        row('LAeq: betroffene Zeiträume',(overall.laeqExceededBlocks || []).map(b=>asDate(b.start)+' – '+asDate(b.end)).join('; ') || 'Keine'),
+        row('LCpeak: Logintervalle über 135 dB(C)',String(overall.lcpeakExceededCount ?? 0)),
+        row('LCpeak: betroffene Intervalle',(overall.lcpeakExceededIntervals || []).slice(0,50)
+          .map(p=>asDate(p.start)+' – '+asDate(p.end)+' ('+db(p.valueDb)+')').join('; ') || 'Keine'),
+        ...(Number(overall.lcpeakExceededCount) > 50 ? [row('Weitere LCpeak-Intervalle',
+          String(overall.lcpeakExceededCount-50)+' weitere betroffene Intervalle – vollständige Liste im XL3-Log')] : []),
+        row('Messdatenabdeckung',overall.coverageComplete ? 'Alle Zeitfenster vollständig' :
+          overall.hasMeasurementGaps ? 'Messlücken oder Zeitkonflikte vorhanden' : 'Angebrochene Anfangs-/Endzeiträume'),
         row('30-Minuten-Blöcke',blocks.length),
-        row('Technisch vollständig',blocks.filter(b=>b.dataQuality === 'complete').length),
-        row('Protokollangaben',record.review.documentationComplete ? 'Erfasst (vorläufig)' : 'Unvollständig'),
+        row('Vollständig erfasste Zeitblöcke',blocks.filter(b=>b.dataQuality === 'complete').length),
+        row('Protokollangaben',record.review.documentationComplete ? 'Vollständig' : 'Unvollständig'),
         row('Mess- und Prüfnachweise',record.review.evidenceComplete ? 'Technische Mindestnachweise vorhanden' : 'Unvollständig / ungeklärt'),
         row('Erstellt von',v.berichtName,o.berichtName), row('Berichtsort',v.berichtsort,o.berichtsort),
         row('Berichtsdatum',v.berichtDatum,o.berichtDatum),
-        row('Unterschrift','Nicht vorhanden – vorgesehene Unterzeichnung ist kein Nachweis')]}
+        row('Unterschrift','Unterschriftsfeld auf der letzten Seite')]}
     ];
     const blockRows=blocks.map((b,i)=>({
       index:i+1,from:asDate(b.start),to:asDate(b.end),
       coverage:sec(b.coveredSeconds) + ' / ' + sec(b.expectedSeconds),
-      laeq:db(b.laeq30Db),lcpeak:db(b.lcpeakMaxDb),
-      quality:b.dataQuality === 'complete' ? 'Technisch vollständig*' :
-        b.dataQuality === 'conflict' ? 'Zeitkonflikt' : 'Unvollständig',
+      laeq:db(b.laeq30Db ?? b.laeqPartialDb ?? b.laeqObservedDb),lcpeak:db(b.lcpeakObservedDb ?? b.lcpeakMaxDb),
+      quality:b.dataCoverageState === 'full' || b.dataQuality === 'complete' ? 'Vollständig' :
+        b.dataCoverageState === 'partial-edge' ? 'Teilzeit (kein LAeq,30min)' :
+        b.dataCoverageState === 'conflict' ? 'Zeitkonflikt' : 'Messlücke / Teilwerte',
       source:'Logzeilen: ' + fileLines(b.sourceLines) +
         (Number.isInteger(b.lcpeakSourceLine) ? '; LCpeak-Zeile: ' + b.lcpeakSourceLine : ''),
       warnings:(b.warnings || []).map(w => w.code + ': ' + w.message),
@@ -142,14 +162,15 @@
       schemaVersion:1,toolVersion:VERSION,
       normVersion:record.normVersion || 'DIN 15905-5:2022-07',
       normStatus:record.normReview || 'not-verified',
-      status:checked ? 'Prüfung dokumentiert' : 'NICHT BEURTEILBAR – Normfreigabe ausstehend',
-      subtitle:'Vorläufiges technisches Messprotokoll. Keine DIN-Konformitätsbescheinigung.',
-      warning:'Die DIN 15905-5:2022-07 ist in diesem Projekt noch nicht anhand des vollständigen Originaltexts freigegeben. Zahlen, Zeitblöcke und Messnachweise sind daher keine verbindliche normative Bewertung. Fehlende Werte sind nicht als 0 dB zu interpretieren.',
+      status:resultStatus,
+      subtitle:'Messprotokoll zur Auswertung von Schallpegelmessungen',
+      warning:'',
       sections,blocks:blockRows,issues,
       documentationComplete:!!record.review.documentationComplete,
       evidenceComplete:!!record.review.evidenceComplete,
       reportFullyChecked:checked,
       assessmentStatus:record.assessment.normativeStatus || 'not-assessable',
+      measurementStatus:measured,
       sourceLog:asText(opts.sourceFileName)
     };
     return result;
@@ -166,9 +187,8 @@
   }
   function renderHtml(report) {
     if (!report) return '<p>Kein Bericht verfügbar.</p>';
-    const html=['<div class="report-notice"><strong>',esc(report.status),'</strong><p>',
-      esc(report.warning),'</p></div><p class="small">pegelTool ',esc(report.toolVersion),
-      ' · ',esc(report.normVersion),' (',esc(report.normStatus),')</p>'];
+    const html=['<div class="report-notice"><strong>',esc(report.status),'</strong></div><p class="small">pegelTool ',
+      esc(report.toolVersion),' · ',esc(report.normVersion),'</p>'];
     for (const section of report.sections) {
       html.push('<h4>',esc(section.title),'</h4><dl class="report-fields">');
       for(const r of section.rows)
@@ -177,9 +197,8 @@
       html.push('</dl>');
     }
     html.push('<h4>Vollständige Zeitblocktabelle (',report.blocks.length,' Blöcke)</h4>',
-      '<p class="small">* Technisch vollständig bezeichnet ausschließlich die Datenabdeckung, kein DIN-Prüfurteil.</p>',
-      '<div class="table-wrap"><table class="table"><thead><tr><th>Zeitraum</th>',
-      '<th>Abdeckung</th><th>LAeq 30 min</th><th>LCpeak</th><th>Datenlage</th><th>Rohdatenbezug</th></tr></thead><tbody>');
+'<div class="table-wrap"><table class="table"><thead><tr><th>Zeitraum</th>',
+      '<th>Abdeckung</th><th>LAeq (Teilzeit markiert)</th><th>LCpeak</th><th>Datenlage</th><th>Rohdatenbezug</th></tr></thead><tbody>');
     for (const b of report.blocks)
       html.push('<tr><td>',esc(b.from),' – ',esc(b.to),'</td><td>',esc(b.coverage),
         '</td><td>',esc(b.laeq),'</td><td>',esc(b.lcpeak),'</td><td>',esc(b.quality),
@@ -189,7 +208,7 @@
     for(const issue of report.issues)
       html.push('<li><strong>',esc(issue.scope),': ',esc(issue.code),
         '</strong> – ',esc(issue.message),'</li>');
-    if(!report.issues.length) html.push('<li>Keine zusätzlichen technischen Hinweise erfasst. Die Normfreigabe bleibt offen.</li>');
+    if(!report.issues.length) html.push('<li>Keine zusätzlichen technischen Hinweise erfasst.</li>');
     html.push('</ul><p class="small">Diagramme und LAeq_g5/LAeq_g30-Anzeigen der App sind ergänzende Visualisierungen, keine zusätzlichen normativen Grenzwertentscheidungen.</p>');
     return html.join('');
   }

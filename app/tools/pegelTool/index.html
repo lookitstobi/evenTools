@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XL3 Messprotokoll (vorläufig, keine DIN-Freigabe)</title>
+<title>XL3 Schallpegel-Messprotokoll</title>
 <link rel="stylesheet" href="/assets/app.css" />
   <!-- favicon: user-provided SVG -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23d3d3d3%22%20viewBox%3D%222%202%2020%2020%22%3E%3Cpath%20d%3D%22M4%202H2v19c0%20.55.45%201%201%201h19v-2H4z%22/%3E%3Cpath%20d%3D%22M11.25%2010.28c.74-.06%201.45.24%201.93.8a4.314%204.314%200%200%200%207.03-.67l1.67-2.91-1.74-.99-1.67%202.91c-.38.66-1.03%201.08-1.79%201.16s-1.48-.22-1.98-.8c-.9-1.05-2.22-1.6-3.6-1.5s-2.6.84-3.34%202.02l-2.61%204.17%201.7%201.06%202.61-4.17c.4-.63%201.05-1.03%201.79-1.08%22/%3E%3C/svg%3E" />
@@ -13,6 +13,7 @@
 <script src="/toolserve.php?name=pegelTool&file=report/report.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=report/pdf.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=ui/workflow.js"></script>
+<script src="/toolserve.php?name=pegelTool&file=ui/pa-selection.js"></script>
 <script src="/toolserve.php?name=pegelTool&file=vendor/chart.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/jspdf.umd.min.js"></script>
   <script src="/toolserve.php?name=pegelTool&file=vendor/pdf-lib.min.js"></script>
@@ -216,6 +217,136 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   .workflow-overview{padding:12px}
   .workflow-overall-status{font-size:16px}
 }
+
+/* UI update 2: continuous desktop form and compact status. */
+#main.workflow-single-page .manual-fields{display:block;max-width:860px}
+#main.workflow-single-page .manual-fields>div{margin-bottom:14px}
+#main.workflow-single-page .manual-fields .grid-2{gap:16px}
+#main.workflow-single-page .manual-fields label{margin-top:10px}
+#main.workflow-single-page .manual-fields input,#main.workflow-single-page .manual-fields select,#main.workflow-single-page .manual-fields textarea{margin-bottom:2px}
+.workflow-shell{max-width:1180px;margin:10px auto 0}
+.workflow-overview{margin:0;padding:10px 15px;border-left-width:3px}
+.workflow-overall-status{font-size:14px;line-height:1.5}
+.workflow-issue-details{margin-top:3px;font-size:12px;color:var(--text-secondary)}
+.workflow-issue-summary{font-weight:500;color:var(--text-secondary)}
+.workflow-issue-details .workflow-issues{max-height:220px;overflow:auto;padding:5px 5px 5px 20px;margin:4px 0}
+#main.workflow-single-page{display:block;padding-top:12px}
+.workflow-group{scroll-margin-top:18px;margin-bottom:25px}
+.workflow-group-title{font-size:21px;font-weight:700;margin:4px 0 12px}
+#main.workflow-single-page .section{margin-bottom:12px;padding:18px}
+#main.workflow-single-page .section.grid-2{gap:22px}
+#main.workflow-single-page input[readonly]{opacity:.75}
+#main.workflow-single-page input:focus-visible,
+#main.workflow-single-page select:focus-visible,
+#main.workflow-single-page textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.workflow-export .workflow-actions{margin-top:10px}
+.calibration-confirmations{display:grid;gap:12px;margin:16px 0}
+.check-field{display:flex;align-items:center;gap:10px;padding:13px 15px;background:var(--primary-panel);border:1px solid var(--border);border-radius:9px;text-transform:none;letter-spacing:0;cursor:pointer}
+.check-field input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;margin:0;accent-color:var(--accent)}
+.check-field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+#main.workflow-single-page .calibration-confirmations label{margin-top:0}
+@media(max-width:900px){#main.workflow-single-page{padding:12px}.workflow-group-title{font-size:19px}}
+
+/* Selectable PA plans; neutral grey / green states and keyboard-visible focus. */
+.pa-picker{display:grid;grid-template-columns:1fr;gap:18px;margin-top:12px;max-width:960px}
+.pa-plan,.pa-options{border:1px solid var(--border);border-radius:12px;background:var(--primary-panel);padding:15px;min-width:0}
+.pa-plan-heading,.pa-options-heading{font-size:16px;font-weight:750}
+.pa-plan-heading span{display:block;margin-top:4px;color:var(--text-secondary);font-size:11px;font-weight:450}
+.pa-stage-plan{position:relative;height:375px;max-width:620px;margin:10px auto 0;border-radius:10px;
+ background:linear-gradient(180deg,#242424 0%,#303030 55%,#363636 100%);border:1px solid var(--border)}
+.pa-audience-marker{position:absolute;bottom:6%;width:100%;text-align:center;letter-spacing:3px;
+ color:#aaa;font-size:11px}
+.pa-node{position:absolute;transform:translate(-50%,-50%);width:69px;min-height:64px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+ padding:4px;border:2px solid #626262;border-radius:8px;background:#555;color:#ededed;
+ font-size:10px;line-height:1.2;font-weight:550;box-shadow:none}
+.pa-node:hover,.pa-group-toggle:hover{border-color:#9ef58b}
+.pa-node.is-selected,.pa-group-toggle.is-selected{background:#137b29;border-color:#0d6924;color:white}
+.pa-node:focus-visible,.pa-group-toggle:focus-visible{outline:3px solid #b9ff9d;outline-offset:2px}
+.pa-device-icon{width:25px;height:30px;display:block;flex-shrink:0}
+.pa-node-label{display:block;overflow-wrap:anywhere;text-align:center;max-width:100%}
+.pa-node--fill{width:34px;min-height:45px;padding:2px;gap:0}
+.pa-node--fill .pa-device-icon{width:17px;height:21px}
+.pa-node--fill .pa-node-label{font-size:10px}
+.pa-node--array{min-height:78px}
+.pa-node--sub{min-height:65px}
+.pa-plan-legend{display:flex;gap:16px;flex-wrap:wrap;padding-top:10px;color:var(--text-secondary);font-size:11px}
+.pa-plan-legend span{display:inline-flex;gap:6px;align-items:center}
+.pa-plan-legend i{width:12px;height:12px;border-radius:3px;border:1px solid #777;background:#555;display:inline-block}
+.pa-plan-legend i.active{background:#137b29;border-color:#0d6924}
+.pa-options-help{font-size:12px;color:var(--text-secondary);line-height:1.45;margin:5px 0 11px}
+.pa-group-row{margin:0 0 8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.pa-group-toggle{width:100%;display:flex;align-items:center;gap:9px;text-align:left;
+ background:#454545;color:white;font-size:12px;font-weight:650;min-height:37px;padding:8px;
+ border:1px solid #636363;border-radius:7px}
+.pa-check{display:flex;justify-content:center;align-items:center;flex:0 0 17px;width:17px;height:17px;
+ border:1px solid currentColor;border-radius:3px}
+.pa-qty-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px}
+.pa-qty-label,.pa-variant-label{flex:1 1 175px;text-transform:none;letter-spacing:0;font-size:11px;margin:0}
+#main.workflow-single-page .pa-qty-label input,#main.workflow-single-page .pa-variant-label select{height:38px;font-size:12px;padding:6px 8px;margin-top:3px}
+.pa-qty-label input:disabled,.pa-variant-label select:disabled{opacity:.4}
+.pa-unresolved{color:#ffdf80;font-size:12px;margin-top:10px}
+.pa-extra-block{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.pa-empty{color:var(--text-secondary);font-size:13px}
+@media(max-width:950px){.pa-picker{grid-template-columns:1fr}.pa-stage-plan{max-width:600px}}
+@media(max-width:520px){.pa-stage-plan{height:310px}.pa-node{width:51px;min-height:53px;font-size:9px}
+ .pa-node--fill{width:29px;min-height:42px}.pa-node--fill .pa-node-label{font-size:9px}
+ .pa-device-icon{height:23px;width:21px}.pa-node--fill .pa-device-icon{height:17px;width:15px}}
+
+/* Soll-Layout: knapper Kopfstatus und ausschliesslich die vier erlaubten XL3-Kurzwerte. */
+.workflow-shell{max-width:1180px;margin:12px auto 0;padding:0 20px}
+.workflow-overview{border-left:3px solid var(--warn);padding:10px 15px;margin:0 0 9px}
+.workflow-overall-status{font-size:15px;line-height:1.4}
+.workflow-shortinfo{background:var(--primary-panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+.workflow-shortinfo-title{font-size:15px;margin:0 0 12px;font-weight:700}
+.workflow-shortinfo-values{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.workflow-shortinfo-item{min-width:0;display:flex;flex-direction:column;gap:4px}
+.workflow-shortinfo-label{color:var(--text-secondary);font-size:12px}
+.workflow-shortinfo-value{font-size:13px;font-weight:650;overflow-wrap:anywhere}
+#main.workflow-single-page .calibration-confirmations .check-field{display:flex}
+#main.workflow-single-page .calibration-confirmations input[type=checkbox]{appearance:auto;width:18px;height:18px;min-height:18px}
+#main.workflow-single-page #paZusatz{min-height:65px}
+@media(max-width:1100px){.workflow-shortinfo-values{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.workflow-shortinfo-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:390px){.workflow-shortinfo-values{grid-template-columns:1fr}}
+/* Consistent form widths and equal columns across the continuous workspace. */
+#main.workflow-single-page .section.manual-fields{width:100%;max-width:100%}
+#main.workflow-single-page .manual-fields > div{width:100%;min-width:0}
+#main.workflow-single-page .manual-fields .grid-2,
+#main.workflow-single-page .section .grid-2{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#main.workflow-single-page .grid-2 > div{min-width:0;width:100%}
+#main.workflow-single-page .manual-fields input:not([type="checkbox"]),
+#main.workflow-single-page .manual-fields select,
+#main.workflow-single-page .manual-fields textarea{display:block;width:100%;min-width:0;max-width:100%}
+#main.workflow-single-page > [data-workflow-section="charts"]{width:100%;margin-bottom:24px;padding:18px}
+@media(max-width:900px){
+ #main.workflow-single-page .manual-fields .grid-2,
+ #main.workflow-single-page .section .grid-2{grid-template-columns:minmax(0,1fr)}
+}
+
+.workflow-group-heading{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:3px 0 10px}
+.workflow-group-heading::-webkit-details-marker{display:none}
+.workflow-group-heading::before{content:'▾';font-size:15px;color:var(--text-secondary);width:16px;flex:0 0 16px}
+.workflow-group:not([open])>.workflow-group-heading::before{content:'▸'}
+.workflow-group-heading .workflow-group-title{margin:0;flex:1}
+.workflow-group-alert{font-size:12px;line-height:17px;text-align:center;border:1px solid #b98c3e;
+ color:#e6b458;border-radius:50%;height:19px;width:19px;font-weight:800;flex:0 0 19px}
+.workflow-group-alert[hidden]{display:none}
+.workflow-overview{border-left-color:var(--border)}
+.workflow-overview:has(.workflow-overall-status[data-state="ok"]){border-left-color:var(--ok)}
+.workflow-overview:has(.workflow-overall-status[data-state="bad"]){border-left-color:var(--danger)}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"]{width:100%;max-width:100%}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] input,
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] select{width:100%;max-width:100%}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] label{display:block}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] .check-field{display:flex}
+
+/* Single-page layout from first render; no legacy tab strip or clipped desktop scrolling. */
+html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+.header{position:sticky;top:0}
+#main{position:relative;top:auto;bottom:auto;left:auto;right:auto}
+#main.workflow-main,#main.workflow-single-page{position:relative;top:auto;bottom:auto;overflow:visible}
+.workflow-nav,.workflow-tab,.workflow-panel,.workflow-footer{display:none!important}
 </style>
 </head>
 <body>
@@ -225,7 +356,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
-      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Technisches Messprotokoll mit offenem DIN-Freigabestatus als PDF exportieren">PDF exportieren (vorläufig)</button>
+      <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messprotokoll als PDF exportieren">PDF exportieren</button>
       <button id="btnRecover" class="icon-btn subtle" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung laden</button>
     </div>
     <div class="header-secondary-actions">
@@ -251,7 +382,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 <div id="main">
   <div id="leftColumn">
     <div class="section" data-workflow-section="metrics">
-      <h3>Technische Messwertübersicht (keine DIN-Freigabe)</h3>
+      <h3>Messwertübersicht</h3>
       <div class="table-wrap">
         <table class="table" id="pegelTabelle">
           <thead>
@@ -266,12 +397,14 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
           <tbody></tbody>
         </table>
       </div>
+      <div class="small mt-6" id="measurementCoverageInfo"></div>
+      <details id="peakEventDetails" style="display:none"><summary id="peakEventSummary">LCpeak-Überschreitungen</summary><div class="small mt-6" id="peakEventList"></div></details>
       <div class="small mt-6" id="chartInfo"></div>
     </div>
 
     <div class="section" data-workflow-section="blocks">
-      <h3>30-Minuten-Auswertung (vorläufig)</h3>
-      <div class="small mt-6" id="phase3Info">Noch keine Auswertung. Der Normenabgleich aus Phase 0 steht aus.</div>
+      <h3>30-Minuten-Auswertung</h3>
+      <div class="small mt-6" id="phase3Info">Noch keine Auswertung.</div>
       <div class="table-wrap mt-8">
         <table class="table" id="phase3Tabelle">
           <thead><tr>
@@ -280,7 +413,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
           <tbody></tbody>
         </table>
       </div>
-      <div class="small mt-8" id="phase3Warning">Alle Werte sind technische Zwischenstände, keine DIN-Freigabe.</div>
+      <div class="small mt-8" id="phase3Warning"></div>
     </div>
 
     <div class="section" data-workflow-section="charts">
@@ -319,10 +452,49 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         <div><label>Korrekturwert k2</label><input id="k2" readonly /></div>
       </div>
 
-      <details class="mt-8">
-        <summary>Parser / Debug</summary>
+      <details class="mt-8" id="fullMeasurementDetails">
+        <summary>Vollständige Messdaten / Parser-Ergebnisse</summary>
         <div class="inner small" id="parseInfo"></div>
+        <pre id="fullMeasurementData" class="small" style="max-height:450px;overflow:auto;white-space:pre;tab-size:4"></pre>
       </details>
+    </div>
+    <div class="section manual-fields" data-workflow-section="deviceEvidence">
+      <h3>Messposition und Funktionsprüfung</h3>
+      <div>
+        <div class="grid-2">
+          <div>
+            <label for="messposition">Messposition</label>
+            <input id="messposition" />
+          </div>
+          <div>
+            <label for="messort">Maßgeblicher Immissionsort</label>
+            <input id="messort" type="text" placeholder="Position im Publikum / maßgeblicher Immissionsort" />
+          </div>
+        </div>
+        <label>Art des Messorts</label>
+        <select id="messortTyp">
+          <option value="">Bitte auswählen</option>
+          <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
+          <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
+        </select>
+
+        <div class="grid-2">
+          <div>
+            <label>Kalibrator</label>
+            <input id="kalibratorModell" placeholder="Typ / Hersteller" />
+          </div>
+          <div>
+            <label>Kalibrator SN</label>
+            <input id="kalibratorSN" placeholder="Seriennummer" />
+          </div>
+        </div>
+        <div class="calibration-confirmations">
+          <label class="check-field"><input id="kalVorBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung vor der Messung durchgeführt</label>
+          <label class="check-field"><input id="kalNachBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung nach der Messung durchgeführt</label>
+        </div>
+        <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
+        Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
+      </div>
     </div>
 
 
@@ -330,22 +502,22 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   <div id="rightColumn">
     <div class="section" id="protocolReview" data-workflow-section="review" aria-live="polite">
       <h3>Messprotokoll – Angaben & Nachweise</h3>
-      <div class="small mt-8">Feldklassen Pflicht / bedingt / optional sind ein vorläufiger Arbeitsstand.
-      Der Originaltext der DIN 15905-5:2022-07 ist noch nicht abschließend abgeglichen.
-      Eine vollständige Eingabe ist keine DIN-Konformitätsbescheinigung.</div>
       <div class="protocol-summary" id="protocolStatus">Protokollangaben noch nicht geprüft.</div>
       <div class="small" id="protocolEvidenceStatus">Messnachweise: offen.</div>
       <ul class="protocol-problems" id="protocolIssues"></ul>
     </div>
     <details class="section" id="phase5ReportPreview" data-workflow-section="preview">
       <summary>Messbericht – Vorschau des PDF-Inhalts</summary>
-      <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Auch ein unvollständiger Bericht bleibt ausdrücklich „Nicht beurteilbar“.</p>
+      <p class="small mt-8">Bildschirm und PDF verwenden denselben Berichtsdatenbestand. Fehlende Angaben werden im Bericht gekennzeichnet.</p>
       <div id="reportPreviewContent" class="report-preview-wrap" aria-live="polite"></div>
     </details>
-    <div class="section grid-2" data-workflow-section="eventAndEvidence">
+    <div class="section manual-fields" data-workflow-section="eventAndEvidence">
       <div>
-        <label>Veranstaltung (Name)</label>
-        <input id="eventName" placeholder="z.B. Verstärktes Musical" tabindex="1" autofocus />
+        <label for="eventName">Veranstaltung (Name)</label>
+        <input id="eventName" placeholder="z.B. Verstärktes Musical" />
+
+        <label for="beschreibung">Beschreibung der Veranstaltung</label>
+        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band"></textarea>
 
         <label>Datum der Messung</label>
         <input id="datumMessung" type="date" />
@@ -358,86 +530,25 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         </select>
         <label>Anschrift / konkrete Ortsangabe</label>
         <input id="ortAdresse" placeholder="Straße, Hausnummer, PLZ, Ort" />
-        <label>Veranstaltungsort anhand der realen Veranstaltung geprüft?</label>
-        <select id="ortBestaetigt">
-          <option value="">Nicht bestätigt (Preset ist kein Nachweis)</option>
-          <option value="ja">Ja, manuell geprüft</option>
-        </select>
-        <label>Veranstaltungsbeginn (optional)</label>
-        <input id="veranstaltungsBeginn" placeholder="Datum / Uhrzeit" />
-        <label>Veranstaltungsende (optional)</label>
-        <input id="veranstaltungsEnde" placeholder="Datum / Uhrzeit" />
-
         <label>Umgebungsbedingungen</label>
         <input id="umwelt" placeholder="Optional, z.B. Wetter / Umgebungseinflüsse" />
       </div>
 
       <div>
-        <label>Messung durchgeführt von (Firma, Person)</label>
-        <input id="messungVon" tabindex="2" />
+        <label for="messungVon">Messung durchgeführt von (Firma, Person)</label>
+        <input id="messungVon" />
 
-        <div class="grid-2">
-          <div>
-            <label>Messposition</label>
-            <input id="messposition" tabindex="3" />
-          </div>
-          <div>
-            <label>Lauteste Position</label>
-            <input id="lautestePosition" tabindex="4" placeholder="Altfeld; nicht als Nachweis verwenden" />
-          </div>
-        </div>
+        <label for="foh">Zuständiger FOH-Techniker</label>
+        <input id="foh" />
 
-        <label>Maßgeblicher Immissionsort für LAeq</label>
-        <input id="messortLAeq" placeholder="Position im Publikum und Ermittlung" />
-        <label>Maßgeblicher Immissionsort für LCpeak</label>
-        <input id="messortLCpeak" placeholder="Kann vom LAeq-Ort abweichen" />
-        <label>Art des Messorts</label>
-        <select id="messortTyp">
-          <option value="">Bitte auswählen</option>
-          <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
-          <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
-        </select>
 
-        <label>Zuständiger FOH-Techniker</label>
-        <input id="foh" tabindex="5" />
-
-        <div class="grid-2">
-          <div>
-            <label>Kalibrator</label>
-            <input id="kalibratorModell" placeholder="Typ / Hersteller" />
-          </div>
-          <div>
-            <label>Kalibrator SN</label>
-            <input id="kalibratorSN" placeholder="Seriennummer" />
-          </div>
-        </div>
-        <div class="grid-2">
-          <div>
-            <label>Funktionsprüfung vor der Messung – Zeitpunkt</label>
-            <input id="kalVorZeit" type="datetime-local" />
-            <label>Angezeigter Pegel vor der Messung (dB)</label>
-            <input id="kalVorWert" inputmode="decimal" placeholder="z.B. 94,0" />
-          </div>
-          <div>
-            <label>Funktionsprüfung nach der Messung – Zeitpunkt</label>
-            <input id="kalNachZeit" type="datetime-local" />
-            <label>Angezeigter Pegel nach der Messung (dB)</label>
-            <input id="kalNachWert" inputmode="decimal" placeholder="z.B. 94,0" />
-          </div>
-        </div>
-        <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
-        Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
       </div>
     </div>
 
-    <div class="section grid-2" data-workflow-section="description">
+    <div class="section manual-fields" data-workflow-section="description">
       <div>
         <label>Organisator (Anschrift / Verantwortliche)</label>
         <textarea id="organisator" class="min-h-140" placeholder="Veranstalter mit Ansprechpartner / Adresse"></textarea>
-      </div>
-      <div>
-        <label>Beschreibung</label>
-        <textarea id="beschreibung" class="min-h-140" placeholder="z.B. Verstärkte Live-Band" tabindex="6"></textarea>
       </div>
     </div>
 
@@ -452,7 +563,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         </div>
         <div>
           <label>Name</label>
-          <input id="berichtName" tabindex="7" />
+          <input id="berichtName" />
         </div>
       </div>
       <label>Unterschrift (Platzhalter)</label>
@@ -465,42 +576,22 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         <div class="small" id="paPresetInfo"></div>
       </div>
       <div id="paContainer"></div>
+      <div class="pa-extra-block">
+        <label>Sonstiges / zusätzliche Lautsprecher</label>
+        <textarea id="paZusatz" rows="2" placeholder="Zusätzliche Lautsprecher / Sonderaufbau (bei eigener Location die PA beschreiben)"></textarea>
+      </div>
       <label>Aufstellung / Anordnung der Beschallungsanlage</label>
       <textarea id="paAnordnung" placeholder="Positionen, Ausrichtung, Delays, Subs und weitere relevante Anlagenkomponenten"></textarea>
-      <label>Ist die PA-Konfiguration für diese Veranstaltung geprüft?</label>
-      <select id="paBestaetigt">
-        <option value="">Nein – ein Preset ist kein Messnachweis</option>
-        <option value="ja">Ja, vor Ort mit dem tatsächlichen Aufbau abgeglichen</option>
-      </select>
-      <label>Wurden Messbedingungen oder Abweichungen dokumentiert?</label>
-      <select id="abweichungVorhanden">
-        <option value="">Bitte auswählen</option>
-        <option value="nein">Keine dokumentierten Abweichungen</option>
-        <option value="ja">Ja – Beschreibung erforderlich</option>
-      </select>
       <label>Abweichungen, besondere Ereignisse und Begründung (falls vorhanden)</label>
       <textarea id="abweichungBeschreibung" placeholder="Nur wenn zutreffend; zeitlich und fachlich nachvollziehbar"></textarea>
-      <label>Altprojekt: Vorbelegte Angaben aus früherer Version überprüft?</label>
-      <select id="altBestaetigt">
-        <option value="">Nicht geprüft</option>
-        <option value="ja">Ja, sämtliche übernommenen Angaben geprüft</option>
-      </select>
       <div class="compact-row mt-8">
-        <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
-        <button class="secondary" id="btnClearPA" type="button">Reset auf Location-Preset</button>
+        <button class="secondary" id="btnClearPA" type="button">Auswahl zurücksetzen</button>
       </div>
     </div>
     <div class="section" data-workflow-section="corrections">
       <h3>Ersatzmessort und Korrekturbestimmung</h3>
-      <div class="small mt-8">Bei Ersatzmessorten bedingt erforderlich. k1/k2 aus dem XL3-Log
-      werden unverändert übernommen; diese Angaben verändern die Berechnungsengine nicht.
-      Keine doppelte Anwendung der Korrekturwerte.</div>
       <label>Beschreibung Ersatzmessort</label>
       <input id="ersatzMessort" placeholder="Konkrete Messposition und Bezug zum Publikum" />
-      <label>Bestimmung / Herkunft k1 (LAeq)</label>
-      <textarea id="k1Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
-      <label>Bestimmung / Herkunft k2 (LCpeak)</label>
-      <textarea id="k2Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
     </div>
   </div>
 </div>
@@ -516,8 +607,56 @@ let logLoaded = false;
 let importModel = null; // Versioned Phase-2 model; no normative judgement.
 let phase3Evaluation = null; // Recomputed on import and recovery; never a DIN certificate.
 let workflowController = null; // Phase 6 view controller; never changes normative results.
+let paController = null; // Interactive PA diagram; source for selected speaker groups.
 let lastImportAttempt = null; // Ephemeral rejected-import feedback; never overwrites existing data.
 let protocolOrigins = { location:"preset-unverified", paItems:"preset-unverified" }; // Source metadata survives save/reload.
+// Editable, explicitly unverified defaults from "Manuelle Eingaben prüfen".
+const DEFAULT_VENUE_ADDRESS = 'Huyssenallee 53, 45128 Essen';
+const DEFAULT_ORGANIZER = [
+  'Theater und Philharmonie Essen GmbH',
+  'Opernplatz 10',
+  '45128 Essen',
+  'Geschäftsführer: Fritz Frömming',
+  'Intendanz Philharmonie Essen: Babette Nierenz'
+].join('\n');
+const MANUAL_ENTRY_PRESETS = Object.freeze({
+  organisator: DEFAULT_ORGANIZER,
+  ortAdresse: DEFAULT_VENUE_ADDRESS,
+  umwelt: 'Indoor, 21°C',
+  kalibratorModell: 'CENTER 326',
+  kalibratorSN: '140408454',
+  berichtsort: 'Essen'
+});
+function todayLocalDate(){
+  const now=new Date();
+  return [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),
+    String(now.getDate()).padStart(2,'0')].join('-');
+}
+function applyNewFormDefaults(){
+  for(const [id,value] of Object.entries(MANUAL_ENTRY_PRESETS)){
+    if(!getVal(id).trim() && (id!=='ortAdresse' || getVal('location')!=='Eigene Angabe')){
+      setVal(id,value);
+      protocolOrigins[id]='preset-unverified';
+    }
+  }
+  if(!getVal('berichtDatum')){
+    setVal('berichtDatum',todayLocalDate());
+    protocolOrigins.berichtDatum='auto-date';
+  }
+}
+function reconcileVenueAddress(){
+  if(getVal('location')==='Eigene Angabe'){
+    if(getVal('ortAdresse')===DEFAULT_VENUE_ADDRESS){
+      setVal('ortAdresse','');
+      delete protocolOrigins.ortAdresse;
+    }
+    return;
+  }
+  if(!getVal('ortAdresse').trim()){
+    setVal('ortAdresse',DEFAULT_VENUE_ADDRESS);
+    protocolOrigins.ortAdresse='preset-unverified';
+  }
+}
 let reservedPdfPreviewWindow = null;
 
 const LIMIT_LAEQ_30 = 99;
@@ -528,12 +667,16 @@ const RECOVERY_STORAGE_KEY = 'pegelTool_recovery_v1';
 const RECOVERY_DEBOUNCE_MS = 700;
 const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD_IDS : [
   // Legacy harness compatibility when the external protocol module is not loaded.
-  'eventName','datumMessung','location','umwelt','messungVon','messposition','lautestePosition',
+  'eventName','datumMessung','location','umwelt','messungVon','messposition','messort',
   'foh','organisator','beschreibung','berichtDatum','berichtName','kalibratorModell','kalibratorSN',
   'berichtsort'
 ];
 let recoverySaveTimer = null;
 let recoveryFallbackNotified = false;
+const RETIRED_FORM_IDS = ['ortBestaetigt','veranstaltungsBeginn','veranstaltungsEnde',
+  'messortLAeq','messortLCpeak','kalVorZeit','kalVorWert','kalNachZeit','kalNachWert',
+  'paBestaetigt','abweichungVorhanden','altBestaetigt','k1Ermittlung','k2Ermittlung'];
+let legacyProtocol = {};
 
 const CHART_THEMES = {
   dark: {
@@ -563,30 +706,6 @@ const CHART_THEMES = {
 };
 let currentChartTheme = 'dark';
 
-const PA_DEFAULT_QTY = {
-  "L-ACOUSTIC KARA II": 24,
-  "L-ACOUSTIC KS21": 4,
-  "L-ACOUSTIC A10 Wide": 2,
-  "L-ACOUSTIC A10 Focus": 2,
-  "L-ACOUSTIC 5XT": 8
-};
-
-const PA_PRESETS = {
-  "Philharmonie Essen, Alfried-Krupp-Saal": [
-    {type:"L-ACOUSTIC KARA II", qty:24},
-    {type:"L-ACOUSTIC KS21", qty:4},
-    {type:"L-ACOUSTIC A10 Wide", qty:2},
-    {type:"L-ACOUSTIC A10 Focus", qty:2},
-    {type:"L-ACOUSTIC 5XT", qty:8}
-  ],
-  "Philharmonie Essen, Nationalbank-Pavillon": [
-    {type:"L-ACOUSTIC A10 Focus", qty:4},
-    {type:"L-ACOUSTIC A10 Wide", qty:2},
-    {type:"L-ACOUSTIC KS21", qty:4},
-    {type:"L-ACOUSTIC 5XT", qty:6}
-  ]
-};
-
 function makeEmptyHeader(){
   return {
     deviceModel:"", deviceSN:"", firmware:"",
@@ -608,8 +727,16 @@ let summary = makeEmptySummary();
 
 function el(id){ return document.getElementById(id); }
 function setText(id, t){ if(el(id)) el(id).textContent = String(t ?? ""); }
-function getVal(id){ return (el(id)?.value ?? "").toString(); }
-function setVal(id, v){ if(el(id)) el(id).value = (v ?? "").toString(); }
+function getVal(id){
+  const field=el(id);
+  return field?.type==='checkbox' ? (field.checked?'ja':'') : (field?.value ?? '').toString();
+}
+function setVal(id,v){
+  const field=el(id);
+  if(!field)return;
+  if(field.type==='checkbox')field.checked=v===true || v==='ja';
+  else field.value=(v ?? '').toString();
+}
 
 function getFormState(){
   const out = {};
@@ -622,49 +749,31 @@ function setFormState(form){
   for(const id of FORM_FIELD_IDS){ if(Object.prototype.hasOwnProperty.call(form, id)) setVal(id, form[id]); }
 }
 
-function collectPAItems(){
-  const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
-  return rows.map(r=>{
-    const sel = r.querySelector('select');
-    const custom = r.querySelector('input[placeholder="Eigener Typ"]');
-    const num = r.querySelector('input[type="number"]');
-    const type = sel ? sel.value : '';
-    const customType = custom ? custom.value : '';
-    const qtyRaw = num ? String(num.value || '').trim() : '';
-    const qty = qtyRaw ? Number(qtyRaw) : null;
-    if(!type && !customType && (qtyRaw === '')) return null;
-    return { type, customType, qty: (qty!=null && Number.isFinite(qty)) ? qty : null };
-  }).filter(Boolean);
+// Older component lists are retained as readable PA documentation.
+function legacyPaText(items){
+  return (Array.isArray(items)?items:[]).map(it=>{
+    const type=it?.type==='custom' ? it.customType : (it?.customType || it?.type);
+    if(!type)return '';
+    return (Number.isFinite(Number(it?.qty)) && Number(it.qty)>0 ? Number(it.qty)+' × ' : '')+type;
+  }).filter(Boolean).join('; ');
 }
-
-function restorePAItems(items){
-  const container = el('paContainer');
-  if(!container) return;
-  container.innerHTML = '';
-
-  if(!Array.isArray(items) || !items.length){
-    applyLocationPreset(getVal('location'));
-    return;
+function collectPAItems(){
+  return paController?.getItems() || [];
+}
+function restorePAItems(items,savedSelection,savedExtras){
+  if(paController){
+    paController.setLocation(getVal('location'));
+    // Legacy projects must not acquire selected PA groups by accident.
+    paController.setState(savedSelection && [2,3].includes(savedSelection.schemaVersion)
+      ? savedSelection : {schemaVersion:3,location:getVal('location'),selected:[],variants:{},quantities:{}});
   }
-
-  for(const it of items){
-    const row = paRow('', '');
-    const sel = row.querySelector('select');
-    const custom = row.querySelector('input[placeholder="Eigener Typ"]');
-    const num = row.querySelector('input[type="number"]');
-    const isCustom = it.type === 'custom' || (it.customType && it.type !== 'custom');
-    if(sel){
-      sel.value = isCustom ? 'custom' : (it.type || '');
-      try{ sel.dispatchEvent(new Event('change')); }catch(e){}
-    }
-    if(custom && isCustom){
-      custom.value = it.customType || '';
-      custom.style.display = 'block';
-    }
-    if(num && it.qty!=null && Number.isFinite(Number(it.qty))) num.value = Number(it.qty);
-    container.appendChild(row);
+  const legacy=!savedSelection || ![2,3].includes(savedSelection.schemaVersion);
+  const extraText=legacyPaText(legacy?items:savedExtras);
+  if(extraText){
+    const existing=getVal('paZusatz').trim();
+    if(!existing.includes(extraText))setVal('paZusatz',[existing,extraText].filter(Boolean).join('\n'));
   }
-  setText('paPresetInfo', 'Preset: gespeichert');
+  setText('paPresetInfo',legacy?'Alte PA-Komponenten als Sonderaufbau übernommen':'Gespeicherte Auswahl geladen');
 }
 
 function buildStateObject(options = {}){
@@ -685,6 +794,9 @@ function buildStateObject(options = {}){
     form: getFormState(),
     protocolMeta: { schemaVersion: 1, origins: {...protocolOrigins} },
     paItems: collectPAItems(),
+    paSelection: paController?.getState() || null,
+    paExtras: [], // Alte Exportstruktur, neue Zusätze stehen im Freitextfeld.
+    legacyProtocol: {...legacyProtocol},
     logText: includeLogText ? lastLogText : '',
     logFileName: lastLogFileName || ''
   };
@@ -698,6 +810,12 @@ function normalizeState(raw){
   const normalizedForm = {};
   const srcForm = (raw.form && typeof raw.form === 'object') ? raw.form : {};
   for(const id of FORM_FIELD_IDS){ normalizedForm[id] = (srcForm[id] ?? '').toString(); }
+  const preserved=raw.legacyProtocol && typeof raw.legacyProtocol==='object' ? {...raw.legacyProtocol} : {};
+  for(const id of RETIRED_FORM_IDS){
+    if(srcForm[id] !== undefined && preserved[id] === undefined) preserved[id]=String(srcForm[id]);
+  }
+  if(!normalizedForm.messort && preserved.messortLAeq &&
+      preserved.messortLAeq===preserved.messortLCpeak) normalizedForm.messort=preserved.messortLAeq;
   const storedOrigins = raw.protocolMeta && raw.protocolMeta.schemaVersion === 1
     && raw.protocolMeta.origins && typeof raw.protocolMeta.origins === 'object'
     ? raw.protocolMeta.origins : null;
@@ -741,6 +859,14 @@ function normalizeState(raw){
     form: normalizedForm,
     protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
+    legacyProtocol:preserved,
+    paSelection: raw.paSelection && [1,2,3].includes(raw.paSelection.schemaVersion)
+      ? raw.paSelection : null,
+    paExtras: Array.isArray(raw.paExtras)
+      ? raw.paExtras.map(it=>({
+        type:String(it?.type||''),customType:String(it?.customType||''),
+        qty:it?.qty!=null && Number.isFinite(Number(it.qty)) ? Number(it.qty) : null
+      })) : [],
     logText: String(raw.logText || ''),
     logFileName: String(raw.logFileName || ''),
     logLoaded: !!raw.logLoaded
@@ -821,7 +947,8 @@ function applySavedState(rawState, options = {}){
   if(!state) throw new Error('Ungueltiger Stand: keine gueltigen Zustandsdaten gefunden.');
 
   setFormState(state.form);
-  restorePAItems(state.paItems);
+  legacyProtocol = state.legacyProtocol || {};
+  restorePAItems(state.paItems,state.paSelection,state.paExtras);
   protocolOrigins = state.protocolMeta.origins;
   lastImportAttempt = null;
 
@@ -1103,6 +1230,9 @@ function getProtocolReportData(){
     form:getFormState(),
     origins:protocolOrigins,
     paItems:collectPAItems(),
+    legacyProtocol,
+    paGroups:paController?.getSummary() || [],
+    paSelectionIssues:paController?.getUnresolved() || [],
     importModel:importModel,
     evaluation:phase3Evaluation
   });
@@ -1123,10 +1253,9 @@ function markRequiredFields(){
   const report = getProtocolReportData();
   if(!report) return;
   const review = report.review;
-  setText('protocolStatus', review.status + ' – als „vollständig geprüft“ weiterhin gesperrt.');
+  setText('protocolStatus', review.status);
   setText('protocolEvidenceStatus', 'Erfassungsfelder offen: ' + review.formIssues.length +
-    ' · Mess-/Prüfnachweise offen: ' + review.evidenceIssues.length +
-    ' · DIN-Normenabgleich ausstehend.');
+    ' · Mess-/Prüfnachweise offen: ' + review.evidenceIssues.length + '.');
   for(const field of review.fields){
     const input = el(field.id);
     if(!input) continue;
@@ -1688,9 +1817,18 @@ function updateComplianceStatus(){
     dot.classList.add('status-empty');
     dot.title = 'Keine Messung geladen';
   } else {
-    // There is NO authorised DIN pass/fail engine yet, including for legacy projects.
-    dot.classList.add('status-warn');
-    dot.title = 'DIN-Freigabe ausstehend: Normtext, Nachweise und PDF müssen noch geprüft werden';
+    const record=getProtocolReportData();
+    const assessment=phase3Evaluation?.overall?.measurementStatus || 'not-assessable';
+    if(assessment === 'within-limits'){
+      dot.classList.add('status-ok');
+      dot.title='Keine Überschreitung in auswertbaren Messdaten festgestellt';
+    } else if(assessment === 'exceeded'){
+      dot.classList.add('status-bad');
+      dot.title='Grenzwert überschritten';
+    } else {
+      dot.classList.add('status-warn');
+      dot.title=assessment==='partial' ? 'Nur teilweise auswertbare Messgrößen' : 'Keine belastbare Messwertbeurteilung';
+    }
   }
 }
 
@@ -1822,11 +1960,16 @@ function phase3Db(value){
 }
 function phase3AppendRow(body, values){
   const tr = document.createElement('tr');
-  for(const value of values){
+  const summaryTable=body.closest('table')?.id==='pegelTabelle';
+  values.forEach((value,index)=>{
     const td = document.createElement('td');
     td.textContent = String(value);
+    if(summaryTable && index===4){
+      if(value==='Nicht überschritten')td.classList.add('status-ok');
+      else if(value==='Überschritten')td.classList.add('status-bad');
+    }
     tr.appendChild(td);
-  }
+  });
   body.appendChild(tr);
 }
 function renderPhase3Evaluation(result){
@@ -1834,7 +1977,7 @@ function renderPhase3Evaluation(result){
   if(body) body.innerHTML = '';
   if(!result){
     setText('phase3Info', 'Berechnungsmodul nicht geladen. Keine Bewertung möglich.');
-    setText('phase3Warning', 'DIN-Prüfung gesperrt.');
+    setText('phase3Warning', 'Ohne Berechnungsmodul keine Auswertung.');
     return;
   }
   if(body){
@@ -1842,20 +1985,24 @@ function renderPhase3Evaluation(result){
       phase3AppendRow(body, [
         block.start.slice(0,16).replace('T',' ') + ' – ' + block.end.slice(11,16),
         block.coveredSeconds.toFixed(0) + ' / ' + block.expectedSeconds + ' s',
-        phase3Db(block.laeq30Db), phase3Db(block.lcpeakMaxDb),
-        block.dataQuality === 'complete' ? 'Messzeit vollständig*' :
-          block.dataQuality === 'conflict' ? 'Zeitkonflikt' : 'Unvollständig'
+        phase3Db(block.laeq30Db ?? block.laeqPartialDb ?? block.laeqObservedDb),
+        phase3Db(block.lcpeakObservedDb),
+        block.dataCoverageState === 'full' ?
+          'Vollständig · LAeq '+(block.comparisonLAeq==='above'?'über 99':'bis 99')+
+          ' · LCpeak '+(block.comparisonLCpeakObserved==='above'?'über 135':'bis 135') :
+        block.dataCoverageState === 'partial-edge' ?
+          'Teilzeit: '+Math.floor(block.coveredSeconds/60)+':'+String(Math.round(block.coveredSeconds%60)).padStart(2,'0')+' min' :
+        block.dataCoverageState === 'conflict' ? 'Zeitkonflikt' : 'Messlücke / Teilwerte'
       ]);
     }
   }
   setText('phase3Info', result.blocks.length + ' feste Halbstundenfenster; ' +
-    result.overall.completeBlocks + ' technisch vollständige Blöcke. ' +
-    'Zeitstempel vorläufig als Intervallende interpretiert. Kein DIN-Prüfurteil.');
+    result.overall.completeBlocks + ' vollständig erfasste Blöcke. ' +
+    'Teilzeit-LAeq wird getrennt vom LAeq,30min betrachtet. Zeitstempel als Intervallende ausgewertet.');
   const codes = [...new Set(result.quality.warnings.map(w => w.code)
     .concat(result.blocks.flatMap(b => b.warnings.map(w => w.code))))];
-  setText('phase3Warning', '* Vollständig bedeutet nur: Datenabdeckung vorhanden, ' +
-    'nicht DIN-konform. Offene Nachweise: ' + (codes.slice(0, 8).join(', ') || 'Normenfreigabe') +
-    (codes.length > 8 ? ' …' : '') + '. Das PDF bleibt ausdrücklich vorläufig.');
+  setText('phase3Warning', codes.length ?
+    'Messdatenhinweise: ' + codes.slice(0, 8).join(', ') + (codes.length > 8 ? ' …' : '') : '');
 }
 function calculateAndRender(){
   const tbody = document.querySelector('#pegelTabelle tbody');
@@ -1864,15 +2011,32 @@ function calculateAndRender(){
   if(importModel){
     phase3Evaluation = window.PegelToolEvaluation
       ? window.PegelToolEvaluation.evaluateModel(importModel,
-        {timestampAnchor:'end', timestampAnchorEvidence:'assumed'})
+        {timestampAnchor:'end', timestampAnchorEvidence:'operator-approved'})
       : null;
     if(phase3Evaluation){
       importModel.timeBlocks = phase3Evaluation.blocks;
       const overall = phase3Evaluation.overall;
-      phase3AppendRow(tbody, ['LAeq 30 min (feste Blöcke)', phase3Db(overall.laeqMaxDb),
-        '—','99 dB(A)*','Nicht beurteilbar']);
-      phase3AppendRow(tbody, ['LCpeak (Blockmaximum)', phase3Db(overall.lcpeakMaxDb),
-        '—','135 dB(C)*','Nicht beurteilbar']);
+      const labelFor=comparison=>comparison==='above' ? 'Überschritten' :
+        comparison==='at-or-below' ? 'Nicht überschritten' : 'Nicht bestimmbar';
+      const laeqCount=overall.laeqExceededCount || 0;
+      const peakCount=overall.lcpeakExceededCount || 0;
+      phase3AppendRow(tbody, ['LAeq,30min (vollständige Blöcke)', phase3Db(overall.laeqMaxDb),
+        overall.completeBlocks ? laeqCount+' von '+overall.completeBlocks+' Beurteilungsblöcken' : 'Keine vollständigen 30-Minuten-Blöcke',
+        '99 dB(A)',labelFor(overall.comparisonLAeq)]);
+      phase3AppendRow(tbody, ['LCpeak (alle erfassten Intervalle)', phase3Db(overall.lcpeakMaxDb),
+        peakCount+' betroffene Logintervalle',
+        '135 dB(C)',labelFor(overall.comparisonLCpeak)]);
+      const peaks=overall.lcpeakExceededIntervals || [];
+      el('peakEventDetails').style.display=peaks.length ? '' : 'none';
+      setText('peakEventSummary',peaks.length+' LCpeak-Logintervalle über 135 dB(C) – Zeitpunkte anzeigen');
+      const eventList=el('peakEventList');
+      eventList.textContent=peaks.slice(0,100).map(p=>p.start.replace('T',' ')+'–'+p.end.slice(11)+' ('+phase3Db(p.valueDb)+')').join(' · ')+
+        (peaks.length>100?' · … weitere '+(peaks.length-100)+' Intervalle im Messbericht':'');
+      const laeqPeriods=(overall.laeqExceededBlocks || []).map(b=>b.start.replace('T',' ').slice(0,16)+'–'+b.end.slice(11,16));
+      setText('measurementCoverageInfo',
+        laeqPeriods.length?'LAeq-Überschreitungen: '+laeqPeriods.join(', '):'Keine LAeq,30min-Überschreitung in vollständigen Blöcken. '+
+          (overall.completeBlocks===0?'Ein vollständiger 30-Minuten-Block liegt nicht vor.':'')+
+          (overall.hasMeasurementGaps?' Messlücken vorhanden; keine Aussage über ungemessene Zeit.':''));
     }
     renderPhase3Evaluation(phase3Evaluation);
     setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
@@ -1880,6 +2044,8 @@ function calculateAndRender(){
     // Legacy state without verifiable origin: show only informal observations.
     phase3Evaluation = null;
     renderPhase3Evaluation(null);
+    setText('measurementCoverageInfo','Keine eindeutig zugeordnete technische Blockbewertung.');
+    el('peakEventDetails').style.display='none';
     const maxFinite = items => {
       const valid = items.filter(x=>typeof x==='number' && Number.isFinite(x));
       return valid.length ? Math.max(...valid) : null;
@@ -1906,104 +2072,35 @@ function calculateAndRender(){
   markRequiredFields();
 }
 
-function paRow(type="", qty=""){
-  const row = document.createElement('div');
-  row.className = 'compact-row';
-
-  const sel = document.createElement('select');
-  sel.innerHTML = `
-    <option value="" ${type===""?'selected':''}>Typ wählen…</option>
-    <option value="L-ACOUSTIC KARA II">L-ACOUSTIC KARA II</option>
-    <option value="L-ACOUSTIC KS21">L-ACOUSTIC KS21</option>
-    <option value="L-ACOUSTIC A10 Wide">L-ACOUSTIC A10 Wide</option>
-    <option value="L-ACOUSTIC A10 Focus">L-ACOUSTIC A10 Focus</option>
-    <option value="L-ACOUSTIC 5XT">L-ACOUSTIC 5XT</option>
-    <option value="custom">Eigener Typ</option>
-  `;
-  if(type && type !== 'custom') sel.value = type;
-
-  const custom = document.createElement('input');
-  custom.placeholder = 'Eigener Typ';
-  custom.style.display = 'none';
-
-  const num = document.createElement('input');
-  num.type = 'number';
-  num.placeholder = 'Anzahl';
-  num.value = qty;
-
-  const btnDel = document.createElement('button');
-  btnDel.type = 'button';
-  btnDel.className = 'secondary';
-  btnDel.textContent = '✕';
-  btnDel.style.padding = '10px 12px';
-  btnDel.addEventListener('click', ()=>{
-    row.remove();
-    protocolOrigins.paItems='manual';
-    setVal('paBestaetigt','');
-    markRequiredFields();
-    scheduleRecoverySave();
-  });
-
-  sel.addEventListener('change', ()=>{
-    custom.style.display = (sel.value === 'custom') ? 'block' : 'none';
-    if(sel.value !== 'custom') custom.value = '';
-    const t = (sel.value === 'custom') ? '' : sel.value;
-    if(t && !String(num.value||'').trim() && PA_DEFAULT_QTY[t] != null){
-      num.value = PA_DEFAULT_QTY[t];
-    }
-  });
-
-  row.appendChild(sel);
-  row.appendChild(custom);
-  row.appendChild(num);
-  row.appendChild(btnDel);
-
-  return row;
-}
-
 function applyLocationPreset(loc){
-  const preset = PA_PRESETS[loc];
-  const container = el('paContainer');
-  container.innerHTML = '';
-  if(preset && preset.length){
-    for(const it of preset){ container.appendChild(paRow(it.type, it.qty)); }
-    setText('paPresetInfo', `Preset aktiv: ${loc}`);
-  } else {
-    container.appendChild(paRow('', ''));
-    setText('paPresetInfo', 'Kein gültiger Preset-Nachweis – PA manuell erfassen');
+  const container=el('paContainer');
+  if(window.PegelToolPA){
+    if(!paController)paController=window.PegelToolPA.mount({
+      root:container,location:loc,
+      onChange:()=>{
+        protocolOrigins.paItems='manual';
+        markRequiredFields();scheduleRecoverySave();
+      }
+    });
+    else paController.setLocation(loc);
+    setText('paPresetInfo',window.PegelToolPA.PRESETS[loc]
+      ? 'Standardaufbau vorausgewählt – Auswahl bei Bedarf ändern'
+      : 'PA für eigene Location im Freitextfeld dokumentieren');
+  }else{
+    container.innerHTML='<p class="small">Saalübersicht nicht verfügbar.</p>';
+    setText('paPresetInfo','Sonderaufbau manuell dokumentieren');
   }
 }
-
-el('btnAddPA').addEventListener('click', ()=> {
-  el('paContainer').appendChild(paRow('', ''));
+el('btnClearPA').addEventListener('click',()=>{
+  applyLocationPreset(getVal('location'));
   protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
-  markRequiredFields();
-  scheduleRecoverySave();
+  markRequiredFields();scheduleRecoverySave();
 });
-el('btnClearPA').addEventListener('click', ()=> {
+el('location').addEventListener('change',()=>{
+  reconcileVenueAddress();
   applyLocationPreset(getVal('location'));
   protocolOrigins.paItems='preset-unverified';
-  setVal('paBestaetigt','');
-  markRequiredFields();
-  scheduleRecoverySave();
-});
-el('location').addEventListener('change', ()=> {
-  applyLocationPreset(getVal('location'));
-  protocolOrigins.paItems='preset-unverified';
-  markRequiredFields();
-  scheduleRecoverySave();
-});
-
-el('paContainer').addEventListener('input', ()=>{
-  protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
-  markRequiredFields(); scheduleRecoverySave();
-});
-el('paContainer').addEventListener('change', ()=>{
-  protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
-  markRequiredFields(); scheduleRecoverySave();
+  markRequiredFields();scheduleRecoverySave();
 });
 for(const id of FORM_FIELD_IDS){
   const field = el(id);
@@ -2011,8 +2108,6 @@ for(const id of FORM_FIELD_IDS){
   const changed = ()=>{
     protocolOrigins[id] = id === 'location' ? 'preset-unverified' : 'manual';
     if(id === 'location'){
-      setVal('ortBestaetigt','');
-      setVal('paBestaetigt','');
       protocolOrigins.paItems='preset-unverified';
     }
     markRequiredFields();
@@ -2023,19 +2118,10 @@ for(const id of FORM_FIELD_IDS){
 }
 
 function getPASetupInline(){
-  const rows = Array.from(document.querySelectorAll('#paContainer .compact-row'));
-  const items = [];
-  for(const r of rows){
-    const sel = r.querySelector('select');
-    const custom = r.querySelector('input[placeholder="Eigener Typ"]');
-    const num = r.querySelector('input[type="number"]');
-    const type = sel.value === 'custom' ? (custom.value || 'Eigener Typ') : (sel.value || '');
-    const qtyRaw = String(num.value || '').trim();
-    const qty = qtyRaw ? Number(qtyRaw) : null;
-    if(!type) continue;
-    items.push({ type, qty: (qty!=null && Number.isFinite(qty)) ? qty : null });
-  }
-  return items.map(x => x.qty!=null ? `${x.qty}x ${x.type}` : `${x.type}`).join(', ');
+  return [collectPAItems().map(it=>{
+    const type=it.type==='custom'?it.customType:it.type;
+    return it.qty!=null ? it.qty+'x '+type : type;
+  }).join(', '),getVal('paZusatz')].filter(Boolean).join('; ');
 }
 
 function wrap(doc, text, maxWidth){ return doc.splitTextToSize(String(text ?? ''), maxWidth); }
@@ -2077,7 +2163,7 @@ function setPdfButtonsDisabled(disabled){
   button.disabled=!!disabled || !window.PegelToolReport || !window.PegelToolReportPdf || !window.jspdf?.jsPDF;
   button.title=button.disabled
     ? 'PDF nur mit importiertem Log und geladenem Berichtsmodul verfügbar'
-    : 'Vorläufigen technischen Bericht als PDF herunterladen (keine DIN-Freigabe)';
+    : 'Messprotokoll als PDF herunterladen';
 }
 
 // Ein einheitlicher PDF-Pfad: keine Template-Feldzuordnung, kein Legacy-Status,
@@ -2091,7 +2177,7 @@ async function generatePDF(){
   const backend=window.PegelToolReportPdf;
   if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
   const documentPdf=backend.create(report,JsPdf);
-  const filename=sanitizeBaseName()+' - vorlaeufig.pdf';
+  const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
   const blob=documentPdf.output('blob');
   triggerDownload(blob,filename,false);
   // Die Vorschau zeigt exakt dieselben PDF-Bytes wie der Download.
@@ -2102,7 +2188,7 @@ async function generatePDF(){
     catch(err){console.warn('PDF-Vorschau nicht möglich',err);}
     setTimeout(()=>URL.revokeObjectURL(url),120000);
   }
-  setText('parseInfo','PDF exportiert: vorläufiger Bericht ohne DIN-Freigabe. Alle Daten- und Prüfhinweise enthalten.');
+  setText('parseInfo','Messprotokoll als PDF exportiert.');
 }
 
 function exportHTML(){
@@ -2177,6 +2263,13 @@ document.querySelectorAll('.header-menu').forEach(menu => {
   });
 });
 
+// The complete source log is mounted only when its details panel is opened.
+el('fullMeasurementDetails').addEventListener('toggle',event=>{
+  const preview=el('fullMeasurementData');
+  if(!preview)return;
+  preview.textContent=event.target.open ? (lastLogText || 'Keine Originalmessdaten geladen.') : '';
+});
+
 // wire import button to hidden file input
 el('btnPdfTemplate').addEventListener('click', async ()=>{
   reservePdfPreviewWindow();
@@ -2211,7 +2304,7 @@ el('fileInput').addEventListener('change', (e)=>{
     setText('chipLog', 'Log: Datei zu groß ('+f.name+')');
     setText('parseInfo', 'Logdatei über 8 MiB – nicht importiert.');
     lastImportAttempt={errors:[{code:'TOO_LARGE',message:'Logdatei über 8 MiB – nicht importiert.'}]};
-    if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+    if(workflowController) workflowController.refresh();
     e.target.value = '';
     return;
   }
@@ -2231,7 +2324,7 @@ el('fileInput').addEventListener('change', (e)=>{
           setDot('dotLog','warn');
           setText('chipLog','Log: vorherige Messung geladen (neuer Import abgewiesen)');
         }
-        if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+        if(workflowController) workflowController.refresh();
         return;
       }
       const compat = window.PegelToolImport.toLegacy(result.model);
@@ -2252,7 +2345,7 @@ el('fileInput').addEventListener('change', (e)=>{
       markRequiredFields();
       calculateAndRender();
       showImportQuality(importModel);
-      if(workflowController) workflowController.go('quality');
+      if(workflowController) workflowController.refresh();
       scheduleRecoverySave();
     }catch(err){
       console.error(err);
@@ -2260,7 +2353,7 @@ el('fileInput').addEventListener('change', (e)=>{
       setText('chipLog','Log: Importfehler');
       setText('parseInfo','Import fehlgeschlagen: '+String(err?.message || err));
       lastImportAttempt={errors:[{code:'IMPORT_EXCEPTION',message:String(err?.message || err)}]};
-      if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+      if(workflowController) workflowController.refresh();
     }finally{
       if(e.target) e.target.value = '';
     }
@@ -2269,7 +2362,8 @@ el('fileInput').addEventListener('change', (e)=>{
 });
 
 (function init(){
-  // No sample date or instrument/organiser defaults may become accidental evidence.
+  // The defaults are editable presets, not proof of a measurement or on-site checks.
+  applyNewFormDefaults();
   applyLocationPreset(getVal('location') || 'Philharmonie Essen, Alfried-Krupp-Saal');
   setPdfButtonsDisabled(true);
   markRequiredFields();

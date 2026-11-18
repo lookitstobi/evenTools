@@ -28,7 +28,7 @@
       kind: 'nti-xl3-broadband',
       source: {fileName: String(fileName || ''), timeBasis: 'local-wall-clock', rawTextStoredSeparately: true},
       event: {name: null, venue: null, date: null},
-      measurement: {start: null, end: null, intervalText: null, intervalSeconds: null, timeZone: null},
+      measurement: {start: null, end: null, intervalText: null, intervalSeconds: null, timeZone: null, ksetDate: null},
       instrument: {deviceModel: null, serial: null, firmware: null, microphone: {type: null, serial: null, calibrationInfo: null, sensitivity: null}},
       places: {measurement: null, assessmentLAeq: null, assessmentLCpeak: null},
       calibration: {before: null, after: null, device: null, status: 'not-documented'},
@@ -137,6 +137,7 @@
     }
     model.instrument.microphone.sensitivity = matchingValue('Mic Sensitivity')?.value || null;
     model.measurement.timeZone = matchingValue('Time Zone')?.value || null;
+    model.measurement.ksetDate = matchingValue('kset date')?.value || null;
     const headerStart = matchingValue('Start');
     const headerEnd = matchingValue('End');
     model.measurement.start = headerStart ? headerStart.value.replace(/,/g, ' ').trim() : null;
@@ -300,7 +301,7 @@
       micCal: i.microphone.calibrationInfo || '', micSens: i.microphone.sensitivity || '',
       k1: model.corrections.k1.valueDb == null ? '' : String(model.corrections.k1.valueDb),
       k2: model.corrections.k2.valueDb == null ? '' : String(model.corrections.k2.valueDb),
-      kset: '', start: m.start || '', end: m.end || '',
+      kset: m.ksetDate || '', start: m.start || '', end: m.end || '',
       logIntervalText: m.intervalText || '', logIntervalSec: m.intervalSeconds
     };
     const samples = model.samples.map(s => ({
