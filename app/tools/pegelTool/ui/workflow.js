@@ -114,7 +114,11 @@
     const short=make('section','workflow-shortinfo');
     const shortTitle=make('h3','workflow-shortinfo-title','Aus dem XL3-Log übernommen');
     const shortValues=make('div','workflow-shortinfo-values');
-    const shortFields=[['Messbeginn','start'],['Messende','end'],['k1','k1'],['k2','k2']];
+    const shortFields=[
+      ['Messbeginn','start'],['Messende','end'],
+      ['k1','k1'],['k2','k2'],
+      ['LAeq,30min (Maximum)','laeq'],['LCpeak (Maximum)','lcpeak']
+    ];
     const shortNodes={};
     for(const pair of shortFields){
       const item=make('div','workflow-shortinfo-item');
@@ -126,10 +130,13 @@
     short.append(shortTitle,shortValues);
     shell.append(overview,short);
     doc.body.insertBefore(shell,main);
+    // Charts remain in #main so saved standalone HTML can rehydrate them.
+    // Move the existing chart node, never clone its canvases or their state.
+    main.appendChild(sections.charts);
     const groups=[
       {id:'setup',title:'01 · Veranstaltung und Personal',sections:['eventAndEvidence','description']},
       {id:'quality',title:'02 · Beschallung und Messbedingungen',sections:['pa','corrections']},
-      {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','charts','log']},
+      {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','log']},
       {id:'protocol',title:'04 · Prüfung und Protokoll',sections:['review','preview']}
     ];
     const groupsById={};
@@ -196,6 +203,13 @@
         ? x.valueDb.toFixed(1).replace('.',',')+' dB' : '—';
       shortNodes.k1.textContent=fmtDb(corrections.k1);
       shortNodes.k2.textContent=fmtDb(corrections.k2);
+      // Use fixed 30-minute interval assessments, not the informational
+      // rolling traces and not a zero fallback when no block was assessed.
+      const overall=snapshot.evaluation?.overall || {};
+      const fmtLevel=(value,unit)=>Number.isFinite(value)
+        ? value.toFixed(1).replace('.',',')+' '+unit : '—';
+      shortNodes.laeq.textContent=fmtLevel(overall.laeqMaxDb,'dB(A)');
+      shortNodes.lcpeak.textContent=fmtLevel(overall.lcpeakMaxDb,'dB(C)');
       status.dataset.state=summary.status==='Noch nicht geprüft'?'empty':
         summary.status==='Nicht beurteilbar'?'unknown':
         summary.status==='Grenzwert überschritten'?'bad':'ok';
