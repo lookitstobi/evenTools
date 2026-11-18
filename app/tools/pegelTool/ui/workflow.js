@@ -110,18 +110,27 @@
     const overview=make('section','workflow-overview');
     overview.setAttribute('aria-live','polite');
     const status=make('strong','workflow-overall-status');
-    const issueDetails=make('details','workflow-issue-details');
-    const issueSummary=make('summary','workflow-issue-summary','Prüfhinweise anzeigen');
-    const issueList=make('ul','workflow-issues');
-    issueDetails.append(issueSummary,issueList);
-    overview.append(status,issueDetails);
-    shell.append(overview);
+    overview.append(status);
+    const short=make('section','workflow-shortinfo');
+    const shortTitle=make('h3','workflow-shortinfo-title','Aus dem XL3-Log übernommen');
+    const shortValues=make('div','workflow-shortinfo-values');
+    const shortFields=[['Messbeginn','start'],['Messende','end'],['k1','k1'],['k2','k2']];
+    const shortNodes={};
+    for(const pair of shortFields){
+      const item=make('div','workflow-shortinfo-item');
+      item.appendChild(make('span','workflow-shortinfo-label',pair[0]));
+      const value=make('strong','workflow-shortinfo-value','—');
+      item.appendChild(value);
+      shortValues.appendChild(item);shortNodes[pair[1]]=value;
+    }
+    short.append(shortTitle,shortValues);
+    shell.append(overview,short);
     doc.body.insertBefore(shell,main);
     const groups=[
-      {id:'setup',title:'Manuelle Angaben',sections:['eventAndEvidence','description','signature','pa','corrections']},
-      {id:'quality',title:'Messdaten und Geräte',sections:['log']},
-      {id:'assessment',title:'Auswertung',sections:['blocks','metrics','charts']},
-      {id:'protocol',title:'Protokoll und Nachweise',sections:['review','preview']}
+      {id:'setup',title:'01 · Veranstaltung und Personal',sections:['eventAndEvidence','description']},
+      {id:'quality',title:'02 · Beschallung und Messbedingungen',sections:['pa','corrections']},
+      {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','charts','log']},
+      {id:'protocol',title:'04 · Prüfung und Protokoll',sections:['review','preview']}
     ];
     const groupsById={};
     for(const group of groups){
@@ -147,6 +156,8 @@
     actions.append(exportButton,
       action('Projekt speichern (JSON)','btnSaveState',true),
       action('Projekt speichern (HTML)','btnExportHtml',true));
+    exportArea.appendChild(make('h3','workflow-group-title','05 · Unterschrift und Export'));
+    exportArea.appendChild(sections.signature);
     exportArea.append(exportText,actions);
     groupsById.export=exportArea;
     main.appendChild(exportArea);
@@ -175,17 +186,19 @@
     }
     function refresh(){
       const snapshot=getSnapshot(),summary=summarize(snapshot);
-      status.textContent='Beurteilungsstatus: '+summary.status+
-        (summary.issues.length?' · '+summary.issues.length+' Prüfhinweise':'');
+      status.textContent='Beurteilungsstatus: '+summary.status;
+      const model=snapshot.importModel || {};
+      const measurement=model.measurement || {}, corrections=model.corrections || {};
+      const dateText=value=>value ? String(value).replace('T',' ') : '—';
+      shortNodes.start.textContent=dateText(measurement.start);
+      shortNodes.end.textContent=dateText(measurement.end);
+      const fmtDb=x=>Number.isFinite(x?.valueDb)
+        ? x.valueDb.toFixed(1).replace('.',',')+' dB' : '—';
+      shortNodes.k1.textContent=fmtDb(corrections.k1);
+      shortNodes.k2.textContent=fmtDb(corrections.k2);
       status.dataset.state=summary.status==='Noch nicht geprüft'?'empty':
         summary.status==='Nicht beurteilbar'?'unknown':
         summary.status==='Grenzwert überschritten'?'bad':'ok';
-      issueSummary.textContent=summary.issues.length?
-        'Prüfhinweise ansehen ('+summary.issues.length+')':'Keine zusätzlichen Prüfhinweise';
-      issueList.replaceChildren();
-      for(const issue of summary.issues){
-        issueList.appendChild(make('li','',issue.source+': '+issue.message));
-      }
       exportButton.disabled=!summary.canExport;
       exportText.textContent=summary.canExport?'PDF-Export verfügbar.':
         'PDF noch nicht verfügbar: Import, Bewertung oder PDF-Modul fehlen.';
