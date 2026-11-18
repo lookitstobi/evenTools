@@ -1995,57 +1995,6 @@ function calculateAndRender(){
   markRequiredFields();
 }
 
-function paRow(type="", qty=""){
-  const row = document.createElement('div');
-  row.className = 'compact-row';
-
-  const sel = document.createElement('select');
-  sel.innerHTML = `
-    <option value="" ${type===""?'selected':''}>Typ wählen…</option>
-    <option value="L-ACOUSTIC KARA II">L-ACOUSTIC KARA II</option>
-    <option value="L-ACOUSTIC KS21">L-ACOUSTIC KS21</option>
-    <option value="L-ACOUSTIC A10 Wide">L-ACOUSTIC A10 Wide</option>
-    <option value="L-ACOUSTIC A10 Focus">L-ACOUSTIC A10 Focus</option>
-    <option value="L-ACOUSTIC 5XT">L-ACOUSTIC 5XT</option>
-    <option value="custom">Eigener Typ</option>
-  `;
-  if(type && type !== 'custom') sel.value = type;
-
-  const custom = document.createElement('input');
-  custom.placeholder = 'Eigener Typ';
-  custom.style.display = 'none';
-
-  const num = document.createElement('input');
-  num.type = 'number';
-  num.placeholder = 'Anzahl';
-  num.value = qty;
-
-  const btnDel = document.createElement('button');
-  btnDel.type = 'button';
-  btnDel.className = 'secondary';
-  btnDel.textContent = '✕';
-  btnDel.style.padding = '10px 12px';
-  btnDel.addEventListener('click', ()=>{
-    row.remove();
-    protocolOrigins.paItems='manual';
-    setVal('paBestaetigt','');
-    markRequiredFields();
-    scheduleRecoverySave();
-  });
-
-  sel.addEventListener('change', ()=>{
-    custom.style.display = (sel.value === 'custom') ? 'block' : 'none';
-    if(sel.value !== 'custom') custom.value = '';
-  });
-
-  row.appendChild(sel);
-  row.appendChild(custom);
-  row.appendChild(num);
-  row.appendChild(btnDel);
-
-  return row;
-}
-
 function applyLocationPreset(loc){
   const container=el('paContainer');
   if(window.PegelToolPA){
@@ -2053,57 +2002,35 @@ function applyLocationPreset(loc){
       root:container,location:loc,
       onChange:()=>{
         protocolOrigins.paItems='manual';
-        setVal('paBestaetigt','');
         markRequiredFields();scheduleRecoverySave();
       }
     });
     else paController.setLocation(loc);
-    el('paExtras').replaceChildren();
-    setText('paPresetInfo',window.PegelToolPA.PRESETS[loc] ? 'Standardaufbau vorausgewählt – vor Ort prüfen' : 'PA-Auswahl manuell erfassen');
+    setText('paPresetInfo',window.PegelToolPA.PRESETS[loc]
+      ? 'Standardaufbau vorausgewählt – Auswahl bei Bedarf ändern'
+      : 'PA für eigene Location im Freitextfeld dokumentieren');
   }else{
-    container.innerHTML='';
-    el('paExtras').replaceChildren();
-    el('paExtras').appendChild(paRow('', ''));
-    setText('paPresetInfo','Saalübersicht nicht verfügbar – PA manuell eingeben');
+    container.innerHTML='<p class="small">Saalübersicht nicht verfügbar.</p>';
+    setText('paPresetInfo','Sonderaufbau manuell dokumentieren');
   }
 }
-
-el('btnAddPA').addEventListener('click',()=>{
-  const row=paRow('', '');
-  el('paExtras').appendChild(row);
-  row.querySelector('select')?.focus();
-  protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
-  markRequiredFields();scheduleRecoverySave();
-});
 el('btnClearPA').addEventListener('click',()=>{
   applyLocationPreset(getVal('location'));
   protocolOrigins.paItems='manual';
-  setVal('paBestaetigt','');
   markRequiredFields();scheduleRecoverySave();
 });
 el('location').addEventListener('change',()=>{
   reconcileVenueAddress();
   applyLocationPreset(getVal('location'));
   protocolOrigins.paItems='preset-unverified';
-  setVal('paBestaetigt','');
   markRequiredFields();scheduleRecoverySave();
 });
-for(const event of ['input','change']){
-  el('paExtras').addEventListener(event,()=>{
-    protocolOrigins.paItems='manual';
-    setVal('paBestaetigt','');
-    markRequiredFields();scheduleRecoverySave();
-  });
-}
 for(const id of FORM_FIELD_IDS){
   const field = el(id);
   if(!field) continue;
   const changed = ()=>{
     protocolOrigins[id] = id === 'location' ? 'preset-unverified' : 'manual';
     if(id === 'location'){
-      setVal('ortBestaetigt','');
-      setVal('paBestaetigt','');
       protocolOrigins.paItems='preset-unverified';
     }
     markRequiredFields();
@@ -2114,10 +2041,10 @@ for(const id of FORM_FIELD_IDS){
 }
 
 function getPASetupInline(){
-  return collectPAItems().map(it=>{
+  return [collectPAItems().map(it=>{
     const type=it.type==='custom'?it.customType:it.type;
     return it.qty!=null ? it.qty+'x '+type : type;
-  }).join(', ');
+  }).join(', '),getVal('paZusatz')].filter(Boolean).join('; ');
 }
 
 function wrap(doc, text, maxWidth){ return doc.splitTextToSize(String(text ?? ''), maxWidth); }
