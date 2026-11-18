@@ -76,7 +76,7 @@ test('missing half-hour blocks and unproven fields remain visible',()=>{
 });
 test('existing HTML sections, scripts and project actions are retained',()=>{
   for(const name of ['metrics','blocks','charts','log','review','preview',
-    'eventAndEvidence','description','signature','pa','corrections']){
+    'eventAndEvidence','description','signature','pa','corrections','deviceEvidence']){
     assert.match(HTML,new RegExp('data-workflow-section="'+name+'"'));
   }
   for(const id of ['fileInput','btnImport','btnSaveState','btnLoadState',
@@ -124,7 +124,7 @@ function fakeDom(){
   const left=make('div','leftColumn'),right=make('div','rightColumn');
   body.append(header,main);main.append(left,right);
   for(const id of ['metrics','blocks','charts','log','review','preview','eventAndEvidence',
-    'description','signature','pa','corrections'])sections.set(id,make('div',id+'Section'));
+    'description','signature','pa','corrections','deviceEvidence'])sections.set(id,make('div',id+'Section'));
   for(const id of ['btnImport','btnLoadState','btnSaveState','btnExportHtml','btnPdfTemplate','btnRecover'])
     make('button',id);
   body.insertBefore=(e,target)=>{
@@ -160,13 +160,47 @@ test('compact status and XL3 short info contain no global priority issue list',(
   const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
   assert.ok(ctrl);
   const shell=x.body.children[1];
-  assert.equal(shell.children[0].children[0].textContent.includes('Nicht beurteilbar'),true);
+  assert.equal(shell.children[0].children[0].textContent,'—');
   assert.equal(shell.children[0].children.length,1);
   assert.equal(shell.children[1].className,'workflow-shortinfo');
   assert.equal(shell.children[1].children[1].children.length,6);
   assert.equal(shell.children[1].children[1].children[4].children[0].textContent,'LAeq,30min (Maximum)');
   assert.equal(shell.children[1].children[1].children[5].children[0].textContent,'LCpeak (Maximum)');
 });
+test('Kurzinfo uses only the two approved measured statuses and never invents a clearance',()=>{
+  const x=fakeDom(),snapshot=imported();
+  snapshot.evaluation.overall={comparisonLAeq:'at-or-below',comparisonLCpeak:'at-or-below'};
+  const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  const status=x.body.children[1].children[0].children[0];
+  assert.equal(status.textContent,'Keine Überschreitung');
+  assert.equal(status.dataset.state,'ok');
+  snapshot.evaluation.overall.comparisonLCpeak='above';
+  ctrl.refresh();
+  assert.equal(status.textContent,'Grenzwerte überschritten');
+  assert.equal(status.dataset.state,'bad');
+  snapshot.evaluation.overall.comparisonLAeq='not-assessable';
+  snapshot.evaluation.overall.comparisonLCpeak='at-or-below';
+  ctrl.refresh();
+  assert.equal(status.textContent,'—');
+  assert.equal(status.dataset.state,'empty');
+});
+test('collapsed sections retain subtle warning flags driven by actual missing fields',()=>{
+  const x=fakeDom(),snapshot=imported();
+  snapshot.review.formIssues=[{field:'eventName',message:'Name fehlt'},{field:'messposition',message:'Position fehlt'}];
+  const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  const group=id=>x.main.children.find(node=>node.id==='workflow-group-'+id);
+  const alert=id=>group(id).children[0].children[1];
+  assert.equal(alert('setup').hidden,false);
+  assert.equal(alert('assessment').hidden,false);
+  assert.equal(alert('quality').hidden,true);
+  group('setup').open=false;ctrl.refresh();
+  assert.equal(group('setup').open,false);
+  assert.equal(alert('setup').hidden,false);
+  snapshot.review.formIssues=[];
+  ctrl.refresh();
+  assert.equal(alert('setup').hidden,true);
+});
+
 test('Kurzinfo uses fixed 30-minute assessment maxima (not rolling charts)',()=>{
   const x=fakeDom(),snapshot=imported();
   snapshot.evaluation.overall={laeqMaxDb:97.25,lcpeakMaxDb:123.8};
