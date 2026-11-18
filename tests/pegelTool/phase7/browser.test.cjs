@@ -57,6 +57,18 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(await page.locator('#workflow-group-setup').isVisible(),true);
       assert.equal(await page.locator('#workflow-group-quality').isVisible(),true);
       assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
+      assert.equal(await page.locator('.workflow-group[open]').count(),5);
+      assert.equal(await page.locator('#phase5ReportPreview').evaluate(el=>el.open),false);
+      assert.equal(await page.locator('#fullMeasurementDetails').evaluate(el=>el.open),false);
+      assert.equal(await page.locator('.pa-stage-marker').count(),0);
+      assert.equal(await page.locator('#workflow-group-assessment #messposition').count(),1);
+      assert.equal(await page.locator('#workflow-group-assessment #kalNachBestaetigt').count(),1);
+      assert.equal(await page.locator('#workflow-group-setup #messposition').count(),0);
+      assert.equal(await page.locator('#workflow-group-setup .workflow-group-alert').isVisible(),true);
+      await page.locator('#workflow-group-setup > summary').click();
+      assert.equal(await page.locator('#workflow-group-setup').evaluate(el=>el.open),false);
+      assert.equal(await page.locator('#workflow-group-setup .workflow-group-alert').evaluate(el=>el.hidden),false);
+      await page.locator('#workflow-group-setup > summary').click();
       const layout=await page.evaluate(()=>({
         bodyOverflow:getComputedStyle(document.body).overflowY,
         scrollHeight:document.scrollingElement.scrollHeight,
@@ -104,7 +116,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       for(const [key,ok] of Object.entries(placement))
         assert.equal(ok,true,'Layout: '+key+' must be true');
       assert.equal(first.protocolMeta.origins.organisator,'preset-unverified');
-      assert.equal(first.paSelection.schemaVersion,2);
+      assert.equal(first.paSelection.schemaVersion,3);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,8);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,7);
@@ -115,10 +127,12 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       // Inject a real XL3 kset header field into the synthetic browser fixture.
       const sourceWithKset=fs.readFileSync(SOURCE,'utf8').replace(
         'k2: +2,0 dB','k2: +2,0 dB\nkset date: 2026-11-15 14:41');
+      await page.evaluate(()=>window.scrollTo(0,0));
       await page.locator('#fileInput').setInputFiles({
         name:'synthetic-kset.txt',mimeType:'text/plain',buffer:Buffer.from(sourceWithKset)
       });
       await page.waitForFunction(()=>buildStateObject().importModel?.samples?.length===4);
+      assert.equal(await page.evaluate(()=>window.scrollY),0,'Import may not jump to section 02');
       const state=await page.evaluate(()=>buildStateObject());
       assert.equal(state.importModel.samples.length,4);
       assert.equal(state.importModel.schemaVersion,1);
@@ -138,7 +152,17 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
         };
       });
       assert.deepEqual(shownLevels.actual,shownLevels.expected);
-      assert.match(await page.locator('body').innerText(),/Grenzwert überschritten/i);
+      assert.equal(await page.locator('.workflow-overall-status').innerText(),'Grenzwerte überschritten');
+      assert.equal(await page.locator('.workflow-overall-status').getAttribute('data-state'),'bad');
+      assert.equal(await page.locator('#pegelTabelle td.status-bad').count(),1);
+      // This short fixture has no complete 30-minute block, so LAeq is not determinable.
+      assert.equal(await page.locator('#pegelTabelle td.status-ok').count(),0);
+      assert.equal(await page.evaluate(()=>{
+        const tbody=document.querySelector('#pegelTabelle tbody');
+        phase3AppendRow(tbody,['Test','1 dB','—','99 dB(A)','Nicht überschritten']);
+        const tr=tbody.lastElementChild,success=tr.lastElementChild.classList.contains('status-ok');
+        tr.remove();return success;
+      }),true);
 
       // A rejected new file must not destroy the previously imported measurement.
       await page.locator('#fileInput').setInputFiles(path.join(ROOT,'tests/pegelTool/fixtures/invalid-not-xl3.txt'));
@@ -150,15 +174,27 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await page.locator('#paContainer [data-pa-variant="sideL"]').selectOption('ks2');
       let changed=await page.evaluate(()=>buildStateObject());
       assert.equal(changed.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,6);
+      // Override component counts without altering group selection or the other side.
+      await page.locator('[data-pa-qty-group="sideL"][data-pa-qty-type="L-ACOUSTIC KS21"]').fill('3');
+      await page.locator('[data-pa-qty-group="sideL"][data-pa-qty-type="L-ACOUSTIC KS21"]').press('Tab');
+      await page.locator('[data-pa-qty-group="mainL"][data-pa-qty-type="L-ACOUSTIC KARA II"]').fill('10');
+      await page.locator('[data-pa-qty-group="mainL"][data-pa-qty-type="L-ACOUSTIC KARA II"]').press('Tab');
+      changed=await page.evaluate(()=>buildStateObject());
+      assert.equal(changed.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,7);
+      assert.equal(changed.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,22);
+      assert.equal(changed.paSelection.quantities.sideL['L-ACOUSTIC KS21'],3);
+      assert.equal(changed.paSelection.quantities.mainL['L-ACOUSTIC KARA II'],10);
+      const pdfPA=await page.evaluate(()=>getProtocolReportData().paGroups.find(g=>g.id==='mainL').items);
+      assert.deepEqual(pdfPA,[{type:'L-ACOUSTIC KARA II',qty:10}]);
       assert.equal(changed.paSelection.variants.sideR,'ks4');
       // AKS frontfill 1+9 is not in the 7-fill default; adding it adds exactly two.
       assert.equal(await page.locator('#paContainer .pa-node[data-pa-group="ff19"]').count(),2);
       await page.locator('#paContainer .pa-node[data-pa-group="ff19"]').first().click();
       assert.equal(await page.locator('#paContainer .pa-node[data-pa-group="ff19"][aria-pressed="true"]').count(),2);
       const paBeforeSave=await page.evaluate(()=>buildStateObject());
-      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,22);
       assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,9);
-      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,6);
+      assert.equal(paBeforeSave.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,7);
       assert.ok(paBeforeSave.paSelection.selected.includes('ff19'));
       assert.ok(paBeforeSave.paSelection.selected.includes('mainL'));
       assert.ok(paBeforeSave.paSelection.selected.includes('mainR'));
@@ -192,8 +228,10 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(saved.form.kalNachBestaetigt,'ja');
       assert.equal(saved.form.paZusatz,'2 × zusätzliche Delaylautsprecher');
       assert.deepEqual(saved.paSelection.selected,paBeforeSave.paSelection.selected);
-      assert.equal(saved.paSelection.schemaVersion,2);
+      assert.equal(saved.paSelection.schemaVersion,3);
       assert.equal(saved.paSelection.variants.sideL,'ks2');
+      assert.equal(saved.paSelection.quantities.sideL['L-ACOUSTIC KS21'],3);
+      assert.equal(saved.paSelection.quantities.mainL['L-ACOUSTIC KARA II'],10);
 
       assert.equal(JSON.stringify(saved.importModel.samples),originalRows);
 
@@ -227,6 +265,8 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       const loaded=await page.evaluate(()=>buildStateObject());
       assert.equal(JSON.stringify(loaded.importModel.samples),originalRows);
       assert.equal(loaded.form.eventName,'Phase 7 Browserprüfung');
+      assert.equal(loaded.paSelection.quantities.mainL['L-ACOUSTIC KARA II'],10);
+      assert.equal(loaded.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,22);
       const old=await page.evaluate(saved=>{
         const legacy=structuredClone(saved);
         legacy.form.lautestePosition='Nicht als Immissionsort übernehmen';
@@ -282,4 +322,4 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await new Promise(resolve=>server.close(resolve));
     }
   });
-function documentedStatus(text){return /Grenzwert überschritten/i.test(text);}
+function documentedStatus(text){return /Grenzwerte überschritten/i.test(text);}
