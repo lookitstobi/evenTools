@@ -151,7 +151,7 @@ test('single-page layout retains every section without tab navigation',()=>{
   assert.equal(ctrl.go('export'),true);
   assert.equal(ctrl.go('wrong-step'),false);
   assert.equal(x.main.children.some(n=>n.id==='leftColumn'),false);
-  assert.equal(x.main.children[0].className,'chartsSection');
+  assert.equal(x.main.children[0].id,'chartsSection');
   assert.ok(!x.main.children.slice(1).some(n=>n===x.main.children[0]));
 });
 test('compact status and XL3 short info contain no global priority issue list',()=>{
@@ -205,5 +205,5 @@ test('rehydration keeps only one shell and one set of groups',()=>{
   UI.mount({document:x.doc,getSnapshot:()=>snapshot});
   assert.equal(x.body.children.filter(n=>n.className==='workflow-shell').length,1);
   assert.equal(x.main.children.filter(n=>n.className.includes('workflow-group')).length,5);
-  assert.equal(x.main.children.filter(n=>n.className==='chartsSection').length,1);
+  assert.equal(x.main.children.filter(n=>n.id==='chartsSection').length,1);
 });
