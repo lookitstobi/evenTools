@@ -332,6 +332,9 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 .workflow-group-alert{font-size:12px;line-height:17px;text-align:center;border:1px solid #b98c3e;
  color:#e6b458;border-radius:50%;height:19px;width:19px;font-weight:800;flex:0 0 19px}
 .workflow-group-alert[hidden]{display:none}
+.workflow-overview{border-left-color:var(--border)}
+.workflow-overview:has(.workflow-overall-status[data-state="ok"]){border-left-color:var(--ok)}
+.workflow-overview:has(.workflow-overall-status[data-state="bad"]){border-left-color:var(--danger)}
 #main.workflow-single-page .section[data-workflow-section="deviceEvidence"]{width:100%;max-width:100%}
 #main.workflow-single-page .section[data-workflow-section="deviceEvidence"] input,
 #main.workflow-single-page .section[data-workflow-section="deviceEvidence"] select{width:100%;max-width:100%}
@@ -449,9 +452,10 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         <div><label>Korrekturwert k2</label><input id="k2" readonly /></div>
       </div>
 
-      <details class="mt-8">
+      <details class="mt-8" id="fullMeasurementDetails">
         <summary>Vollständige Messdaten / Parser-Ergebnisse</summary>
         <div class="inner small" id="parseInfo"></div>
+        <pre id="fullMeasurementData" class="small" style="max-height:450px;overflow:auto;white-space:pre;tab-size:4"></pre>
       </details>
     </div>
     <div class="section manual-fields" data-workflow-section="deviceEvidence">
@@ -2257,6 +2261,13 @@ document.querySelectorAll('.header-menu').forEach(menu => {
   menu.addEventListener('toggle', ()=>{
     if(menu.open) closeHeaderMenus(menu);
   });
+});
+
+// The complete source log is mounted only when its details panel is opened.
+el('fullMeasurementDetails').addEventListener('toggle',event=>{
+  const preview=el('fullMeasurementData');
+  if(!preview)return;
+  preview.textContent=event.target.open ? (lastLogText || 'Keine Originalmessdaten geladen.') : '';
 });
 
 // wire import button to hidden file input
