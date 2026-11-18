@@ -69,7 +69,8 @@
         warnings.length || evidenceIssues.length ? 'Prüfhinweise' : 'Daten vorhanden',
       setup: !review ? 'Noch offen' : formIssues.length ? formIssues.length+' Angaben offen' : 'Angaben erfasst',
       assessment: !blocks.length ? 'Noch nicht geprüft' :
-        blocks.some(b=>b.dataCoverageState === 'gap' || b.dataCoverageState === 'conflict') ? 'Datenlücken prüfen' :
+        blocks.some(b=>b.dataCoverageState === 'gap' || b.dataCoverageState === 'conflict' ||
+          (!b.dataCoverageState && b.dataQuality !== 'complete')) ? 'Datenlücken prüfen' :
           blocks.some(b=>b.dataCoverageState === 'partial-edge') ? 'Teilzeitblöcke ausgewertet' : 'Technisch berechnet',
       protocol: !review ? 'Noch offen' : formIssues.length || evidenceIssues.length ?
         'Nachweise offen' : 'Angaben erfasst',
