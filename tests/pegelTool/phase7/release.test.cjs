@@ -148,7 +148,7 @@ test('import → calculate → protocol → report → JSON roundtrip → report
   const before=Report.build(record,{sourceFileName:'XL3_synthetic.txt'});
   assert.equal(before.blocks.length,evaluation.blocks.length);
   assert.equal(before.reportFullyChecked,false);
-  assert.match(before.status,/NICHT BEURTEILBAR/i);
+  assert.equal(before.status,'Grenzwert überschritten');
   assert.ok(before.blocks.some(b=>b.laeq==='Nicht ermittelt'));
   const saved=JSON.stringify({schemaVersion:2,importModel:parsed.model,
     evaluation,form:input.form,origins:input.origins,paItems:input.paItems,sourceFileName:'XL3_synthetic.txt'});
@@ -162,7 +162,7 @@ test('import → calculate → protocol → report → JSON roundtrip → report
   assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
   assert.ok(bytes.includes(Buffer.from('%%EOF')));
   assert.equal(after.blocks.length,before.blocks.length);
-  assert.match(Report.renderHtml(after),/Nicht beurteilbar/i);
+  assert.match(Report.renderHtml(after),/Grenzwert überschritten/i);
 });
 test('real archived XL3 file can generate an honest provisional report',()=>{
   const archive=path.join(ROOT,'archive/housekeeping_2026-04-28/2025-03-14_SLM_001_Log.txt');
