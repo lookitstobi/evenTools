@@ -34,14 +34,14 @@ test('an open original-norm gate blocks positive and negative DIN judgements',()
     assert.equal(UI.assessmentStatus(s),'Nicht beurteilbar');
   }
 });
-test('hypothetical fully verified future status maps only from an authorised result',()=>{
+test('measured status is independent of formal documentation completeness',()=>{
   const s=imported({record:{normReview:'verified',assessment:{measurementStatus:'within-limits'}}});
   s.review={documentationComplete:true,evidenceComplete:true,reportFullyChecked:true};
-  assert.equal(UI.assessmentStatus(s),'Grenzwerte eingehalten');
+  assert.equal(UI.assessmentStatus(s),'Keine Überschreitung in auswertbaren Messdaten');
   s.record.assessment.measurementStatus='exceeded';
   assert.equal(UI.assessmentStatus(s),'Grenzwert überschritten');
   s.review.evidenceComplete=false;
-  assert.equal(UI.assessmentStatus(s),'Nicht beurteilbar');
+  assert.equal(UI.assessmentStatus(s),'Grenzwert überschritten'); // documentation separate
 });
 test('import errors outrank technical issues, which outrank field omissions',()=>{
   const s=imported();
