@@ -81,7 +81,7 @@ test('existing HTML sections, scripts and project actions are retained',()=>{
   }
   for(const id of ['fileInput','btnImport','btnSaveState','btnLoadState',
     'btnRecover','btnExportHtml','btnPdfTemplate','phase3Tabelle',
-    'protocolReview','phase5ReportPreview','k1Ermittlung','k2Ermittlung']){
+    'protocolReview','phase5ReportPreview','messort','kalVorBestaetigt','kalNachBestaetigt','paZusatz']){
     assert.match(HTML,new RegExp('id="'+id+'"'));
   }
   assert.match(HTML,/file=ui\/workflow\.js/);
@@ -152,14 +152,16 @@ test('single-page layout retains every section without tab navigation',()=>{
   assert.equal(ctrl.go('wrong-step'),false);
   assert.equal(x.main.children.some(n=>n.id==='leftColumn'),false);
 });
-test('compact status hides detailed issue list in a disclosure',()=>{
+test('compact status and XL3 short info contain no global priority issue list',()=>{
   const x=fakeDom(),snapshot=imported();
   snapshot.review.formIssues=[{message:'Angabe fehlt'}];
   const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
   assert.ok(ctrl);
-  const overview=x.body.children[1].children[0];
-  assert.equal(overview.children[0].textContent.includes('Prüfhinweise'),true);
-  assert.equal(overview.children[1].tagName,'DETAILS');
+  const shell=x.body.children[1];
+  assert.equal(shell.children[0].children[0].textContent.includes('Nicht beurteilbar'),true);
+  assert.equal(shell.children[0].children.length,1);
+  assert.equal(shell.children[1].className,'workflow-shortinfo');
+  assert.equal(shell.children[1].children[1].children.length,4);
 });
 test('no positive tabindex remains in the HTML',()=>{
   assert.doesNotMatch(HTML,/tabindex="\\d+"/);
