@@ -9,16 +9,20 @@ const pdf=require('../../../app/tools/pegelTool/report/pdf.js');
 
 const form={
   eventName:'Testkonzert',datumMessung:'2026-11-16',organisator:'Testveranstalter',
-  location:'Eigene Angabe',ortAdresse:'Teststraße 3, 45127 Essen',ortBestaetigt:'ja',
-  messungVon:'Testteam',messposition:'FOH',messortLAeq:'Publikum Mitte',messortLCpeak:'Publikum Links',
-  messortTyp:'ersatz',ersatzMessort:'FOH',k1Ermittlung:'Vergleichsmessung',
-  k2Ermittlung:'Referenzmessung',paAnordnung:'2 Hauptlautsprecher links/rechts',
-  paBestaetigt:'ja',kalibratorModell:'Testkalibrator',kalibratorSN:'CAL-01',
+  location:'Eigene Angabe',ortAdresse:'Teststraße 3, 45127 Essen',
+  messungVon:'Testteam',messposition:'FOH',messort:'Publikum Mitte',
+  messortTyp:'ersatz',ersatzMessort:'FOH',paAnordnung:'2 Hauptlautsprecher links/rechts',
+  paZusatz:'1 Zusatzlautsprecher',
+  kalibratorModell:'Testkalibrator',kalibratorSN:'CAL-01',
+  kalVorBestaetigt:'ja',kalNachBestaetigt:'ja',
+  berichtName:'Testperson',berichtDatum:'2026-11-16',berichtsort:'Essen'
+};
+const oldProof={
   kalVorZeit:'2026-11-16T18:00',kalVorWert:'94,0',
   kalNachZeit:'2026-11-16T20:00',kalNachWert:'94,1',
-  abweichungVorhanden:'nein',berichtName:'Testperson',
-  berichtDatum:'2026-11-16',berichtsort:'Essen'
+  k1Ermittlung:'Vergleichsmessung',k2Ermittlung:'Referenzmessung'
 };
+
 const model={
   samples:[{sourceLine:20},{sourceLine:21},{sourceLine:22},{sourceLine:23}],
   instrument:{deviceModel:'XL3',serial:'NTI-01',firmware:'1.0',
@@ -60,6 +64,7 @@ function makeRecord(changes={}) {
     origins:{eventName:'user-input',...(changes.origins||{})},
     paItems:changes.paItems || [{type:'custom',customType:'Musterlautsprecher',qty:2}],
     paGroups:changes.paGroups || [],
+    legacyProtocol:changes.legacyProtocol===undefined?oldProof:changes.legacyProtocol,
     importModel:changes.model===undefined ? structuredClone(model) : changes.model,
     evaluation:changes.evaluation===undefined ? structuredClone(evaluation) : changes.evaluation
   });
@@ -107,6 +112,16 @@ test('PDF-Berichtsmodell nennt nur ausgewählte Lautsprechergruppen und ihre Men
   assert.match(pa.value,/2 × L-ACOUSTIC 5XT/);
   assert.doesNotMatch(pa.value,/KS21/);
 });
+test('Bericht zeigt gemeinsame Messstelle und Sonderaufbau ohne gestrichene UI-Fragen',()=>{
+  const rows=makeReport().sections.flatMap(x=>x.rows);
+  assert.ok(rows.some(x=>x.label==='Maßgeblicher Immissionsort' && x.value==='Publikum Mitte'));
+  assert.ok(rows.some(x=>x.label==='Zusätzliche Lautsprecher / Sonderaufbau' && x.value==='1 Zusatzlautsprecher'));
+  assert.ok(rows.some(x=>x.label==='Funktionsprüfung vor Messung' && x.value==='Bestätigt'));
+  assert.equal(rows.some(x=>x.label==='Ort vor Ort geprüft'),false);
+  assert.equal(rows.some(x=>x.label==='PA-Aufstellung geprüft'),false);
+  assert.equal(rows.some(x=>x.label==='Abweichungen'),false);
+  assert.equal(rows.some(x=>x.label==='Veranstaltungsbeginn'),false);
+});
 test('Bericht übernimmt feste Zeitblöcke und enthält keine normative Freigabe',()=>{
   const report=makeReport();
   assert.equal(report.blocks.length,2);
@@ -129,13 +144,13 @@ test('Herkunft und Ursprungszeilen bleiben im gemeinsamen Modell',()=>{
   assert.ok(allRows.some(x=>x.label==='k2 – im Gerätelog angewandt?' && x.value.startsWith('Nein')));
 });
 test('Fehlende Pflichtfelder und Messdaten bleiben explizit sichtbar',()=>{
-  const report=makeReport({form:{organisator:'',kalNachWert:''},model:null,evaluation:null});
+  const report=makeReport({form:{organisator:'',kalNachBestaetigt:''},model:null,evaluation:null});
   assert.equal(report.documentationComplete,false);
   assert.equal(report.evidenceComplete,false);
   assert.ok(report.issues.some(x=>x.code==='LOG_MISSING'));
   assert.ok(report.issues.some(x=>x.code==='FIELD_MISSING_OR_INVALID'));
   assert.equal(report.blocks.length,0);
-  assert.ok(report.sections.flatMap(x=>x.rows).some(x=>x.label==='Nach der Messung – Anzeige' && x.value==='Nicht ermittelt'));
+  assert.ok(report.sections.flatMap(x=>x.rows).some(x=>x.label==='Funktionsprüfung nach Messung' && x.value==='Nicht bestätigt'));
 });
 test('Bericht ist bei identischen Eingaben reproduzierbar',()=>{
   assert.deepEqual(makeReport(),makeReport());
