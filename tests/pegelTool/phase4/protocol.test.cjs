@@ -41,8 +41,13 @@ test('Sollformular enthaelt ein gemeinsames Immissionsortfeld und zwei Checkboxe
   for(const id of ['messort','kalVorBestaetigt','kalNachBestaetigt','paZusatz'])assert.ok(ids.includes(id));
   for(const id of ['messortLAeq','messortLCpeak','kalVorZeit','kalVorWert','kalNachZeit',
     'kalNachWert','ortBestaetigt','paBestaetigt','k1Ermittlung','k2Ermittlung',
-    'abweichungVorhanden','altBestaetigt','veranstaltungsBeginn','veranstaltungsEnde'])
+    'abweichungVorhanden','altBestaetigt','veranstaltungsBeginn','veranstaltungsEnde','lautestePosition'])
     assert.ok(!ids.includes(id),id+' darf nicht als Eingabefeld zurueckkehren');
+});
+test('Abgelegtes Alt-Feld lautestePosition wird nicht in Werte oder Immissionsort uebernommen',()=>{
+  const record=protocol.buildRecord(input({form:{lautestePosition:'Altes Feld aus Projekt'}}));
+  assert.equal(record.values.messort,'Publikum Mitte');
+  assert.ok(!Object.prototype.hasOwnProperty.call(record.values,'lautestePosition'));
 });
 test('Vollstaendige Eingaben koennen ohne Anzeige-Nachweise nicht als voll geprueft gelten',()=>{
   const r=protocol.validate(input());
