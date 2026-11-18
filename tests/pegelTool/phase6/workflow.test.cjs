@@ -99,7 +99,7 @@ function fakeDom(){
         contains(x){return classes.has(x);}},
       setAttribute(k,v){attributes[k]=v;},getAttribute(k){return attributes[k];},
       removeAttribute(k){delete attributes[k];},
-      append(...nodes){nodes.forEach(n=>{n.parent=el;el.children.push(n);});},
+      append(...nodes){nodes.forEach(n=>{if(n.parent)n.parent.children=n.parent.children.filter(x=>x!==n);n.parent=el;el.children.push(n);});},
       appendChild(n){el.append(n);return n;},
       replaceChildren(...nodes){el.children=[];el.append(...nodes);},
       addEventListener(name,cb){events[name]=cb;},
@@ -151,6 +151,9 @@ test('single-page layout retains every section without tab navigation',()=>{
   assert.equal(ctrl.go('export'),true);
   assert.equal(ctrl.go('wrong-step'),false);
   assert.equal(x.main.children.some(n=>n.id==='leftColumn'),false);
+  assert.equal(x.main.children[0],x.lookup.get('nonexistent') || x.main.children[0]);
+  assert.equal(x.main.children[0].className,'chartsSection');
+  assert.ok(!x.main.children.slice(1).some(n=>n===x.main.children[0]));
 });
 test('compact status and XL3 short info contain no global priority issue list',()=>{
   const x=fakeDom(),snapshot=imported();
@@ -161,11 +164,33 @@ test('compact status and XL3 short info contain no global priority issue list',(
   assert.equal(shell.children[0].children[0].textContent.includes('Nicht beurteilbar'),true);
   assert.equal(shell.children[0].children.length,1);
   assert.equal(shell.children[1].className,'workflow-shortinfo');
-  assert.equal(shell.children[1].children[1].children.length,4);
+  assert.equal(shell.children[1].children[1].children.length,6);
+  assert.equal(shell.children[1].children[1].children[4].children[0].textContent,'LAeq,30min (Maximum)');
+  assert.equal(shell.children[1].children[1].children[5].children[0].textContent,'LCpeak (Maximum)');
+});
+test('Kurzinfo uses fixed 30-minute assessment maxima (not rolling charts)',()=>{
+  const x=fakeDom(),snapshot=imported();
+  snapshot.evaluation.overall={laeqMaxDb:97.25,lcpeakMaxDb:123.8};
+  UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  const values=x.body.children[1].children[1].children[1].children;
+  assert.equal(values[4].children[1].textContent,'97,3 dB(A)');
+  assert.equal(values[5].children[1].textContent,'123,8 dB(C)');
+  snapshot.evaluation.overall={laeqMaxDb:null,lcpeakMaxDb:undefined};
+  const ctrl=UI.mount({document:x.doc,getSnapshot:()=>snapshot});
+  // No result is represented by a dash, never by invented 0 dB.
+  const latest=x.body.children[1].children[1].children[1].children;
+  assert.equal(latest[4].children[1].textContent,'—');
+  assert.equal(latest[5].children[1].textContent,'—');
+  assert.ok(ctrl);
 });
 test('no positive tabindex remains in the HTML',()=>{
   assert.doesNotMatch(HTML,/tabindex="\\d+"/);
   assert.match(HTML,/workflow-single-page/);
+  assert.doesNotMatch(HTML,/id="lautestePosition"/);
+  assert.ok(HTML.indexOf('id="beschreibung"')>HTML.indexOf('id="eventName"'));
+  assert.ok(HTML.indexOf('id="beschreibung"')<HTML.indexOf('id="datumMessung"'));
+  assert.ok(HTML.indexOf('id="foh"')>HTML.indexOf('id="messungVon"'));
+  assert.ok(HTML.indexOf('id="foh"')<HTML.indexOf('id="messposition"'));
 });
 test('navigation and status updates do not modify acoustic measurements',()=>{
   const x=fakeDom(),snapshot=imported(),before=JSON.stringify(snapshot);
@@ -181,4 +206,5 @@ test('rehydration keeps only one shell and one set of groups',()=>{
   UI.mount({document:x.doc,getSnapshot:()=>snapshot});
   assert.equal(x.body.children.filter(n=>n.className==='workflow-shell').length,1);
   assert.equal(x.main.children.filter(n=>n.className.includes('workflow-group')).length,5);
+  assert.equal(x.main.children.filter(n=>n.className==='chartsSection').length,1);
 });
