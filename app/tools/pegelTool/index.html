@@ -240,6 +240,11 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 #main.workflow-single-page select:focus-visible,
 #main.workflow-single-page textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .workflow-export .workflow-actions{margin-top:10px}
+.calibration-confirmations{display:grid;gap:12px;margin:16px 0}
+.check-field{display:flex;align-items:center;gap:10px;padding:13px 15px;background:var(--primary-panel);border:1px solid var(--border);border-radius:9px;text-transform:none;letter-spacing:0;cursor:pointer}
+.check-field input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;margin:0;accent-color:var(--accent)}
+.check-field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+#main.workflow-single-page .calibration-confirmations label{margin-top:0}
 @media(max-width:900px){#main.workflow-single-page{padding:12px}.workflow-group-title{font-size:19px}}
 
 /* Selectable PA plans; neutral grey / green states and keyboard-visible focus. */
@@ -436,16 +441,6 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         </select>
         <label>Anschrift / konkrete Ortsangabe</label>
         <input id="ortAdresse" placeholder="Straße, Hausnummer, PLZ, Ort" />
-        <label>Veranstaltungsort anhand der realen Veranstaltung geprüft?</label>
-        <select id="ortBestaetigt">
-          <option value="">Nicht bestätigt (Preset ist kein Nachweis)</option>
-          <option value="ja">Ja, manuell geprüft</option>
-        </select>
-        <label>Veranstaltungsbeginn (optional)</label>
-        <input id="veranstaltungsBeginn" placeholder="Datum / Uhrzeit" />
-        <label>Veranstaltungsende (optional)</label>
-        <input id="veranstaltungsEnde" placeholder="Datum / Uhrzeit" />
-
         <label>Umgebungsbedingungen</label>
         <input id="umwelt" placeholder="Optional, z.B. Wetter / Umgebungseinflüsse" />
       </div>
@@ -465,10 +460,8 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
           </div>
         </div>
 
-        <label>Maßgeblicher Immissionsort für LAeq</label>
-        <input id="messortLAeq" placeholder="Position im Publikum und Ermittlung" />
-        <label>Maßgeblicher Immissionsort für LCpeak</label>
-        <input id="messortLCpeak" placeholder="Kann vom LAeq-Ort abweichen" />
+        <label for="messort">Maßgeblicher Immissionsort</label>
+        <input id="messort" type="text" placeholder="Position im Publikum / maßgeblicher Immissionsort" />
         <label>Art des Messorts</label>
         <select id="messortTyp">
           <option value="">Bitte auswählen</option>
@@ -489,19 +482,9 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
             <input id="kalibratorSN" placeholder="Seriennummer" />
           </div>
         </div>
-        <div class="grid-2">
-          <div>
-            <label>Funktionsprüfung vor der Messung – Zeitpunkt</label>
-            <input id="kalVorZeit" type="datetime-local" />
-            <label>Angezeigter Pegel vor der Messung (dB)</label>
-            <input id="kalVorWert" inputmode="decimal" placeholder="z.B. 94,0" />
-          </div>
-          <div>
-            <label>Funktionsprüfung nach der Messung – Zeitpunkt</label>
-            <input id="kalNachZeit" type="datetime-local" />
-            <label>Angezeigter Pegel nach der Messung (dB)</label>
-            <input id="kalNachWert" inputmode="decimal" placeholder="z.B. 94,0" />
-          </div>
+        <div class="calibration-confirmations">
+          <label class="check-field"><input id="kalVorBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung vor der Messung durchgeführt</label>
+          <label class="check-field"><input id="kalNachBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung nach der Messung durchgeführt</label>
         </div>
         <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
         Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
@@ -545,44 +528,20 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       <div id="paContainer"></div>
       <div class="pa-extra-block">
         <label>Sonstiges / zusätzliche Lautsprecher</label>
-        <div id="paExtras"></div>
+        <textarea id="paZusatz" rows="2" placeholder="Zusätzliche Lautsprecher / Sonderaufbau (bei eigener Location die PA beschreiben)"></textarea>
       </div>
       <label>Aufstellung / Anordnung der Beschallungsanlage</label>
       <textarea id="paAnordnung" placeholder="Positionen, Ausrichtung, Delays, Subs und weitere relevante Anlagenkomponenten"></textarea>
-      <label>Ist die PA-Konfiguration für diese Veranstaltung geprüft?</label>
-      <select id="paBestaetigt">
-        <option value="">Nein – ein Preset ist kein Messnachweis</option>
-        <option value="ja">Ja, vor Ort mit dem tatsächlichen Aufbau abgeglichen</option>
-      </select>
-      <label>Wurden Messbedingungen oder Abweichungen dokumentiert?</label>
-      <select id="abweichungVorhanden">
-        <option value="">Bitte auswählen</option>
-        <option value="nein">Keine dokumentierten Abweichungen</option>
-        <option value="ja">Ja – Beschreibung erforderlich</option>
-      </select>
       <label>Abweichungen, besondere Ereignisse und Begründung (falls vorhanden)</label>
       <textarea id="abweichungBeschreibung" placeholder="Nur wenn zutreffend; zeitlich und fachlich nachvollziehbar"></textarea>
-      <label>Altprojekt: Vorbelegte Angaben aus früherer Version überprüft?</label>
-      <select id="altBestaetigt">
-        <option value="">Nicht geprüft</option>
-        <option value="ja">Ja, sämtliche übernommenen Angaben geprüft</option>
-      </select>
       <div class="compact-row mt-8">
-        <button class="secondary" id="btnAddPA" type="button">+ Komponente</button>
         <button class="secondary" id="btnClearPA" type="button">Auswahl zurücksetzen</button>
       </div>
     </div>
     <div class="section" data-workflow-section="corrections">
       <h3>Ersatzmessort und Korrekturbestimmung</h3>
-      <div class="small mt-8">Bei Ersatzmessorten bedingt erforderlich. k1/k2 aus dem XL3-Log
-      werden unverändert übernommen; diese Angaben verändern die Berechnungsengine nicht.
-      Keine doppelte Anwendung der Korrekturwerte.</div>
       <label>Beschreibung Ersatzmessort</label>
       <input id="ersatzMessort" placeholder="Konkrete Messposition und Bezug zum Publikum" />
-      <label>Bestimmung / Herkunft k1 (LAeq)</label>
-      <textarea id="k1Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
-      <label>Bestimmung / Herkunft k2 (LCpeak)</label>
-      <textarea id="k2Ermittlung" placeholder="Messverfahren, Bezugsort, Datum und Rechenweg"></textarea>
     </div>
   </div>
 </div>
