@@ -221,7 +221,7 @@
         const amount=Number(field.value);
         if(!group||!selected.has(qtyGroup)||
           !groupItems(group,variants,quantities).some(item=>item.type===type)||
-          !/^\\d+$/.test(field.value.trim())||!Number.isInteger(amount)||amount<0||amount>200){
+          !/^\d+$/.test(field.value.trim())||!Number.isInteger(amount)||amount<0||amount>200){
           field.setCustomValidity('Bitte eine ganze Zahl von 0 bis 200 eingeben.');
           field.reportValidity();return;
         }
