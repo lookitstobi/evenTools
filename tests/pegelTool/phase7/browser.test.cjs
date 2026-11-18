@@ -81,7 +81,28 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(first.form.paZusatz,'');
       assert.equal(await page.locator('#messortLAeq,#messortLCpeak,#btnAddPA,#kalVorZeit,#k1Ermittlung').count(),0);
       assert.equal(await page.locator('.workflow-issue-details').count(),0);
-      assert.equal(await page.locator('.workflow-shortinfo-item').count(),4);
+      assert.equal(await page.locator('.workflow-shortinfo-item').count(),6);
+      assert.equal(await page.locator('#lautestePosition').count(),0);
+      assert.equal(Object.hasOwn(first.form,'lautestePosition'),false);
+      const placement=await page.evaluate(()=>{
+        const rect=id=>document.querySelector(id).getBoundingClientRect();
+        const sameWidth=(a,b)=>Math.abs(rect(a).width-rect(b).width)<=1;
+        return {
+          chartsFirst:document.querySelector('#main').firstElementChild===
+            document.querySelector('[data-workflow-section="charts"]'),
+          chartsAboveSetup:rect('[data-workflow-section="charts"]').bottom<
+            rect('#workflow-group-setup').top,
+          descriptionBelowName:rect('#beschreibung').top>rect('#eventName').bottom,
+          descriptionBeforeDate:rect('#beschreibung').bottom<rect('#datumMessung').top,
+          fohAfterMessperson:rect('#foh').top>rect('#messungVon').bottom,
+          fohBeforePosition:rect('#foh').bottom<rect('#messposition').top,
+          positionsEqual:sameWidth('#messposition','#messort'),
+          peopleEqual:sameWidth('#messungVon','#foh'),
+          eventFieldsEqual:sameWidth('#eventName','#datumMessung')
+        };
+      });
+      for(const [key,ok] of Object.entries(placement))
+        assert.equal(ok,true,'Layout: '+key+' must be true');
       assert.equal(first.protocolMeta.origins.organisator,'preset-unverified');
       assert.equal(first.paSelection.schemaVersion,2);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
@@ -100,6 +121,16 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(state.importModel.summary.verified,false);
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),false);
       const originalRows=JSON.stringify(state.importModel.samples);
+      const shownLevels=await page.evaluate(()=>{
+        const o=phase3Evaluation?.overall || {};
+        const label=n=>Number.isFinite(n)?n.toFixed(1).replace('.',','):'—';
+        return {
+          actual:[...document.querySelectorAll('.workflow-shortinfo-value')].slice(4).map(n=>n.textContent),
+          expected:[label(o.laeqMaxDb)+(Number.isFinite(o.laeqMaxDb)?' dB(A)':''),
+            label(o.lcpeakMaxDb)+(Number.isFinite(o.lcpeakMaxDb)?' dB(C)':'')]
+        };
+      });
+      assert.deepEqual(shownLevels.actual,shownLevels.expected);
       assert.match(await page.locator('body').innerText(),/Nicht beurteilbar/i);
 
       // A rejected new file must not destroy the previously imported measurement.
@@ -145,6 +176,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await jsonDownload.saveAs(downloadPath('projekt.nti.json'));
       const saved=JSON.parse(fs.readFileSync(downloadPath('projekt.nti.json'),'utf8'));
       assert.equal(saved.form.eventName,'Phase 7 Browserprüfung');
+      assert.equal(Object.hasOwn(saved.form,'lautestePosition'),false);
       assert.equal(saved.form.messort,'Reihe 3 Mitte');
       assert.equal(saved.form.kalVorBestaetigt,'ja');
       assert.equal(saved.form.kalNachBestaetigt,'ja');
@@ -185,6 +217,16 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       const loaded=await page.evaluate(()=>buildStateObject());
       assert.equal(JSON.stringify(loaded.importModel.samples),originalRows);
       assert.equal(loaded.form.eventName,'Phase 7 Browserprüfung');
+      const old=await page.evaluate(saved=>{
+        const legacy=structuredClone(saved);
+        legacy.form.lautestePosition='Nicht als Immissionsort übernehmen';
+        legacy.form.messort='';
+        const n=normalizeState(legacy);
+        return {form:n.form,serialized:JSON.stringify(n.form)};
+      },saved);
+      assert.equal(Object.hasOwn(old.form,'lautestePosition'),false);
+      assert.equal(old.form.messort,'');
+      assert.doesNotMatch(old.serialized,/lautestePosition/);
       assert.equal(loaded.form.messort,'Reihe 3 Mitte');
       assert.equal(loaded.form.kalVorBestaetigt,'ja');
       assert.equal(loaded.form.kalNachBestaetigt,'ja');
