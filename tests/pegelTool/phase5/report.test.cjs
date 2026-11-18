@@ -70,7 +70,9 @@ class FakePDF {
   setProperties(p){this.props=p;return this;}
   setFont(){return this;}setFontSize(){return this;}setTextColor(){return this;}
   setDrawColor(){return this;}setFillColor(){return this;}
-  rect(){return this;}line(){return this;}
+  rect(){return this;}roundedRect(){return this;}circle(){return this;}
+  line(){return this;}setLineWidth(){return this;}setLineDashPattern(){return this;}
+  getTextWidth(value){return String(value).length*1.9;}
   splitTextToSize(text,width){
     const max=Math.max(8,Math.floor(width/2.2));
     const out=[];
@@ -140,18 +142,21 @@ test('HTML-Bericht escaped Benutzereingaben und Warntexte',()=>{
   assert.match(html,/100 Sekunden fehlen/);
   assert.match(html,/20-23/);
 });
-test('PDF enthält dieselben Abschnittswerte, Hinweise und Beurteilungszeiträume',()=>{
+test('Kompaktes PDF enthält relevante Messergebnisse und zwei Diagrammüberschriften',()=>{
   const r=makeReport();
-  const doc=pdf.create(r,FakePDF);
-  const text=doc.output();
-  // Zeilenumbrüche sind layoutbedingt und dürfen den Wert im PDF nicht ändern.
-  const joined=text.replace(/\r?\n/g,'');
-  for(const key of ['Testkonzert','Testveranstalter','NTI-01','97,3 dB','124,8 dB',
-    'Nicht ermittelt','18:30:00','20-23','CAL-01','TIME_BASIS_UNVERIFIED'])
-    assert.ok(joined.includes(key), 'Fehlt im PDF: '+key);
-  assert.match(text,/NICHT BEURTEILBAR/);
-  assert.match(text,/nicht unterschrieben/);
-  assert.doesNotMatch(text,/Grenzwert eingehalten/i);
+  const doc=pdf.create(r,FakePDF,{chartSamples:[
+    {time:'18:00:00',LAeq_g30:85,LC:110},
+    {time:'18:15:00',LAeq_g30:87,LC:125},
+    {time:'18:30:00',LAeq_g30:86,LC:122}
+  ]});
+  const text=doc.output().replace(/\r?\n/g,'');
+  for(const key of ['Testkonzert','Testveranstalter','NTI-01',
+      '97,3','124,8','CAL-01','01  Pegelverlauf','02  Spitzenpegel',
+      'XL3_Archiv.txt'])
+    assert.ok(text.includes(key), 'Fehlt im PDF: '+key);
+  assert.equal(doc.pages.length,2);
+  assert.match(text,/Keine Überschreitung in auswertbaren Messwerten/);
+  assert.match(text,/keine DIN-Konformitätsbescheinigung/i);
   assert.equal(doc.props.author,'pegelTool '+r.toolVersion);
 });
 test('PDF-Aufbau verändert das gemeinsame Berichtsmodell nicht',()=>{
@@ -159,24 +164,24 @@ test('PDF-Aufbau verändert das gemeinsame Berichtsmodell nicht',()=>{
   pdf.create(r,FakePDF);
   assert.equal(JSON.stringify(r),before);
 });
-test('Vollständige lange Blocktabelle erzeugt mehrere nummerierte PDF-Seiten',()=>{
+test('Lange Messungen bleiben auf zwei Seiten und Tabellenkürzung ist sichtbar',()=>{
   const r=makeReport();
   r.blocks=Array.from({length:120},(_,i)=>({...r.blocks[0],index:i+1}));
   const doc=pdf.create(r,FakePDF);
   const rendered=doc.output();
-  assert.ok(doc.pages.length>3);
-  assert.match(rendered,/Seite 1\//);
-  assert.match(rendered,new RegExp('Seite '+doc.pages.length+'/'+doc.pages.length));
-  assert.equal((rendered.match(/20-23/g)||[]).length>=120,true);
+  assert.equal(doc.pages.length,2);
+  assert.match(rendered,/Auswahl von/);
+  assert.match(rendered,/12 \/ 120/);
+  assert.match(rendered,/Seite 1 \/ 2/);
+  assert.match(rendered,/Seite 2 \/ 2/);
 });
-test('Sehr lange Rohdatenreferenzen umbrechen ohne PDF-Seitenüberlauf',()=>{
+test('Lange Rohdatenreferenzen blähen die kompakte Druckansicht nicht auf',()=>{
   const r=makeReport();
   r.blocks=[{...r.blocks[0],source:Array.from({length:950},(_,i)=>String(i+1)).join(', ')}];
   const doc=pdf.create(r,FakePDF);
-  assert.ok(doc.pages.length>2);
-  assert.match(doc.output(),/949, 950/);
+  assert.equal(doc.pages.length,2);
+  assert.match(doc.output(),/Original-Log separat archivieren/);
 });
-
 test('PDF-Eintrag für fehlende Werte wird nie implizit als 0,0 dB dargestellt',()=>{
   const r=makeReport({evaluation:{blocks:[incompleteBlock],overall:{laeqMaxDb:null,lcpeakMaxDb:null}}});
   assert.ok(!pdf.create(r,FakePDF).output().includes('0,0 dB'));
@@ -206,7 +211,7 @@ test('Integration: ein Exportpfad, Bildschirmbericht, keine alten Generatoren',(
   assert.match(html,/id="reportPreviewContent"/);
   assert.match(html,/getPhase5Report\(\)/);
   assert.match(html,/renderReportPreview\(\)/);
-  assert.match(html,/PegelToolReportPdf\.create|backend\.create\(report,JsPdf\)/);
+  assert.match(html,/backend\.create\(report,JsPdf,\{chartSamples\}\)/);
   assert.match(html,/triggerDownload\(blob,filename,false\)/);
   assert.doesNotMatch(html,/function generateLegacyPDF/);
   assert.doesNotMatch(html,/function generateTemplatePDF/);
