@@ -75,10 +75,13 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(first.form.berichtsort,'Essen');
       assert.match(first.form.berichtDatum,/^\d{4}-\d{2}-\d{2}$/);
       assert.equal(first.form.datumMessung,'');
-      assert.equal(first.form.kalVorZeit,'');
-      assert.equal(first.form.kalVorWert,'');
-      assert.equal(first.form.kalNachZeit,'');
-      assert.equal(first.form.kalNachWert,'');
+      assert.equal(first.form.kalVorBestaetigt,'');
+      assert.equal(first.form.kalNachBestaetigt,'');
+      assert.equal(first.form.messort,'');
+      assert.equal(first.form.paZusatz,'');
+      assert.equal(await page.locator('#messortLAeq,#messortLCpeak,#btnAddPA,#kalVorZeit,#k1Ermittlung').count(),0);
+      assert.equal(await page.locator('.workflow-issue-details').count(),0);
+      assert.equal(await page.locator('.workflow-shortinfo-item').count(),4);
       assert.equal(first.protocolMeta.origins.organisator,'preset-unverified');
       assert.equal(first.paSelection.schemaVersion,2);
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC KARA II').qty,24);
@@ -124,6 +127,11 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(paBeforeSave.paExtras.length,0);
 
       await page.locator('#eventName').fill('Phase 7 Browserprüfung');
+      await page.locator('#messposition').fill('FOH');
+      await page.locator('#messort').fill('Reihe 3 Mitte');
+      await page.locator('#kalVorBestaetigt').check();
+      await page.locator('#kalNachBestaetigt').check();
+      await page.locator('#paZusatz').fill('2 × zusätzliche Delaylautsprecher');
       assert.equal(await page.locator('#workflow-group-assessment').isVisible(),true);
       assert.equal(await page.locator('#workflow-group-export').isVisible(),true);
       // Tabbing from a manual entry must not land on automatic read-only fields.
@@ -137,6 +145,10 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await jsonDownload.saveAs(downloadPath('projekt.nti.json'));
       const saved=JSON.parse(fs.readFileSync(downloadPath('projekt.nti.json'),'utf8'));
       assert.equal(saved.form.eventName,'Phase 7 Browserprüfung');
+      assert.equal(saved.form.messort,'Reihe 3 Mitte');
+      assert.equal(saved.form.kalVorBestaetigt,'ja');
+      assert.equal(saved.form.kalNachBestaetigt,'ja');
+      assert.equal(saved.form.paZusatz,'2 × zusätzliche Delaylautsprecher');
       assert.deepEqual(saved.paSelection.selected,paBeforeSave.paSelection.selected);
       assert.equal(saved.paSelection.schemaVersion,2);
       assert.equal(saved.paSelection.variants.sideL,'ks2');
@@ -173,6 +185,10 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       const loaded=await page.evaluate(()=>buildStateObject());
       assert.equal(JSON.stringify(loaded.importModel.samples),originalRows);
       assert.equal(loaded.form.eventName,'Phase 7 Browserprüfung');
+      assert.equal(loaded.form.messort,'Reihe 3 Mitte');
+      assert.equal(loaded.form.kalVorBestaetigt,'ja');
+      assert.equal(loaded.form.kalNachBestaetigt,'ja');
+      assert.equal(await page.locator('#kalNachBestaetigt').isChecked(),true);
       assert.deepEqual(loaded.paSelection.selected,saved.paSelection.selected);
       assert.equal(loaded.paSelection.variants.sideL,'ks2');
       assert.equal(loaded.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,9);
