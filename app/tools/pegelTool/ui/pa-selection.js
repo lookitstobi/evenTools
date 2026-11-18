@@ -72,7 +72,7 @@
   const groupsFor=location=>CONFIG[location]||[];
   const presetFor=location=>{
     const preset=PRESETS[location]||{selected:[],variants:{}};
-    return {schemaVersion:2,location,selected:[...preset.selected],variants:{...preset.variants}};
+    return {schemaVersion:3,location,selected:[...preset.selected],variants:{...preset.variants},quantities:{}};
   };
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -81,16 +81,25 @@
     const ids=new Set(Array.isArray(selected)?selected:[]);
     return groupsFor(location).filter(group=>ids.has(group.id));
   }
-  function groupItems(group,variants){
-    if(!group.options.length)return group.fixed.map(([type,qty])=>({type,qty}));
+  function groupItems(group,variants,quantities){
     const choice=group.options.find(option=>option.id===(variants||{})[group.id]);
-    return choice?choice.items.map(([type,qty])=>({type,qty})):[];
+    const defaults=group.options.length?(choice?choice.items:[]):group.fixed;
+    const custom=(quantities||{})[group.id]||{};
+    return defaults.map(([type,qty])=>{
+      const override=custom[type];
+      return {type,qty:Number.isInteger(override)&&override>=0&&override<=200?override:qty};
+    });
+  }
+  function groupTitle(group,variants,quantities){
+    const base=group.title.split(' – ')[0];
+    const items=groupItems(group,variants,quantities).filter(item=>item.qty>0);
+    return base+(items.length?' – '+items.map(item=>item.qty+' × '+item.type.replace('L-ACOUSTIC ','')).join(' + '):'');
   }
   function itemsFor(state){
     const sums=new Map(),data=state||{};
     for(const group of activeGroups(data.location,data.selected)){
-      for(const item of groupItems(group,data.variants)){
-        sums.set(item.type,(sums.get(item.type)||0)+item.qty);
+      for(const item of groupItems(group,data.variants,data.quantities)){
+        if(item.qty>0)sums.set(item.type,(sums.get(item.type)||0)+item.qty);
       }
     }
     return Array.from(sums,([type,qty])=>({type,customType:'',qty}));
@@ -98,8 +107,11 @@
   function unresolvedFor(state){
     const data=state||{},missing=[];
     for(const group of activeGroups(data.location,data.selected)){
-      if(group.options.length && !group.options.some(opt=>opt.id===(data.variants||{})[group.id]))
+      if(group.options.length && !group.options.some(opt=>opt.id===(data.variants||{})[group.id])){
         missing.push(group.title+': Sidefill-Variante fehlt.');
+      }else if(!groupItems(group,data.variants,data.quantities).some(item=>item.qty>0)){
+        missing.push(group.title+': Alle Lautsprecheranzahlen sind 0.');
+      }
     }
     return missing;
   }
@@ -108,8 +120,8 @@
     return activeGroups(data.location,data.selected).map(group=>{
       const choice=group.options.find(opt=>opt.id===(data.variants||{})[group.id]);
       return {id:group.id,
-        label:group.title+(choice?' – '+choice.label:''),
-        items:groupItems(group,data.variants),
+        label:groupTitle(group,data.variants,data.quantities),
+        items:groupItems(group,data.variants,data.quantities).filter(item=>item.qty>0),
         unresolved:group.options.length && !choice?['Sidefill-Variante']:[]};
     });
   }
@@ -126,14 +138,14 @@
     if(!root)return null;
     const onChange=typeof options.onChange==='function'?options.onChange:()=>{};
     let location=options.location||AKS;
-    let selected=new Set(),variants={};
-    const snapshot=()=>({schemaVersion:2,location,selected:[...selected],variants:{...variants}});
+    let selected=new Set(),variants={},quantities={};
+    const snapshot=()=>({schemaVersion:3,location,selected:[...selected],variants:{...variants},
+      quantities:Object.fromEntries(Object.entries(quantities).map(([id,counts])=>[id,{...counts}]))});
     function showUnresolved(){
       const warning=root.querySelector('.pa-unresolved');
       if(!warning)return;
       const missing=unresolvedFor(snapshot());
-      warning.textContent=missing.length?
-        missing.length+' Sidefill-Auswahl(en) offen. Bitte eine Variante festlegen.':'';
+      warning.textContent=missing.join(' ');
       warning.hidden=!missing.length;
     }
     function render(){
@@ -142,12 +154,15 @@
         root.innerHTML='<p class="pa-empty">Für diesen Veranstaltungsort gibt es keine Saalübersicht. Zusätzliche Lautsprecher unten manuell erfassen.</p>';
         return;
       }
-      const nodes=groups.flatMap(group=>group.nodes.map(node=>
-        '<button type="button" class="pa-node pa-node--'+node.kind+(selected.has(group.id)?' is-selected':'')+
-        '" data-pa-group="'+esc(group.id)+'" style="left:'+node.x+'%;top:'+node.y+'%" aria-pressed="'+selected.has(group.id)+
-        '" aria-label="'+esc(group.title)+' – '+esc(node.label)+'" title="'+esc(group.title)+'">'+
-        speakerSvg(node.kind)+'<span class="pa-node-label">'+esc(node.label)+'</span></button>'
-      )).join('');
+      const nodes=groups.flatMap(group=>group.nodes.map(node=>{
+        const items=groupItems(group,variants,quantities);
+        const count=items.reduce((total,item)=>total+item.qty,0);
+        const label=/ · \d+$/.test(node.label)?node.label.replace(/ · \d+$/,' · '+count):node.label;
+        return '<button type="button" class="pa-node pa-node--'+node.kind+(selected.has(group.id)?' is-selected':'')+
+          '" data-pa-group="'+esc(group.id)+'" style="left:'+node.x+'%;top:'+node.y+'%" aria-pressed="'+selected.has(group.id)+
+          '" aria-label="'+esc(groupTitle(group,variants,quantities))+' – '+esc(label)+'" title="'+esc(groupTitle(group,variants,quantities))+'">'+
+          speakerSvg(node.kind)+'<span class="pa-node-label">'+esc(label)+'</span></button>';
+      })).join('');
       const rows=groups.map(group=>{
         const checked=selected.has(group.id);
         const choices=group.options.map(option=>'<option value="'+esc(option.id)+'"'+
@@ -155,15 +170,21 @@
         const chooser=choices?'<label class="pa-variant-label">'+esc(group.title)+' – Variante'+
           '<select data-pa-variant="'+esc(group.id)+'" aria-label="'+esc(group.title)+' – Variante"'+
           (checked?'':' disabled')+'><option value="">Variante wählen…</option>'+choices+'</select></label>':'';
+        const qtyFields=checked?groupItems(group,variants,quantities).map(item=>
+          '<label class="pa-qty-label">'+esc(item.type.replace('L-ACOUSTIC ','') )+
+          '<input type="number" min="0" max="200" step="1" value="'+item.qty+
+          '" data-pa-qty-group="'+esc(group.id)+'" data-pa-qty-type="'+esc(item.type)+
+          '" aria-label="'+esc(group.title+' – Anzahl '+item.type)+'"></label>').join(''):'';
         return '<div class="pa-group-row"><button type="button" class="pa-group-toggle'+
           (checked?' is-selected':'')+'" data-pa-group="'+esc(group.id)+'" aria-pressed="'+checked+'">'+
-          '<span class="pa-check">'+(checked?'✓':'')+'</span>'+esc(group.title)+'</button>'+
-          (chooser?'<div class="pa-qty-grid">'+chooser+'</div>':'')+'</div>';
+          '<span class="pa-check">'+(checked?'✓':'')+'</span>'+esc(groupTitle(group,variants,quantities))+'</button>'+
+          (chooser?'<div class="pa-qty-grid">'+chooser+'</div>':'')+
+          (qtyFields?'<div class="pa-qty-grid">'+qtyFields+'</div>':'')+'</div>';
       }).join('');
       root.innerHTML='<div class="pa-picker"><div class="pa-plan">'+
         '<div class="pa-plan-heading">'+(location===AKS?'Alfried-Krupp-Saal':'Nationalbank-Pavillon')+
         '<span>Schematische Aufsicht · anklicken zum Auswählen</span></div>'+
-        '<div class="pa-stage-plan"><div class="pa-stage-marker">BÜHNE</div>'+
+        '<div class="pa-stage-plan">'+
         '<div class="pa-audience-marker">PUBLIKUM</div>'+nodes+'</div>'+
         '<div class="pa-plan-legend"><span><i></i>nicht gewählt</span><span><i class="active"></i>ausgewählt</span></div>'+
         '</div><div class="pa-options">'+
@@ -177,6 +198,7 @@
       const preset=presetFor(location);
       selected=new Set(preset.selected);
       variants={...preset.variants};
+      quantities={};
       render();
     }
     root.addEventListener('click',e=>{
@@ -191,14 +213,36 @@
       onChange();
     });
     root.addEventListener('change',e=>{
-      const id=e.target&&e.target.getAttribute('data-pa-variant');
+      const field=e.target;
+      const qtyGroup=field&&field.getAttribute('data-pa-qty-group');
+      if(qtyGroup){
+        const group=groupsFor(location).find(g=>g.id===qtyGroup);
+        const type=field.getAttribute('data-pa-qty-type');
+        const amount=Number(field.value);
+        if(!group||!selected.has(qtyGroup)||
+          !groupItems(group,variants,quantities).some(item=>item.type===type)||
+          !/^\\d+$/.test(field.value.trim())||!Number.isInteger(amount)||amount<0||amount>200){
+          field.setCustomValidity('Bitte eine ganze Zahl von 0 bis 200 eingeben.');
+          field.reportValidity();return;
+        }
+        field.setCustomValidity('');
+        quantities[qtyGroup]={...(quantities[qtyGroup]||{}),[type]:amount};
+        render();
+        const focus=Array.from(root.querySelectorAll('[data-pa-qty-group]'))
+          .find(input=>input.getAttribute('data-pa-qty-group')===qtyGroup&&
+            input.getAttribute('data-pa-qty-type')===type);
+        if(focus)focus.focus({preventScroll:true});
+        onChange();return;
+      }
+      const id=field&&field.getAttribute('data-pa-variant');
       if(!id)return;
       const group=groupsFor(location).find(g=>g.id===id);
       if(!group||!selected.has(id)||!group.options.length)return;
-      const value=e.target.value;
+      const value=field.value;
       if(value && !group.options.some(option=>option.id===value))return;
       variants[id]=value;
-      showUnresolved();
+      delete quantities[id]; // A different variant starts with its defined component quantities.
+      render();
       onChange();
     });
     function setLocation(next){
@@ -206,18 +250,27 @@
       resetToPreset();
     }
     function setState(saved){
-      if(!saved||saved.schemaVersion!==2||saved.location!==location){
+      if(!saved||![2,3].includes(saved.schemaVersion)||saved.location!==location){
         // Old 1.x graphical selections are not converted into potentially false
         // quantities. Caller restores old paItems separately as manual entries.
-        selected=new Set();variants={};render();return false;
+        selected=new Set();variants={};quantities={};render();return false;
       }
       const ids=new Set(groupsFor(location).map(group=>group.id));
       selected=new Set(Array.isArray(saved.selected)?saved.selected.filter(id=>ids.has(id)):[]);
-      variants={};
+      variants={};quantities={};
       for(const group of groupsFor(location)){
         if(group.options.length &&
           group.options.some(option=>option.id===(saved.variants||{})[group.id]))
           variants[group.id]=saved.variants[group.id];
+        if(saved.schemaVersion===3 && saved.quantities &&
+          saved.quantities[group.id] && typeof saved.quantities[group.id]==='object'){
+          const allowedTypes=new Set(groupItems(group,variants,{}).map(item=>item.type));
+          const counts={};
+          for(const [type,amount] of Object.entries(saved.quantities[group.id])){
+            if(allowedTypes.has(type)&&Number.isInteger(amount)&&amount>=0&&amount<=200)counts[type]=amount;
+          }
+          if(Object.keys(counts).length)quantities[group.id]=counts;
+        }
       }
       render();return true;
     }
