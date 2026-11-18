@@ -131,7 +131,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
         };
       });
       assert.deepEqual(shownLevels.actual,shownLevels.expected);
-      assert.match(await page.locator('body').innerText(),/Nicht beurteilbar/i);
+      assert.match(await page.locator('body').innerText(),/Grenzwert überschritten/i);
 
       // A rejected new file must not destroy the previously imported measurement.
       await page.locator('#fileInput').setInputFiles(path.join(ROOT,'tests/pegelTool/fixtures/invalid-not-xl3.txt'));
