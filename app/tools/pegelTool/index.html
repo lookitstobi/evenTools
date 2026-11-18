@@ -254,9 +254,6 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 .pa-plan-heading span{display:block;margin-top:4px;color:var(--text-secondary);font-size:11px;font-weight:450}
 .pa-stage-plan{position:relative;height:375px;max-width:620px;margin:10px auto 0;border-radius:10px;
  background:linear-gradient(180deg,#242424 0%,#303030 55%,#363636 100%);border:1px solid var(--border)}
-.pa-stage-marker{position:absolute;left:28%;width:44%;top:6%;height:17%;background:#4b4b4b;
- border:1px solid #777;border-radius:4px;display:flex;justify-content:center;align-items:center;
- letter-spacing:3px;font-size:12px;font-weight:700;color:#eee}
 .pa-audience-marker{position:absolute;bottom:6%;width:100%;text-align:center;letter-spacing:3px;
  color:#aaa;font-size:11px}
 .pa-node{position:absolute;transform:translate(-50%,-50%);width:69px;min-height:64px;
@@ -326,6 +323,20 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
  #main.workflow-single-page .manual-fields .grid-2,
  #main.workflow-single-page .section .grid-2{grid-template-columns:minmax(0,1fr)}
 }
+
+.workflow-group-heading{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:3px 0 10px}
+.workflow-group-heading::-webkit-details-marker{display:none}
+.workflow-group-heading::before{content:'▾';font-size:15px;color:var(--text-secondary);width:16px;flex:0 0 16px}
+.workflow-group:not([open])>.workflow-group-heading::before{content:'▸'}
+.workflow-group-heading .workflow-group-title{margin:0;flex:1}
+.workflow-group-alert{font-size:12px;line-height:17px;text-align:center;border:1px solid #b98c3e;
+ color:#e6b458;border-radius:50%;height:19px;width:19px;font-weight:800;flex:0 0 19px}
+.workflow-group-alert[hidden]{display:none}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"]{width:100%;max-width:100%}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] input,
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] select{width:100%;max-width:100%}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] label{display:block}
+#main.workflow-single-page .section[data-workflow-section="deviceEvidence"] .check-field{display:flex}
 
 /* Single-page layout from first render; no legacy tab strip or clipped desktop scrolling. */
 html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
@@ -439,9 +450,47 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
       </div>
 
       <details class="mt-8">
-        <summary>Parser / Debug</summary>
+        <summary>Vollständige Messdaten / Parser-Ergebnisse</summary>
         <div class="inner small" id="parseInfo"></div>
       </details>
+    </div>
+    <div class="section manual-fields" data-workflow-section="deviceEvidence">
+      <h3>Messposition und Funktionsprüfung</h3>
+      <div>
+        <div class="grid-2">
+          <div>
+            <label for="messposition">Messposition</label>
+            <input id="messposition" />
+          </div>
+          <div>
+            <label for="messort">Maßgeblicher Immissionsort</label>
+            <input id="messort" type="text" placeholder="Position im Publikum / maßgeblicher Immissionsort" />
+          </div>
+        </div>
+        <label>Art des Messorts</label>
+        <select id="messortTyp">
+          <option value="">Bitte auswählen</option>
+          <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
+          <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
+        </select>
+
+        <div class="grid-2">
+          <div>
+            <label>Kalibrator</label>
+            <input id="kalibratorModell" placeholder="Typ / Hersteller" />
+          </div>
+          <div>
+            <label>Kalibrator SN</label>
+            <input id="kalibratorSN" placeholder="Seriennummer" />
+          </div>
+        </div>
+        <div class="calibration-confirmations">
+          <label class="check-field"><input id="kalVorBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung vor der Messung durchgeführt</label>
+          <label class="check-field"><input id="kalNachBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung nach der Messung durchgeführt</label>
+        </div>
+        <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
+        Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
+      </div>
     </div>
 
 
@@ -488,39 +537,7 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         <label for="foh">Zuständiger FOH-Techniker</label>
         <input id="foh" />
 
-        <div class="grid-2">
-          <div>
-            <label for="messposition">Messposition</label>
-            <input id="messposition" />
-          </div>
-          <div>
-            <label for="messort">Maßgeblicher Immissionsort</label>
-            <input id="messort" type="text" placeholder="Position im Publikum / maßgeblicher Immissionsort" />
-          </div>
-        </div>
-        <label>Art des Messorts</label>
-        <select id="messortTyp">
-          <option value="">Bitte auswählen</option>
-          <option value="direkt">Direkt am maßgeblichen Immissionsort</option>
-          <option value="ersatz">Ersatzmessort mit Korrekturwerten</option>
-        </select>
 
-        <div class="grid-2">
-          <div>
-            <label>Kalibrator</label>
-            <input id="kalibratorModell" placeholder="Typ / Hersteller" />
-          </div>
-          <div>
-            <label>Kalibrator SN</label>
-            <input id="kalibratorSN" placeholder="Seriennummer" />
-          </div>
-        </div>
-        <div class="calibration-confirmations">
-          <label class="check-field"><input id="kalVorBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung vor der Messung durchgeführt</label>
-          <label class="check-field"><input id="kalNachBestaetigt" type="checkbox" value="ja" /> Funktionsprüfung nach der Messung durchgeführt</label>
-        </div>
-        <div class="small">Geräte-Mikrofonkalibrierung im Log ist nicht mit einer dokumentierten
-        Funktionsprüfung vor und nach der Veranstaltung gleichzusetzen. Toleranzbewertung offen.</div>
       </div>
     </div>
 
@@ -743,10 +760,10 @@ function restorePAItems(items,savedSelection,savedExtras){
   if(paController){
     paController.setLocation(getVal('location'));
     // Legacy projects must not acquire selected PA groups by accident.
-    paController.setState(savedSelection && savedSelection.schemaVersion===2
-      ? savedSelection : {schemaVersion:2,location:getVal('location'),selected:[],variants:{}});
+    paController.setState(savedSelection && [2,3].includes(savedSelection.schemaVersion)
+      ? savedSelection : {schemaVersion:3,location:getVal('location'),selected:[],variants:{},quantities:{}});
   }
-  const legacy=!savedSelection || savedSelection.schemaVersion!==2;
+  const legacy=!savedSelection || ![2,3].includes(savedSelection.schemaVersion);
   const extraText=legacyPaText(legacy?items:savedExtras);
   if(extraText){
     const existing=getVal('paZusatz').trim();
@@ -839,7 +856,7 @@ function normalizeState(raw){
     protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
     legacyProtocol:preserved,
-    paSelection: raw.paSelection && [1,2].includes(raw.paSelection.schemaVersion)
+    paSelection: raw.paSelection && [1,2,3].includes(raw.paSelection.schemaVersion)
       ? raw.paSelection : null,
     paExtras: Array.isArray(raw.paExtras)
       ? raw.paExtras.map(it=>({
@@ -1939,11 +1956,16 @@ function phase3Db(value){
 }
 function phase3AppendRow(body, values){
   const tr = document.createElement('tr');
-  for(const value of values){
+  const summaryTable=body.closest('table')?.id==='pegelTabelle';
+  values.forEach((value,index)=>{
     const td = document.createElement('td');
     td.textContent = String(value);
+    if(summaryTable && index===4){
+      if(value==='Nicht überschritten')td.classList.add('status-ok');
+      else if(value==='Überschritten')td.classList.add('status-bad');
+    }
     tr.appendChild(td);
-  }
+  });
   body.appendChild(tr);
 }
 function renderPhase3Evaluation(result){
@@ -2271,7 +2293,7 @@ el('fileInput').addEventListener('change', (e)=>{
     setText('chipLog', 'Log: Datei zu groß ('+f.name+')');
     setText('parseInfo', 'Logdatei über 8 MiB – nicht importiert.');
     lastImportAttempt={errors:[{code:'TOO_LARGE',message:'Logdatei über 8 MiB – nicht importiert.'}]};
-    if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+    if(workflowController) workflowController.refresh();
     e.target.value = '';
     return;
   }
@@ -2291,7 +2313,7 @@ el('fileInput').addEventListener('change', (e)=>{
           setDot('dotLog','warn');
           setText('chipLog','Log: vorherige Messung geladen (neuer Import abgewiesen)');
         }
-        if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+        if(workflowController) workflowController.refresh();
         return;
       }
       const compat = window.PegelToolImport.toLegacy(result.model);
@@ -2312,7 +2334,7 @@ el('fileInput').addEventListener('change', (e)=>{
       markRequiredFields();
       calculateAndRender();
       showImportQuality(importModel);
-      if(workflowController) workflowController.go('quality');
+      if(workflowController) workflowController.refresh();
       scheduleRecoverySave();
     }catch(err){
       console.error(err);
@@ -2320,7 +2342,7 @@ el('fileInput').addEventListener('change', (e)=>{
       setText('chipLog','Log: Importfehler');
       setText('parseInfo','Import fehlgeschlagen: '+String(err?.message || err));
       lastImportAttempt={errors:[{code:'IMPORT_EXCEPTION',message:String(err?.message || err)}]};
-      if(workflowController){ workflowController.refresh(); workflowController.go('quality'); }
+      if(workflowController) workflowController.refresh();
     }finally{
       if(e.target) e.target.value = '';
     }
