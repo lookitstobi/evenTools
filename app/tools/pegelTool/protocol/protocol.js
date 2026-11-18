@@ -32,8 +32,7 @@
     ['abweichungBeschreibung','Abweichungen / besondere Ereignisse','optional'],
     ['beschreibung','Beschreibung der Veranstaltung','optional'],
     ['umwelt','Umgebungsbedingungen','optional'],
-    ['foh','FOH-Techniker','optional'],
-    ['lautestePosition','Lauteste Position (Altfeld)','optional']
+    ['foh','FOH-Techniker','optional']
   ].map(function (d) {return Object.freeze({id:d[0], label:d[1], category:d[2]});}));
 
   const FIELD_IDS = Object.freeze(FIELD_RULES.map(function (d) {return d.id;}));
