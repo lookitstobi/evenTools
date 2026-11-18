@@ -383,6 +383,8 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
           <tbody></tbody>
         </table>
       </div>
+      <div class="small mt-6" id="measurementCoverageInfo"></div>
+      <details id="peakEventDetails" style="display:none"><summary id="peakEventSummary">LCpeak-Überschreitungen</summary><div class="small mt-6" id="peakEventList"></div></details>
       <div class="small mt-6" id="chartInfo"></div>
     </div>
 
@@ -1795,16 +1797,16 @@ function updateComplianceStatus(){
     dot.title = 'Keine Messung geladen';
   } else {
     const record=getProtocolReportData();
-    const assessment=record?.review?.reportFullyChecked ? record.assessment.measurementStatus : 'not-assessable';
+    const assessment=phase3Evaluation?.overall?.measurementStatus || 'not-assessable';
     if(assessment === 'within-limits'){
       dot.classList.add('status-ok');
-      dot.title='Grenzwerte eingehalten';
+      dot.title='Keine Überschreitung in auswertbaren Messdaten festgestellt';
     } else if(assessment === 'exceeded'){
       dot.classList.add('status-bad');
       dot.title='Grenzwert überschritten';
     } else {
       dot.classList.add('status-warn');
-      dot.title='Angaben oder Messdaten noch nicht vollständig beurteilbar';
+      dot.title=assessment==='partial' ? 'Nur teilweise auswertbare Messgrößen' : 'Keine belastbare Messwertbeurteilung';
     }
   }
 }
@@ -1957,14 +1959,20 @@ function renderPhase3Evaluation(result){
       phase3AppendRow(body, [
         block.start.slice(0,16).replace('T',' ') + ' – ' + block.end.slice(11,16),
         block.coveredSeconds.toFixed(0) + ' / ' + block.expectedSeconds + ' s',
-        phase3Db(block.laeq30Db), phase3Db(block.lcpeakMaxDb),
-        block.dataQuality === 'complete' ? 'Messzeit vollständig*' :
-          block.dataQuality === 'conflict' ? 'Zeitkonflikt' : 'Unvollständig'
+        phase3Db(block.laeq30Db ?? block.laeqPartialDb ?? block.laeqObservedDb),
+        phase3Db(block.lcpeakObservedDb),
+        block.dataCoverageState === 'full' ?
+          'Vollständig · LAeq '+(block.comparisonLAeq==='above'?'über 99':'bis 99')+
+          ' · LCpeak '+(block.comparisonLCpeakObserved==='above'?'über 135':'bis 135') :
+        block.dataCoverageState === 'partial-edge' ?
+          'Teilzeit: '+Math.floor(block.coveredSeconds/60)+':'+String(Math.round(block.coveredSeconds%60)).padStart(2,'0')+' min' :
+        block.dataCoverageState === 'conflict' ? 'Zeitkonflikt' : 'Messlücke / Teilwerte'
       ]);
     }
   }
   setText('phase3Info', result.blocks.length + ' feste Halbstundenfenster; ' +
-    result.overall.completeBlocks + ' vollständig erfasste Blöcke. Zeitstempel als Intervallende ausgewertet.');
+    result.overall.completeBlocks + ' vollständig erfasste Blöcke. ' +
+    'Teilzeit-LAeq wird getrennt vom LAeq,30min betrachtet. Zeitstempel als Intervallende ausgewertet.');
   const codes = [...new Set(result.quality.warnings.map(w => w.code)
     .concat(result.blocks.flatMap(b => b.warnings.map(w => w.code))))];
   setText('phase3Warning', codes.length ?
@@ -1982,13 +1990,27 @@ function calculateAndRender(){
     if(phase3Evaluation){
       importModel.timeBlocks = phase3Evaluation.blocks;
       const overall = phase3Evaluation.overall;
-      const complete=overall.measurementStatus !== 'not-assessable';
-      const labelFor=comparison=>!complete ? 'Nicht beurteilbar' :
-        comparison==='above' ? 'Überschritten' : comparison==='at-or-below' ? 'Eingehalten' : 'Nicht beurteilbar';
-      phase3AppendRow(tbody, ['LAeq 30 min (feste Blöcke)', phase3Db(overall.laeqMaxDb),
-        '—','99 dB(A)',labelFor(overall.comparisonLAeq)]);
-      phase3AppendRow(tbody, ['LCpeak (Blockmaximum)', phase3Db(overall.lcpeakMaxDb),
-        '—','135 dB(C)',labelFor(overall.comparisonLCpeak)]);
+      const labelFor=comparison=>comparison==='above' ? 'Überschritten' :
+        comparison==='at-or-below' ? 'Nicht überschritten' : 'Nicht bestimmbar';
+      const laeqCount=overall.laeqExceededCount || 0;
+      const peakCount=overall.lcpeakExceededCount || 0;
+      phase3AppendRow(tbody, ['LAeq,30min (vollständige Blöcke)', phase3Db(overall.laeqMaxDb),
+        overall.completeBlocks ? laeqCount+' von '+overall.completeBlocks+' Beurteilungsblöcken' : 'Keine vollständigen 30-Minuten-Blöcke',
+        '99 dB(A)',labelFor(overall.comparisonLAeq)]);
+      phase3AppendRow(tbody, ['LCpeak (alle erfassten Intervalle)', phase3Db(overall.lcpeakMaxDb),
+        peakCount+' betroffene Logintervalle',
+        '135 dB(C)',labelFor(overall.comparisonLCpeak)]);
+      const peaks=overall.lcpeakExceededIntervals || [];
+      el('peakEventDetails').style.display=peaks.length ? '' : 'none';
+      setText('peakEventSummary',peaks.length+' LCpeak-Logintervalle über 135 dB(C) – Zeitpunkte anzeigen');
+      const eventList=el('peakEventList');
+      eventList.textContent=peaks.slice(0,100).map(p=>p.start.replace('T',' ')+'–'+p.end.slice(11)+' ('+phase3Db(p.valueDb)+')').join(' · ')+
+        (peaks.length>100?' · … weitere '+(peaks.length-100)+' Intervalle im Messbericht':'');
+      const laeqPeriods=(overall.laeqExceededBlocks || []).map(b=>b.start.replace('T',' ').slice(0,16)+'–'+b.end.slice(11,16));
+      setText('measurementCoverageInfo',
+        laeqPeriods.length?'LAeq-Überschreitungen: '+laeqPeriods.join(', '):'Keine LAeq,30min-Überschreitung in vollständigen Blöcken. '+
+          (overall.completeBlocks===0?'Ein vollständiger 30-Minuten-Block liegt nicht vor.':'')+
+          (overall.hasMeasurementGaps?' Messlücken vorhanden; keine Aussage über ungemessene Zeit.':''));
     }
     renderPhase3Evaluation(phase3Evaluation);
     setText('laeqChartLabel', 'LAeq_g30 (gleitend, nur informativ)');
@@ -1996,6 +2018,8 @@ function calculateAndRender(){
     // Legacy state without verifiable origin: show only informal observations.
     phase3Evaluation = null;
     renderPhase3Evaluation(null);
+    setText('measurementCoverageInfo','Keine eindeutig zugeordnete technische Blockbewertung.');
+    el('peakEventDetails').style.display='none';
     const maxFinite = items => {
       const valid = items.filter(x=>typeof x==='number' && Number.isFinite(x));
       return valid.length ? Math.max(...valid) : null;

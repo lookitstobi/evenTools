@@ -39,6 +39,8 @@ jobs:
         run: node --test tests/pegelTool/phase6/workflow.test.cjs
       - name: Run pegelTool Phase 7 independent reference and integration tests
         run: node --test tests/pegelTool/phase7/release.test.cjs
+      - name: Run pegelTool measurement overview and kset tests
+        run: node --test tests/pegelTool/phase8/measurement-overview.test.cjs
 
   browser-e2e:
     name: pegelTool Chromium E2E and PDF rendering

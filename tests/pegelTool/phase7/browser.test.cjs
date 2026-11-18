@@ -112,11 +112,18 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(first.paSelection.variants.sideR,'ks4');
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),true);
 
-      await page.locator('#fileInput').setInputFiles(SOURCE);
+      // Inject a real XL3 kset header field into the synthetic browser fixture.
+      const sourceWithKset=fs.readFileSync(SOURCE,'utf8').replace(
+        'k2: +2,0 dB','k2: +2,0 dB\nkset date: 2026-11-15 14:41');
+      await page.locator('#fileInput').setInputFiles({
+        name:'synthetic-kset.txt',mimeType:'text/plain',buffer:Buffer.from(sourceWithKset)
+      });
       await page.waitForFunction(()=>buildStateObject().importModel?.samples?.length===4);
       const state=await page.evaluate(()=>buildStateObject());
       assert.equal(state.importModel.samples.length,4);
       assert.equal(state.importModel.schemaVersion,1);
+      assert.equal(state.importModel.measurement.ksetDate,'2026-11-15 14:41');
+      assert.equal(await page.locator('#kset').inputValue(),'2026-11-15 14:41');
       assert.equal(state.logLoaded,true);
       assert.equal(state.importModel.summary.verified,false);
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),false);
@@ -131,7 +138,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
         };
       });
       assert.deepEqual(shownLevels.actual,shownLevels.expected);
-      assert.match(await page.locator('body').innerText(),/Nicht beurteilbar/i);
+      assert.match(await page.locator('body').innerText(),/Grenzwert überschritten/i);
 
       // A rejected new file must not destroy the previously imported measurement.
       await page.locator('#fileInput').setInputFiles(path.join(ROOT,'tests/pegelTool/fixtures/invalid-not-xl3.txt'));
@@ -178,6 +185,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await jsonDownload.saveAs(downloadPath('projekt.nti.json'));
       const saved=JSON.parse(fs.readFileSync(downloadPath('projekt.nti.json'),'utf8'));
       assert.equal(saved.form.eventName,'Phase 7 Browserprüfung');
+      assert.equal(saved.importModel.measurement.ksetDate,'2026-11-15 14:41');
       assert.equal(Object.hasOwn(saved.form,'lautestePosition'),false);
       assert.equal(saved.form.messort,'Reihe 3 Mitte');
       assert.equal(saved.form.kalVorBestaetigt,'ja');
@@ -274,4 +282,4 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await new Promise(resolve=>server.close(resolve));
     }
   });
-function documentedStatus(text){return /Nicht beurteilbar/i.test(text);}
+function documentedStatus(text){return /Grenzwert überschritten/i.test(text);}

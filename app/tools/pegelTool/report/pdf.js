@@ -81,7 +81,7 @@
       doc.rect(left,y-3,usable,8,'F');
       doc.setFont('helvetica','bold');
       doc.setFontSize(7.5);
-      [['Zeitraum',0],['Abdeckung',53],['LAeq 30min',82],['LCpeak',113],['Datenlage',143]].forEach(r=>{
+      [['Zeitraum',0],['Abdeckung',53],['LAeq',82],['LCpeak',113],['Datenlage',143]].forEach(r=>{
         doc.text(r[0],left+r[1]+1,y+1.5);
       });
       y+=8;
@@ -144,8 +144,8 @@
       for(const r of section.rows) kv(r.label,r.value,r.source);
     }
 
-    heading('30-Minuten-Beurteilungsblöcke ('+report.blocks.length+')');
-    paragraph('Beurteilung in festen 30-Minuten-Zeiträumen zur vollen und halben Stunde. Fehlende Messwerte werden nicht ergänzt.',8.5);
+    heading('30-Minuten-Zeitfenster ('+report.blocks.length+')');
+    paragraph('Volle 30-Minuten-Zeiträume und gekennzeichnete Teilzeitmessungen. Der LAeq eines Teilzeitfensters ist kein LAeq,30min. Fehlende Messwerte werden nicht ergänzt.',8.5);
     drawTableHeader();
     for(const b of report.blocks) block(b);
 
