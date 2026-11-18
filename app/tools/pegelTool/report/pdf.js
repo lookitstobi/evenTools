@@ -268,7 +268,8 @@
     b=field(R,b,'Mikrofon / Seriennr.',get(report,'Messmikrofon')+' / '+get(report,'Mikrofon-Seriennummer'),F);
     b=field(R,b,'Messbeginn - Messende',get(report,'Messbeginn laut Log')+' bis '+get(report,'Messende laut Log'),F,2);
     b=field(R,b,'Korrekturen',get(report,'k1 – LAeq')+' / '+get(report,'k2 – LCpeak'),F);
-    b=field(R,b,'Korrekturherkunft','Bereits im XL3-Log angewandt; Ermittlung: '+get(report,'k1 – Herkunft / Ermittlung'),F,2);
+    b=field(R,b,'Korrekturstatus','k1: '+get(report,'k1 – im Gerätelog angewandt?')+'; k2: '+get(report,'k2 – im Gerätelog angewandt?'),F,2);
+    b=field(R,b,'Ermittlung k1/k2',get(report,'k1 – Herkunft / Ermittlung')+' / '+get(report,'k2 – Herkunft / Ermittlung'),F,2);
     b=field(R,b,'Kalibrator',get(report,'Kalibrator')+' / '+get(report,'Kalibrator-Seriennummer'),F);
     b=field(R,b,'Prüfung vor/nach',get(report,'Vor der Messung – Anzeige')+' / '+get(report,'Nach der Messung – Anzeige'),F);
     if(a>panelBottom-2||b>panelBottom-2)
