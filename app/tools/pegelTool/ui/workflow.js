@@ -143,7 +143,7 @@
     }
     const exportArea=make('section','workflow-group workflow-export');
     exportArea.id='workflow-group-export';
-    exportArea.appendChild(make('h2','workflow-group-title','Export'));
+    exportArea.appendChild(make('h2','workflow-group-title','05 · Unterschrift und Export'));
     const exportText=make('p','workflow-inline-status','Ohne überprüfbaren Import noch kein PDF möglich.');
     const actions=make('div','workflow-actions');
     function action(label,target,secondary){
@@ -156,7 +156,7 @@
     actions.append(exportButton,
       action('Projekt speichern (JSON)','btnSaveState',true),
       action('Projekt speichern (HTML)','btnExportHtml',true));
-    exportArea.appendChild(make('h3','workflow-group-title','05 · Unterschrift und Export'));
+
     exportArea.appendChild(sections.signature);
     exportArea.append(exportText,actions);
     groupsById.export=exportArea;
