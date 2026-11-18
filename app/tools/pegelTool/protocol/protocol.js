@@ -15,35 +15,25 @@
     ['organisator','Veranstalter / Organisation','pflicht'],
     ['location','Veranstaltungsort','pflicht'],
     ['ortAdresse','Anschrift des Veranstaltungsorts','pflicht'],
-    ['ortBestaetigt','Veranstaltungsort vor Ort bestätigt','pflicht'],
     ['messungVon','Messperson / Firma','pflicht'],
     ['messposition','Tatsächlicher Messort','pflicht'],
-    ['messortLAeq','Maßgeblicher Immissionsort LAeq','pflicht'],
-    ['messortLCpeak','Maßgeblicher Immissionsort LCpeak','pflicht'],
+    ['messort','Maßgeblicher Immissionsort','pflicht'],
     ['messortTyp','Messung am Immissionsort oder Ersatzmessort','pflicht'],
     ['kalibratorModell','Kalibrator-Typ','pflicht'],
     ['kalibratorSN','Kalibrator-Seriennummer','pflicht'],
-    ['kalVorZeit','Funktionsprüfung vor Messung: Zeitpunkt','pflicht'],
-    ['kalVorWert','Funktionsprüfung vor Messung: Anzeigenwert','pflicht'],
-    ['kalNachZeit','Funktionsprüfung nach Messung: Zeitpunkt','pflicht'],
-    ['kalNachWert','Funktionsprüfung nach Messung: Anzeigenwert','pflicht'],
-    ['paAnordnung','Aufstellung der Beschallungsanlage','pflicht'],
-    ['paBestaetigt','Beschallungsaufbau kontrolliert','pflicht'],
-    ['abweichungVorhanden','Abweichungen dokumentiert?','pflicht'],
+    ['kalVorBestaetigt','Funktionsprüfung vor der Messung durchgeführt','pflicht'],
+    ['kalNachBestaetigt','Funktionsprüfung nach der Messung durchgeführt','pflicht'],
     ['berichtName','Protokollverfasser','pflicht'],
     ['berichtDatum','Datum der Protokollerstellung','pflicht'],
     ['berichtsort','Ort der Protokollerstellung','pflicht'],
     ['ersatzMessort','Beschreibung Ersatzmessort','bedingt'],
-    ['k1Ermittlung','Bestimmung von k1','bedingt'],
-    ['k2Ermittlung','Bestimmung von k2','bedingt'],
-    ['abweichungBeschreibung','Beschreibung / Begründung der Abweichungen','bedingt'],
-    ['altBestaetigt','Übernommene Altangaben überprüft','bedingt'],
+    ['paAnordnung','Aufstellung der Beschallungsanlage','optional'],
+    ['paZusatz','Zusätzliche Lautsprecher / Sonderaufbau','optional'],
+    ['abweichungBeschreibung','Abweichungen / besondere Ereignisse','optional'],
     ['beschreibung','Beschreibung der Veranstaltung','optional'],
-    ['veranstaltungsBeginn','Veranstaltungsbeginn','optional'],
-    ['veranstaltungsEnde','Veranstaltungsende','optional'],
     ['umwelt','Umgebungsbedingungen','optional'],
     ['foh','FOH-Techniker','optional'],
-    ['lautestePosition','Bisherige Ortsangabe (Altprojekt)','optional']
+    ['lautestePosition','Lauteste Position (Altfeld)','optional']
   ].map(function (d) {return Object.freeze({id:d[0], label:d[1], category:d[2]});}));
 
   const FIELD_IDS = Object.freeze(FIELD_RULES.map(function (d) {return d.id;}));
@@ -66,16 +56,8 @@
     return !!m && validDate(m[1]) && Number(m[2])<24 && Number(m[3])<60 &&
       (m[4]===undefined || Number(m[4])<60);
   };
-  const condition = function (rule, form, origins, model) {
-    if (rule.id === 'altBestaetigt') return Object.values(origins || {}).some(function (v) {return v === 'legacy-unverified';});
-    if (rule.id === 'ersatzMessort') return trim(form.messortTyp) === 'ersatz';
-    if (rule.id === 'k1Ermittlung' || rule.id === 'k2Ermittlung') {
-      if (trim(form.messortTyp) === 'ersatz') return true;
-      const kind = rule.id.slice(0,2);
-      const correction = model && model.corrections && model.corrections[kind];
-      return !!correction && Number.isFinite(correction.valueDb) && correction.valueDb !== 0;
-    }
-    if (rule.id === 'abweichungBeschreibung') return trim(form.abweichungVorhanden) === 'ja';
+  const condition = function (rule, form) {
+    if(rule.id === 'ersatzMessort') return trim(form.messortTyp)==='ersatz';
     return rule.category === 'pflicht';
   };
   const issue = function (code, message, field) {return {code:code, message:message, field:field || null};};
@@ -83,40 +65,36 @@
     const form=data && data.form || {};
     const origins=data && data.origins || {};
     const model=data && data.importModel || null;
+    const legacy=data && data.legacyProtocol || {};
     const evaluation=data && data.evaluation || null;
     const pa=Array.isArray(data && data.paItems) ? data.paItems : [];
     const fields=[];
     const formIssues=[];
     FIELD_RULES.forEach(function (rule) {
-      const required=condition(rule, form, origins, model);
+      const required=condition(rule, form);
       const value=trim(form[rule.id]);
       const active=rule.category !== 'bedingt' || required;
       let valid=!required || value.length>0;
-      if (required && ['ortBestaetigt','paBestaetigt','altBestaetigt'].includes(rule.id)) valid=value === 'ja';
-      if (required && rule.id === 'abweichungVorhanden') valid=['ja','nein'].includes(value);
+      if (required && ['kalVorBestaetigt','kalNachBestaetigt'].includes(rule.id)) valid=value === 'ja';
       if (required && rule.id === 'messortTyp') valid=['direkt','ersatz'].includes(value);
-      if (required && ['kalVorWert','kalNachWert'].includes(rule.id)) valid=number(value) !== null;
       if (required && ['datumMessung','berichtDatum'].includes(rule.id)) valid=validDate(value);
-      if (required && ['kalVorZeit','kalNachZeit'].includes(rule.id)) valid=validDateTime(value);
       if (required && rule.id === 'ortAdresse' && value.length<6) valid=false;
       if (required && rule.id === 'location' && value === 'Eigene Angabe' && !trim(form.ortAdresse)) valid=false;
       if (required && !valid) formIssues.push(issue('FIELD_MISSING_OR_INVALID', rule.label+' fehlt oder ist unplausibel.',rule.id));
       fields.push({id:rule.id, category:rule.category, active:active, required:required, valid:valid,
         origin:trim(origins[rule.id]) || 'unbekannt'});
     });
-    if (validDateTime(form.kalVorZeit) && validDateTime(form.kalNachZeit) &&
-        trim(form.kalNachZeit)<trim(form.kalVorZeit))
-      formIssues.push(issue('CALIBRATION_TIME_ORDER','Prüfung nach der Messung liegt vor der Eingangsprüfung.','kalNachZeit'));
-    if (trim(form.messortTyp)==='ersatz' && trim(form.messposition) === trim(form.messortLAeq) &&
-        trim(form.messposition) === trim(form.messortLCpeak)) {
-      formIssues.push(issue('REPLACEMENT_UNCLEAR','Ersatzmessort gewählt, aber alle Messorte sind identisch. Bitte klären.','messortTyp'));
+    if (trim(form.messortTyp)==='ersatz' && trim(form.messposition)===trim(form.messort) &&
+        trim(form.messort)) {
+      formIssues.push(issue('REPLACEMENT_UNCLEAR',
+        'Ersatzmessort und maßgeblicher Immissionsort müssen nachvollziehbar unterschieden werden.','messort'));
     }
-    if (!pa.length || !pa.every(function (it) {
-      const name=trim(it.type)==='custom' ? trim(it.customType) : trim(it.type);
-      return name && Number.isInteger(Number(it.qty)) && Number(it.qty)>0;
-    })) formIssues.push(issue('PA_NOT_DOCUMENTED','PA-Komponenten und positive ganzzahlige Stückzahlen dokumentieren.','paContainer'));
+    if ((!pa.length && !trim(form.paZusatz)) || !pa.every(function(it) {
+      const name=trim(it.type)==='custom'?trim(it.customType):trim(it.type);
+      return !!name && Number.isInteger(Number(it.qty)) && Number(it.qty)>0;
+    })) formIssues.push(issue('PA_NOT_DOCUMENTED',
+      'Lautsprechergruppen auswählen oder den Sonderaufbau beschreiben.','paZusatz'));
 
-    // Group-specific unknown quantities are not silently guessed.
     const unresolvedPA=Array.isArray(data && data.paSelectionIssues) ? data.paSelectionIssues : [];
     for(const message of unresolvedPA){
       if(typeof message==='string' && message.trim())
@@ -159,7 +137,25 @@
           evidenceIssues.push(issue('CORRECTION_UNRESOLVED',kind+': Messwert/Korrekturherkunft oder angewendeter Wert nicht geklärt.'));
       });
     }
-    // Manual before/after checks are validated using required form fields.
+    // Checkbox attestations are not equivalent to a calibrated meter reading.
+    // Retain original time/level evidence from older projects if present.
+    for(const pair of [['Vor','vor'],['Nach','nach']]){
+      const tag=pair[0],pos=pair[1],at=legacy['kal'+tag+'Zeit'],level=legacy['kal'+tag+'Wert'];
+      if(!validDateTime(at) || number(level) === null)
+        evidenceIssues.push(issue('CALIBRATION_'+pos.toUpperCase()+'_EVIDENCE_MISSING',
+          'Funktionsprüfung '+pos+' der Messung bestätigt; Zeitpunkt und Anzeigenwert nicht nachgewiesen.'));
+    }
+    if(trim(legacy.messortLAeq) && trim(legacy.messortLCpeak) &&
+        trim(legacy.messortLAeq)!==trim(legacy.messortLCpeak))
+      evidenceIssues.push(issue('LEGACY_ASSESSMENT_PLACES_DIFFER',
+        'Altprojekt enthält unterschiedliche maßgebliche Immissionsorte für LAeq und LCpeak; nicht automatisch zusammengeführt.'));
+    for(const kind of ['k1','k2']){
+      const correction=model?.corrections?.[kind];
+      if(correction && Number.isFinite(correction.valueDb) && correction.valueDb!==0 &&
+          !trim(legacy[kind+'Ermittlung']))
+        evidenceIssues.push(issue('CORRECTION_METHOD_NOT_DOCUMENTED',
+          kind+': Herkunft und Bestimmung des angewendeten Korrekturwertes nicht dokumentiert.'));
+    }
     const documentationComplete=formIssues.length === 0;
     return {
       version:VERSION,
