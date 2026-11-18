@@ -1,0 +1,5 @@
+# pegelTool: Verbindliche Projektentscheidung (18.11.2026)
+
+Bei Änderungen in diesem Verzeichnis gilt verbindlich die [Projektleitlinie](../../../docs/pegelTool/PROJEKTGRUNDSATZ_MESSWERTE_2026-11-18.md).
+
+**Kurzfassung:** pegelTool dient der **korrekten und sofort verständlichen Schallpegel-/Grenzwertübersicht**, nicht der Ausstellung einer DIN-Konformitätsbescheinigung. Offener Original-DIN-Abgleich darf Berechnung, Grenzwertvergleich, Anzeige und technischen PDF-Export nicht pauschal sperren. Unvollständige erste/letzte Halbstundenblöcke als **Teilzeitmesswerte** anzeigen; vollständige 30-Minuten-LAeq nicht vortäuschen. Technischen Grenzwertstatus von Dokumentations-/Normnachweisen getrennt behandeln. Messlücken nicht als harmlos werten. Keine falschen Daueraussagen zu LAeq-/LCpeak-Überschreitungen. Bestehende UI-Entscheidungen und Rechentests beachten.
