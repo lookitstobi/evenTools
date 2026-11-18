@@ -322,4 +322,4 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await new Promise(resolve=>server.close(resolve));
     }
   });
-function documentedStatus(text){return /Grenzwert überschritten/i.test(text);}
+function documentedStatus(text){return /Grenzwerte überschritten/i.test(text);}
