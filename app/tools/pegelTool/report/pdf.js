@@ -100,7 +100,7 @@
     label('PEGELTOOL / MESSPROTOKOLL',M+7,11,8.3,[177,192,204],true);
     label('Schallpegelmessung',M+7,21.3,19.5,COLOR.white,true);
     label(short(report.normVersion)+'  |  Technische Messwertübersicht',M+7,28,7.5,[202,217,229]);
-    label('MUSTER / EXPORT',W-M,11,7.0,COLOR.yellow,true,'right');
+    label('PDF / A4',W-M,11,7.0,COLOR.yellow,true,'right');
 
     label('VERANSTALTUNG / MESSORT',M,41.5,6.9,COLOR.muted,true);
     label(fit(eventName,CW,13.2,true),M,49.5,13.2,COLOR.navy,true);
@@ -280,6 +280,7 @@
     label('Protokolllage: '+(report.documentationComplete?'vollständig':'offene Angaben')+
       '  |  Technische Nachweise: '+(report.evidenceComplete?'vorhanden':'teilweise offen')+
       '  |  Hinweise: '+(Array.isArray(report.issues)?report.issues.length:0),M,269,7,COLOR.muted);
+    label('Quelle: '+fit(report.sourceLog,CW-26,6.3),M,273.2,6.3,COLOR.muted);
     label(fit('Bericht: '+get(report,'Berichtsort')+', '+get(report,'Berichtsdatum')+'  |  '+get(report,'Erstellt von'),135,7.4),M,278,7.4,COLOR.text);
     label('Unterschrift: __________________',W-M,278,7.4,COLOR.text,false,'right');
     footer(2);
