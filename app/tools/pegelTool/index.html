@@ -623,6 +623,10 @@ const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD
 ];
 let recoverySaveTimer = null;
 let recoveryFallbackNotified = false;
+const RETIRED_FORM_IDS = ['ortBestaetigt','veranstaltungsBeginn','veranstaltungsEnde',
+  'messortLAeq','messortLCpeak','kalVorZeit','kalVorWert','kalNachZeit','kalNachWert',
+  'paBestaetigt','abweichungVorhanden','altBestaetigt','k1Ermittlung','k2Ermittlung'];
+let legacyProtocol = {};
 
 const CHART_THEMES = {
   dark: {
@@ -673,8 +677,16 @@ let summary = makeEmptySummary();
 
 function el(id){ return document.getElementById(id); }
 function setText(id, t){ if(el(id)) el(id).textContent = String(t ?? ""); }
-function getVal(id){ return (el(id)?.value ?? "").toString(); }
-function setVal(id, v){ if(el(id)) el(id).value = (v ?? "").toString(); }
+function getVal(id){
+  const field=el(id);
+  return field?.type==='checkbox' ? (field.checked?'ja':'') : (field?.value ?? '').toString();
+}
+function setVal(id,v){
+  const field=el(id);
+  if(!field)return;
+  if(field.type==='checkbox')field.checked=v===true || v==='ja';
+  else field.value=(v ?? '').toString();
+}
 
 function getFormState(){
   const out = {};
@@ -687,54 +699,31 @@ function setFormState(form){
   for(const id of FORM_FIELD_IDS){ if(Object.prototype.hasOwnProperty.call(form, id)) setVal(id, form[id]); }
 }
 
-function collectExtraPAItems(){
-  const rows = Array.from(document.querySelectorAll('#paExtras .compact-row'));
-  return rows.map(r=>{
-    const sel=r.querySelector('select');
-    const custom=r.querySelector('input[placeholder="Eigener Typ"]');
-    const num=r.querySelector('input[type="number"]');
-    const type=sel?.value || '';
-    const customType=custom?.value || '';
-    const raw=String(num?.value || '').trim();
-    const qty=raw ? Number(raw) : null;
-    if(!type && !customType && !raw)return null;
-    return {type,customType,qty:Number.isFinite(qty)?qty:null};
-  }).filter(Boolean);
+// Older component lists are retained as readable PA documentation.
+function legacyPaText(items){
+  return (Array.isArray(items)?items:[]).map(it=>{
+    const type=it?.type==='custom' ? it.customType : (it?.customType || it?.type);
+    if(!type)return '';
+    return (Number.isFinite(Number(it?.qty)) && Number(it.qty)>0 ? Number(it.qty)+' × ' : '')+type;
+  }).filter(Boolean).join('; ');
 }
 function collectPAItems(){
-  return [...(paController?.getItems() || []),...collectExtraPAItems()];
+  return paController?.getItems() || [];
 }
 function restorePAItems(items,savedSelection,savedExtras){
-  const extras=el('paExtras');
-  if(!extras)return;
-  extras.replaceChildren();
   if(paController){
     paController.setLocation(getVal('location'));
-    paController.setState(savedSelection);
+    // Legacy projects must not acquire selected PA groups by accident.
+    paController.setState(savedSelection && savedSelection.schemaVersion===2
+      ? savedSelection : {schemaVersion:2,location:getVal('location'),selected:[],variants:{}});
   }
-  // Saved selectors contain aggregate paItems for backwards compatibility.
-  // Only restore explicit extras to avoid counting selected speakers twice.
   const legacy=!savedSelection || savedSelection.schemaVersion!==2;
-  const rows=legacy ? items : savedExtras;
-  for(const it of Array.isArray(rows)?rows:[]){
-    const row=paRow('', '');
-    const sel=row.querySelector('select');
-    const custom=row.querySelector('input[placeholder="Eigener Typ"]');
-    const num=row.querySelector('input[type="number"]');
-    const known=sel && Array.from(sel.options).some(o=>o.value===it.type);
-    const isCustom=it.type==='custom'||!!it.customType||(!known && !!it.type);
-    if(sel){
-      sel.value=isCustom?'custom':(it.type||'');
-      sel.dispatchEvent(new Event('change'));
-    }
-    if(custom && isCustom){
-      custom.value=it.customType || (it.type==='custom'?'':it.type);
-      custom.style.display='block';
-    }
-    if(num && it.qty!=null && Number.isFinite(Number(it.qty)))num.value=Number(it.qty);
-    extras.appendChild(row);
+  const extraText=legacyPaText(legacy?items:savedExtras);
+  if(extraText){
+    const existing=getVal('paZusatz').trim();
+    if(!existing.includes(extraText))setVal('paZusatz',[existing,extraText].filter(Boolean).join('\n'));
   }
-  setText('paPresetInfo',legacy?'Alte PA-Liste übernommen – bitte prüfen':'Gespeicherte Auswahl geladen');
+  setText('paPresetInfo',legacy?'Alte PA-Komponenten als Sonderaufbau übernommen':'Gespeicherte Auswahl geladen');
 }
 
 function buildStateObject(options = {}){
@@ -756,7 +745,8 @@ function buildStateObject(options = {}){
     protocolMeta: { schemaVersion: 1, origins: {...protocolOrigins} },
     paItems: collectPAItems(),
     paSelection: paController?.getState() || null,
-    paExtras: collectExtraPAItems(),
+    paExtras: [], // Alte Exportstruktur, neue Zusätze stehen im Freitextfeld.
+    legacyProtocol: {...legacyProtocol},
     logText: includeLogText ? lastLogText : '',
     logFileName: lastLogFileName || ''
   };
@@ -770,6 +760,12 @@ function normalizeState(raw){
   const normalizedForm = {};
   const srcForm = (raw.form && typeof raw.form === 'object') ? raw.form : {};
   for(const id of FORM_FIELD_IDS){ normalizedForm[id] = (srcForm[id] ?? '').toString(); }
+  const preserved=raw.legacyProtocol && typeof raw.legacyProtocol==='object' ? {...raw.legacyProtocol} : {};
+  for(const id of RETIRED_FORM_IDS){
+    if(srcForm[id] !== undefined && preserved[id] === undefined) preserved[id]=String(srcForm[id]);
+  }
+  if(!normalizedForm.messort && preserved.messortLAeq &&
+      preserved.messortLAeq===preserved.messortLCpeak) normalizedForm.messort=preserved.messortLAeq;
   const storedOrigins = raw.protocolMeta && raw.protocolMeta.schemaVersion === 1
     && raw.protocolMeta.origins && typeof raw.protocolMeta.origins === 'object'
     ? raw.protocolMeta.origins : null;
@@ -813,6 +809,7 @@ function normalizeState(raw){
     form: normalizedForm,
     protocolMeta: { schemaVersion: 1, origins: normalizedOrigins },
     paItems: normalizedPA,
+    legacyProtocol:preserved,
     paSelection: raw.paSelection && [1,2].includes(raw.paSelection.schemaVersion)
       ? raw.paSelection : null,
     paExtras: Array.isArray(raw.paExtras)
@@ -900,6 +897,7 @@ function applySavedState(rawState, options = {}){
   if(!state) throw new Error('Ungueltiger Stand: keine gueltigen Zustandsdaten gefunden.');
 
   setFormState(state.form);
+  legacyProtocol = state.legacyProtocol || {};
   restorePAItems(state.paItems,state.paSelection,state.paExtras);
   protocolOrigins = state.protocolMeta.origins;
   lastImportAttempt = null;
@@ -1182,6 +1180,7 @@ function getProtocolReportData(){
     form:getFormState(),
     origins:protocolOrigins,
     paItems:collectPAItems(),
+    legacyProtocol,
     paGroups:paController?.getSummary() || [],
     paSelectionIssues:paController?.getUnresolved() || [],
     importModel:importModel,
