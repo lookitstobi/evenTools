@@ -49,8 +49,9 @@
     const overall=record.assessment.overall || {};
     const checked=record.review.reportFullyChecked === true;
     const measured=record.assessment.measurementStatus || 'not-assessable';
-    const resultStatus=measured === 'exceeded' && checked ? 'Grenzwert überschritten' :
-      checked && measured === 'within-limits' ? 'Grenzwerte eingehalten' : 'NICHT BEURTEILBAR';
+    const resultStatus=measured === 'exceeded' ? 'Grenzwert überschritten' :
+      measured === 'within-limits' ? 'Keine Überschreitung in auswertbaren Messdaten' :
+      measured === 'partial' ? 'Nur teilweise auswertbar' : 'NICHT BEURTEILBAR';
     const sections=[
       {title:'Veranstaltung und Verantwortliche',rows:[
         row('Veranstaltung',v.eventName,o.eventName), row('Messdatum',v.datumMessung,o.datumMessung),
@@ -60,10 +61,11 @@
         row('FOH-Techniker',v.foh,o.foh)]},
       {title:'Messverfahren und Datenbasis',rows:[
         row('Methode',num(record.sampleCount) !== null && record.sampleCount > 0 ? 'Importierter NTi-XL3-Logdatensatz; feste 30-Minuten-Blöcke zur vollen und halben Stunde' : 'Keine ausreichende importierte Messdatenbasis'),
-        row('LAeq-Berechnung','10 log10(Summe aus Intervallzeit mal 10^(LAeq/10), geteilt durch die gesamte bewertbare Intervallzeit); nur bei vollständiger, widerspruchsfreier Blockabdeckung'),
+        row('LAeq-Berechnung','Energetischer, zeitgewichteter Mittelungspegel über den tatsächlich erfassten Zeitraum; Vergleich gegen 99 dB(A) nur für vollständige 30-Minuten-Fenster'),
         row('LCpeak-Berechnung','Höchster gültiger Intervall-Spitzenwert im Block, keine Mittelung'),
         row('Quell-Logdatei',opts.sourceFileName || 'Nicht vermerkt'),
         row('Messbeginn laut Log',measurement.start),row('Messende laut Log',measurement.end),
+         row('kset date (XL3)',measurement.ksetDate),
         row('Logintervall',num(measurement.intervalSeconds) === null ? EMPTY : measurement.intervalSeconds + ' s'),
         row('Zeitzone / Offset',measurement.timeZone),
         row('Zeitstempel-Anker',record.assessment.assumptions && record.assessment.assumptions.timestampAnchor),
@@ -112,7 +114,16 @@
         row('Nachweisumfang','Checkboxen allein ersetzen keine dokumentierte Pegelanzeige mit Zeitangabe')]},
       {title:'Auswertung und Berichtsabschluss',rows:[
         row('Maximaler LAeq,30min-Beurteilungspegel',db(overall.laeqMaxDb)),
-        row('Maximaler LCpeak-Spitzenpegel',db(overall.lcpeakMaxDb)),
+        row('Maximaler LCpeak-Spitzenpegel (alle gemessenen Intervalle)',db(overall.lcpeakMaxDb)),
+        row('LAeq: 30-Minuten-Blöcke über 99 dB(A)',String(overall.laeqExceededCount ?? 0)+' von '+String(overall.completeBlocks ?? 0)),
+        row('LAeq: betroffene Zeiträume',(overall.laeqExceededBlocks || []).map(b=>asDate(b.start)+' – '+asDate(b.end)).join('; ') || 'Keine'),
+        row('LCpeak: Logintervalle über 135 dB(C)',String(overall.lcpeakExceededCount ?? 0)),
+        row('LCpeak: betroffene Intervalle',(overall.lcpeakExceededIntervals || []).slice(0,50)
+          .map(p=>asDate(p.start)+' – '+asDate(p.end)+' ('+db(p.valueDb)+')').join('; ') || 'Keine'),
+        ...(Number(overall.lcpeakExceededCount) > 50 ? [row('Weitere LCpeak-Intervalle',
+          String(overall.lcpeakExceededCount-50)+' weitere betroffene Intervalle – vollständige Liste im XL3-Log')] : []),
+        row('Messdatenabdeckung',overall.coverageComplete ? 'Alle Zeitfenster vollständig' :
+          overall.hasMeasurementGaps ? 'Messlücken oder Zeitkonflikte vorhanden' : 'Angebrochene Anfangs-/Endzeiträume'),
         row('30-Minuten-Blöcke',blocks.length),
         row('Vollständig erfasste Zeitblöcke',blocks.filter(b=>b.dataQuality === 'complete').length),
         row('Protokollangaben',record.review.documentationComplete ? 'Vollständig' : 'Unvollständig'),
@@ -124,9 +135,10 @@
     const blockRows=blocks.map((b,i)=>({
       index:i+1,from:asDate(b.start),to:asDate(b.end),
       coverage:sec(b.coveredSeconds) + ' / ' + sec(b.expectedSeconds),
-      laeq:db(b.laeq30Db),lcpeak:db(b.lcpeakMaxDb),
-      quality:b.dataQuality === 'complete' ? 'Vollständig' :
-        b.dataQuality === 'conflict' ? 'Zeitkonflikt' : 'Unvollständig',
+      laeq:db(b.laeq30Db ?? b.laeqPartialDb ?? b.laeqObservedDb),lcpeak:db(b.lcpeakObservedDb ?? b.lcpeakMaxDb),
+      quality:b.dataCoverageState === 'full' || b.dataQuality === 'complete' ? 'Vollständig' :
+        b.dataCoverageState === 'partial-edge' ? 'Teilzeit (kein LAeq,30min)' :
+        b.dataCoverageState === 'conflict' ? 'Zeitkonflikt' : 'Messlücke / Teilwerte',
       source:'Logzeilen: ' + fileLines(b.sourceLines) +
         (Number.isInteger(b.lcpeakSourceLine) ? '; LCpeak-Zeile: ' + b.lcpeakSourceLine : ''),
       warnings:(b.warnings || []).map(w => w.code + ': ' + w.message),
@@ -158,6 +170,7 @@
       evidenceComplete:!!record.review.evidenceComplete,
       reportFullyChecked:checked,
       assessmentStatus:record.assessment.normativeStatus || 'not-assessable',
+      measurementStatus:measured,
       sourceLog:asText(opts.sourceFileName)
     };
     return result;
@@ -185,7 +198,7 @@
     }
     html.push('<h4>Vollständige Zeitblocktabelle (',report.blocks.length,' Blöcke)</h4>',
 '<div class="table-wrap"><table class="table"><thead><tr><th>Zeitraum</th>',
-      '<th>Abdeckung</th><th>LAeq 30 min</th><th>LCpeak</th><th>Datenlage</th><th>Rohdatenbezug</th></tr></thead><tbody>');
+      '<th>Abdeckung</th><th>LAeq (Teilzeit markiert)</th><th>LCpeak</th><th>Datenlage</th><th>Rohdatenbezug</th></tr></thead><tbody>');
     for (const b of report.blocks)
       html.push('<tr><td>',esc(b.from),' – ',esc(b.to),'</td><td>',esc(b.coverage),
         '</td><td>',esc(b.laeq),'</td><td>',esc(b.lcpeak),'</td><td>',esc(b.quality),
