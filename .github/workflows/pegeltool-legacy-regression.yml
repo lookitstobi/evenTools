@@ -41,6 +41,8 @@ jobs:
         run: node --test tests/pegelTool/phase7/release.test.cjs
       - name: Run pegelTool measurement overview and kset tests
         run: node --test tests/pegelTool/phase8/measurement-overview.test.cjs
+      - name: Run pegelTool UI polish and editable PA quantity tests
+        run: node --test tests/pegelTool/phase9/ui-polish.test.cjs
 
   browser-e2e:
     name: pegelTool Chromium E2E and PDF rendering
