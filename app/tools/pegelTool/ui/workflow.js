@@ -19,15 +19,14 @@
   const allowed = new Set(STEPS.map(s=>s.id));
   const arr = x => Array.isArray(x) ? x : [];
   function assessmentStatus(snapshot) {
-    const s=snapshot || {}, record=s.record || {}, review=s.review || {},
-      model=s.importModel, assessment=record.assessment || {};
+    const s=snapshot || {}, record=s.record || {},
+      model=s.importModel, assessment=record.assessment || {},
+      overall=s.evaluation?.overall || {};
     if (!model || !arr(model.samples).length) return 'Noch nicht geprüft';
-    // A positive status requires a complete and documented measurement.
-    const eligible=review.reportFullyChecked === true &&
-      review.documentationComplete === true && review.evidenceComplete === true;
-    if (!eligible) return 'Nicht beurteilbar';
-    if (assessment.measurementStatus === 'exceeded') return 'Grenzwert überschritten';
-    if (assessment.measurementStatus === 'within-limits') return 'Grenzwerte eingehalten';
+    const result=overall.measurementStatus || assessment.measurementStatus;
+    if (result === 'exceeded') return 'Grenzwert überschritten';
+    if (result === 'within-limits') return 'Keine Überschreitung in auswertbaren Messdaten';
+    if (result === 'partial') return 'Nur teilweise auswertbar';
     return 'Nicht beurteilbar';
   }
   function collectIssues(snapshot) {
@@ -70,7 +69,8 @@
         warnings.length || evidenceIssues.length ? 'Prüfhinweise' : 'Daten vorhanden',
       setup: !review ? 'Noch offen' : formIssues.length ? formIssues.length+' Angaben offen' : 'Angaben erfasst',
       assessment: !blocks.length ? 'Noch nicht geprüft' :
-        blocks.some(b=>b.dataQuality !== 'complete') ? 'Datenlücken prüfen' : 'Technisch berechnet',
+        blocks.some(b=>b.dataCoverageState === 'gap' || b.dataCoverageState === 'conflict') ? 'Datenlücken prüfen' :
+          blocks.some(b=>b.dataCoverageState === 'partial-edge') ? 'Teilzeitblöcke ausgewertet' : 'Technisch berechnet',
       protocol: !review ? 'Noch offen' : formIssues.length || evidenceIssues.length ?
         'Nachweise offen' : 'Angaben erfasst',
       export: s.canExport ? 'Verfügbar' : 'Noch nicht verfügbar'
@@ -211,7 +211,7 @@
       shortNodes.laeq.textContent=fmtLevel(overall.laeqMaxDb,'dB(A)');
       shortNodes.lcpeak.textContent=fmtLevel(overall.lcpeakMaxDb,'dB(C)');
       status.dataset.state=summary.status==='Noch nicht geprüft'?'empty':
-        summary.status==='Nicht beurteilbar'?'unknown':
+        summary.status==='Nicht beurteilbar'||summary.status==='Nur teilweise auswertbar'?'unknown':
         summary.status==='Grenzwert überschritten'?'bad':'ok';
       exportButton.disabled=!summary.canExport;
       exportText.textContent=summary.canExport?'PDF-Export verfügbar.':
