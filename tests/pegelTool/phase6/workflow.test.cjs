@@ -151,7 +151,6 @@ test('single-page layout retains every section without tab navigation',()=>{
   assert.equal(ctrl.go('export'),true);
   assert.equal(ctrl.go('wrong-step'),false);
   assert.equal(x.main.children.some(n=>n.id==='leftColumn'),false);
-  assert.equal(x.main.children[0],x.lookup.get('nonexistent') || x.main.children[0]);
   assert.equal(x.main.children[0].className,'chartsSection');
   assert.ok(!x.main.children.slice(1).some(n=>n===x.main.children[0]));
 });
