@@ -22,7 +22,7 @@
   const printable=v=>clean(v).replace(/[\u2012-\u2015\u2212]/g,'-')
     .replace(/\u2026/g,'...').replace(/\u2022/g,'-')
     .replace(/[\u200b-\u200d\uFEFF]/g,'');
-  const valid=v=>v&&!/^(Nicht angegeben|Nicht ermittelt|Kein(?:e|en)? |---)/i.test(clean(v));
+  const valid=v=>v!==null&&v!==undefined&&clean(v)!==''&&!/^(Nicht angegeben|Nicht ermittelt|Keine Zeilennachweise|---)$/i.test(clean(v));
   const euro=v=>finite(v)?v.toFixed(2).replace('.',','):'-';
   const one=v=>finite(v)?v.toFixed(1).replace('.',','):'-';
   const short=v=>valid(v)?printable(v):'Nicht dokumentiert';
