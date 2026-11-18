@@ -296,6 +296,21 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
  .pa-node--fill{width:29px;min-height:42px}.pa-node--fill .pa-node-label{font-size:9px}
  .pa-device-icon{height:23px;width:21px}.pa-node--fill .pa-device-icon{height:17px;width:15px}}
 
+/* Soll-Layout: knapper Kopfstatus und ausschliesslich die vier erlaubten XL3-Kurzwerte. */
+.workflow-shell{max-width:1180px;margin:12px auto 0;padding:0 20px}
+.workflow-overview{border-left:3px solid var(--warn);padding:10px 15px;margin:0 0 9px}
+.workflow-overall-status{font-size:15px;line-height:1.4}
+.workflow-shortinfo{background:var(--primary-panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+.workflow-shortinfo-title{font-size:15px;margin:0 0 12px;font-weight:700}
+.workflow-shortinfo-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.workflow-shortinfo-item{min-width:0;display:flex;flex-direction:column;gap:4px}
+.workflow-shortinfo-label{color:var(--text-secondary);font-size:12px}
+.workflow-shortinfo-value{font-size:13px;font-weight:650;overflow-wrap:anywhere}
+#main.workflow-single-page .calibration-confirmations .check-field{display:flex}
+#main.workflow-single-page .calibration-confirmations input[type=checkbox]{appearance:auto;width:18px;height:18px;min-height:18px}
+#main.workflow-single-page #paZusatz{min-height:65px}
+@media(max-width:850px){.workflow-shortinfo-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.workflow-shortinfo-values{grid-template-columns:1fr}}
 /* Single-page layout from first render; no legacy tab strip or clipped desktop scrolling. */
 html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 .header{position:sticky;top:0}
