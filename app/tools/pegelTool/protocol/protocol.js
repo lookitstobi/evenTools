@@ -175,6 +175,7 @@
   function buildRecord(data) {
     const form=data && data.form || {};
     const origins=data && data.origins || {};
+    const legacy=data && data.legacyProtocol || {};
     const model=data && data.importModel || null;
     const evaluation=data && data.evaluation || null;
     const values={};
@@ -187,6 +188,7 @@
       normReview:'operator-approved',
       values:values,
       origins:Object.assign({},origins),
+      legacyProtocol:Object.assign({},legacy),
       paItems:Array.isArray(data && data.paItems) ? data.paItems.map(function (x) {return Object.assign({},x);}) : [],
       paGroups:Array.isArray(data && data.paGroups) ? data.paGroups.map(function(group){
         return {id:String(group.id||''),label:String(group.label||''),
@@ -199,20 +201,25 @@
       importQuality:model && model.quality || null,
       calibration:{
         device:{model:values.kalibratorModell, serial:values.kalibratorSN},
-        before:{at:values.kalVorZeit, displayedDb:number(values.kalVorWert), origin:trim(origins.kalVorWert) || 'unbekannt'},
-        after:{at:values.kalNachZeit, displayedDb:number(values.kalNachWert), origin:trim(origins.kalNachWert) || 'unbekannt'},
+        before:{confirmed:values.kalVorBestaetigt==='ja',at:trim(legacy.kalVorZeit)||null,
+          displayedDb:number(legacy.kalVorWert),origin:trim(legacy.kalVorWert)?'legacy-unverified':'unbekannt'},
+        after:{confirmed:values.kalNachBestaetigt==='ja',at:trim(legacy.kalNachZeit)||null,
+          displayedDb:number(legacy.kalNachWert),origin:trim(legacy.kalNachWert)?'legacy-unverified':'unbekannt'},
         verifiedByStandard:null
       },
       places:{
         measurement:values.messposition,
-        assessmentLAeq:values.messortLAeq,
-        assessmentLCpeak:values.messortLCpeak,
+        assessment:values.messort,
+        assessmentLAeq:values.messort,
+        assessmentLCpeak:values.messort,
+        legacyAssessmentLAeq:trim(legacy.messortLAeq)||null,
+        legacyAssessmentLCpeak:trim(legacy.messortLCpeak)||null,
         substitute:values.messortTyp === 'ersatz' ? values.ersatzMessort : null
       },
       corrections:{
-        k1:{device:model && model.corrections && model.corrections.k1 || null, determination:values.k1Ermittlung,
+        k1:{device:model && model.corrections && model.corrections.k1 || null, determination:trim(legacy.k1Ermittlung),
           column:model && model.columns && model.columns.laeqDt || null},
-        k2:{device:model && model.corrections && model.corrections.k2 || null, determination:values.k2Ermittlung,
+        k2:{device:model && model.corrections && model.corrections.k2 || null, determination:trim(legacy.k2Ermittlung),
           column:model && model.columns && model.columns.lcpeak || null}
       },
       assessment:{
