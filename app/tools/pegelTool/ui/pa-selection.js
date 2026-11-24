@@ -169,10 +169,10 @@
         const fields=items.length?items:group.options.length?[TYPE.ks,TYPE.focus,TYPE.wide].map(type=>({type,qty:0})):[];
         const qtyFields=fields.map(item=>
           '<label class="pa-qty-label">'+esc(item.type.replace('L-ACOUSTIC ','') )+
-          '<input type="number" min="0" max="200" step="1" value="'+item.qty+
+          '<input type="number" tabindex="-1" min="0" max="200" step="1" value="'+item.qty+
           '" data-pa-qty-group="'+esc(group.id)+'" data-pa-qty-type="'+esc(item.type)+
           '" aria-label="'+esc(group.title+' – Anzahl '+item.type)+'"'+(checked?'':' disabled')+'></label>').join('');
-        return '<div class="pa-group-row"><button type="button" class="pa-group-toggle'+
+        return '<div class="pa-group-row"><button type="button" tabindex="-1" class="pa-group-toggle'+
           (checked?' is-selected':'')+'" data-pa-group="'+esc(group.id)+'" aria-pressed="'+checked+'">'+
           '<span class="pa-check">'+(checked?'✓':'')+'</span><span class="pa-group-name">'+esc(groupTitle(group,variants,quantities))+'</span></button>'+
           '<div class="pa-qty-grid">'+qtyFields+'</div></div>';
