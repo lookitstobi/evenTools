@@ -99,6 +99,8 @@
     }
 
     const evidenceIssues=[];
+    // Optional historical evidence is retained internally, not listed as an actionable warning.
+    const archivalEvidenceIssues=[];
     if (!model || !Array.isArray(model.samples) || !model.samples.length)
       evidenceIssues.push(issue('LOG_MISSING','Ein nachvollziehbares Importmodell mit Messdaten fehlt.'));
     if (!model || !model.instrument || !trim(model.instrument.deviceModel) || !trim(model.instrument.serial))
@@ -110,8 +112,23 @@
       evidenceIssues.push(issue('MEASUREMENT_TIME_MISSING','Messbeginn und Messende nicht aus belegter Quelle bekannt.'));
     if (!evaluation || !Array.isArray(evaluation.blocks) || !evaluation.blocks.length)
       evidenceIssues.push(issue('BLOCKS_MISSING','Keine auswertbaren Beurteilungszeiträume nachgewiesen.'));
-    else if (evaluation.blocks.some(function (b) {return b.dataQuality !== 'complete';}))
-      evidenceIssues.push(issue('BLOCKS_INCOMPLETE','Mindestens ein Beurteilungszeitraum hat Datenlücken oder Zeitkonflikte.'));
+    else for (const b of evaluation.blocks) {
+      if (b.dataCoverageState === 'partial-edge' || b.dataQuality === 'complete') continue;
+      const details = Array.isArray(b.warnings) ? b.warnings.filter(w=>w.message) : [];
+      if (details.length) {
+        for (const w of details) evidenceIssues.push(issue(w.code,w.message));
+      } else {
+        const time = (trim(b.start)+' – '+trim(b.end)).replace(/T/g,' ');
+        evidenceIssues.push(issue('BLOCKS_INCOMPLETE',time+': '+(b.dataQuality==='conflict'?'Zeitkonflikt':'Messdaten unvollständig')+
+          (Number.isFinite(b.coveredSeconds)?' ('+b.coveredSeconds+' von '+(b.expectedSeconds||1800)+' s erfasst)':'')+'.'));
+      }
+    }
+    // Source ordering/invalid timestamps can matter even if sorted intervals cover the block.
+    for (const w of evaluation?.quality?.warnings || []) {
+      if (['IMPORT_TIME_REVERSAL','IMPORT_INVALID_TIMESTAMP','IMPORT_INVALID_TIMESTAMP_COUNT',
+        'INVALID_SAMPLE_TIME','INVALID_TIME_INTERVAL','DST_AMBIGUOUS','DST_NONEXISTENT'].includes(w.code))
+        evidenceIssues.push(issue(w.code,w.message+(w.sourceLine != null?' (Logzeile '+w.sourceLine+')':w.sampleIndex != null?' (Messintervall '+(w.sampleIndex+1)+')':'')));
+    }
     // A non-critical device summary warning must not invalidate measured interval data.
     // Rejected imports and genuine interval defects are still blocked by parser/evaluation.
     if (model?.quality?.status === 'rejected' || (model?.quality?.errors || []).length)
@@ -139,8 +156,8 @@
     for(const pair of [['Vor','vor'],['Nach','nach']]){
       const tag=pair[0],pos=pair[1],at=legacy['kal'+tag+'Zeit'],level=legacy['kal'+tag+'Wert'];
       if(!validDateTime(at) || number(level) === null)
-        evidenceIssues.push(issue('CALIBRATION_'+pos.toUpperCase()+'_EVIDENCE_MISSING',
-          'Funktionsprüfung '+pos+' der Messung bestätigt; Zeitpunkt und Anzeigenwert nicht nachgewiesen.'));
+        archivalEvidenceIssues.push(issue('CALIBRATION_'+pos.toUpperCase()+'_EVIDENCE_MISSING',
+          'Funktionsprüfung '+pos+' der Messung: Zeitpunkt und Anzeigenwert nicht nachgewiesen.'));
     }
     if(trim(legacy.messortLAeq) && trim(legacy.messortLCpeak) &&
         trim(legacy.messortLAeq)!==trim(legacy.messortLCpeak))
@@ -150,7 +167,7 @@
       const correction=model?.corrections?.[kind];
       if(correction && Number.isFinite(correction.valueDb) && correction.valueDb!==0 &&
           !trim(legacy[kind+'Ermittlung']))
-        evidenceIssues.push(issue('CORRECTION_METHOD_NOT_DOCUMENTED',
+        archivalEvidenceIssues.push(issue('CORRECTION_METHOD_NOT_DOCUMENTED',
           kind+': Herkunft und Bestimmung des angewendeten Korrekturwertes nicht dokumentiert.'));
     }
     const documentationComplete=formIssues.length === 0;
@@ -158,7 +175,7 @@
       version:VERSION,
       documentationComplete:documentationComplete,
       evidenceComplete:evidenceIssues.length === 0,
-      reportFullyChecked:documentationComplete && evidenceIssues.length === 0 &&
+      reportFullyChecked:documentationComplete && evidenceIssues.length === 0 && archivalEvidenceIssues.length === 0 &&
         ['within-limits','exceeded'].includes(evaluation?.overall?.measurementStatus),
       normativeStatus:'not-assessable',
       measurementStatus:evaluation?.overall?.measurementStatus || 'not-assessable',
@@ -166,6 +183,7 @@
       fields:fields,
       formIssues:formIssues,
       evidenceIssues:evidenceIssues,
+      archivalEvidenceIssues:archivalEvidenceIssues,
       status:documentationComplete ? 'Angaben vollständig erfasst' : 'Protokollangaben unvollständig'
     };
   }

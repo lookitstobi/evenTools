@@ -36,6 +36,19 @@
     }
     return {covered, overlap};
   }
+  // Detect actual missing intervals, excluding the unmeasured portions before/after a session.
+  function missingSpans(spans, from, to) {
+    const missing = [];
+    let cursor = from;
+    for (const span of spans.slice().sort((a,b) => a.start-b.start || a.end-b.end)) {
+      if (span.start > cursor) missing.push({start:cursor,end:span.start});
+      cursor = Math.max(cursor,span.end);
+    }
+    if (cursor < to) missing.push({start:cursor,end:to});
+    return missing;
+  }
+  const showTime = ms => localIso(ms).replace('T',' ');
+  const showSeconds = seconds => String(Number(seconds.toFixed(6))).replace('.',',') + ' s';
   function weightedLeq(entries) {
     if (!entries.length) return null;
     const max = entries.reduce((best, entry) => Math.max(best, entry.db), -Infinity);
@@ -129,11 +142,17 @@
       const peakCovered = Math.abs(validPeakSeconds - 1800) < 1e-6;
       const conflict = overlapSeconds > 1e-7 || crossingBoundarySeconds > 1e-7;
       const blockWarnings = [];
-      if (unknownSeconds > 1e-7) blockWarnings.push(issue('INCOMPLETE_BLOCK', 'Keine lückenlose Abdeckung des 30-Minuten-Fensters.'));
-      if (invalidLaeqSeconds > 1e-7) blockWarnings.push(issue('INVALID_LAEQ_DATA', 'LAeq-Intervalle fehlen oder sind nicht belegbar.'));
-      if (invalidPeakSeconds > 1e-7) blockWarnings.push(issue('INVALID_LCPEAK_DATA', 'LCpeak-Intervalle fehlen oder sind nicht belegbar.'));
-      if (overlapSeconds > 1e-7) blockWarnings.push(issue('OVERLAPPING_SAMPLES', 'Überlappende oder doppelte Zeitabschnitte wurden nicht mehrfach gezählt.'));
-      if (crossingBoundarySeconds > 1e-7) blockWarnings.push(issue('BOUNDARY_CROSSING', 'Intervall über Halbstundengrenze: Energie und Peak sind nicht exakt zuordenbar.'));
+      const missing = missingSpans(all, Math.max(from,first), Math.min(to,last));
+      const missingWithinMeasurementSeconds = missing.reduce((sum,span)=>sum+(span.end-span.start)/1000,0);
+      const blockLabel = showTime(from) + ' – ' + showTime(to) + ': ';
+      for (const span of missing) {
+        blockWarnings.push(issue('INCOMPLETE_BLOCK', 'Messlücke: ' + showTime(span.start) + ' – ' +
+          showTime(span.end) + ' (' + showSeconds((span.end-span.start)/1000) + ' fehlen).'));
+      }
+      if (invalidLaeqSeconds > 1e-7) blockWarnings.push(issue('INVALID_LAEQ_DATA', blockLabel + 'LAeq-Messwerte fehlen oder sind ungültig (' + showSeconds(invalidLaeqSeconds) + ').'));
+      if (invalidPeakSeconds > 1e-7) blockWarnings.push(issue('INVALID_LCPEAK_DATA', blockLabel + 'LCpeak-Messwerte fehlen oder sind ungültig (' + showSeconds(invalidPeakSeconds) + ').'));
+      if (overlapSeconds > 1e-7) blockWarnings.push(issue('OVERLAPPING_SAMPLES', blockLabel + 'Doppelte/überlappende Messintervalle (' + showSeconds(overlapSeconds) + ').'));
+      if (crossingBoundarySeconds > 1e-7) blockWarnings.push(issue('BOUNDARY_CROSSING', blockLabel + 'Intervall über Halbstundengrenze (' + showSeconds(crossingBoundarySeconds) + ' im Block): Energie und Peak nicht exakt zuordenbar.'));
       const observedLaeqDb = overlapSeconds > 1e-7 || crossingBoundarySeconds > 1e-7 ? null : weightedLeq(energy);
       const observedLcpeakDb = overlapSeconds > 1e-7 || crossingBoundarySeconds > 1e-7 || !peaks.length
         ? null : peaks.reduce((best, peak) => Math.max(best, peak.db), -Infinity);
@@ -143,7 +162,7 @@
       const dataQuality = conflict ? 'conflict' : !fullCoverage || !laeqCovered || !peakCovered ? 'incomplete' : 'complete';
       const edgePartial = !fullCoverage && (from < first || to > last);
       const dataCoverageState = conflict ? 'conflict' : dataQuality === 'complete' ? 'full' :
-        edgePartial && invalidLaeqSeconds === 0 && invalidPeakSeconds === 0 ? 'partial-edge' : 'gap';
+        edgePartial && missingWithinMeasurementSeconds === 0 && invalidLaeqSeconds === 0 && invalidPeakSeconds === 0 ? 'partial-edge' : 'gap';
       if (dataQuality === 'conflict') qualityStatus = 'conflict';
       else if (dataQuality === 'incomplete' && qualityStatus === 'complete') qualityStatus = 'incomplete';
       const peakSource = lcpeakMaxDb == null ? null : peaks.find(p => p.db === lcpeakMaxDb)?.sourceLine ?? null;
@@ -164,7 +183,7 @@
       }
       blocks.push({
         start: localIso(from), end: localIso(to), startLocalMs: from, endLocalMs: to,
-        expectedSeconds: 1800, coveredSeconds, unknownSeconds,
+        expectedSeconds: 1800, coveredSeconds, unknownSeconds, missingWithinMeasurementSeconds,
         validLaeqSeconds, invalidLaeqSeconds, validPeakSeconds, invalidPeakSeconds,
         overlapSeconds, crossingBoundarySeconds, dataQuality, dataCoverageState,
         laeqObservedDb: observedLaeqDb, laeqPartialDb, lcpeakObservedDb: observedLcpeakDb,
