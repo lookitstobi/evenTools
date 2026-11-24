@@ -100,9 +100,11 @@ test('kset date automatically transfers from XL3 header to legacy/UI and report 
   const e=Engine.evaluateModel(roundtrip,{timestampAnchor:'end',timestampAnchorEvidence:'operator-approved'});
   const record=Protocol.buildRecord({form:{},importModel:roundtrip,evaluation:e});
   const report=Report.build(record,{sourceFileName:'synthetic-kset.txt'});
-  assert.equal(report.sections.flatMap(x=>x.rows).find(x=>x.label==='kset date (XL3)').value,'2026-11-15 14:41');
+  const kset=report.sections.find(x=>x.title==='Korrekturen und Funktionsprüfung').rows.find(x=>x.label==='K-Werte ermittelt am');
+  assert.equal(kset.value,'15.11.2026, 14:41 Uhr');
+  assert.equal(kset.source,'Geräteheader');
   assert.equal(report.status,'Grenzwert überschritten');
-  assert.match(Report.renderHtml(report),/2026-11-15 14:41/);
+  assert.match(Report.renderHtml(report),/15\.11\.2026, 14:41 Uhr/);
   const {jsPDF}=require(path.join(ROOT,'app/tools/pegelTool/vendor/jspdf.umd.min.js'));
   assert.equal(Buffer.from(require(path.join(ROOT,'app/tools/pegelTool/report/pdf.js')).create(report,jsPDF).output('arraybuffer')).subarray(0,5).toString('ascii'),'%PDF-');
 });

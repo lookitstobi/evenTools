@@ -244,7 +244,7 @@
     }
     drawChart(162,56,'01  Pegelverlauf LAeq,g30','Gleitender 30-Minuten-Pegel, informativ','LAeq_g30',40,100,99,[0,126,104]);
     drawChart(218,56,'02  Spitzenpegel LCpeak','C-bewerteter Spitzenwert pro Logintervall','LC',60,140,135,[52,108,150]);
-    label('Original-Log separat archivieren; keine DIN-Konformitätsbescheinigung.',M,280,6.1,COLOR.muted);
+    label('Original-Log separat archivieren.',M,280,6.1,COLOR.muted);
     footer(1);
 
     // PAGE 2: time blocks, equipment, corrections and report completion.
@@ -290,7 +290,7 @@
     heading('Messsystem',139);
     pairs([['Messgerät',get(report,'Messgerät')+' · Seriennr. '+get(report,'Messgerät-Seriennummer')],
       ['Messmikrofon',get(report,'Messmikrofon')+' · Seriennr. '+get(report,'Mikrofon-Seriennummer')],
-      ['Logdatei',report.sourceLog]],
+      ['Logdatei',report.sourceLog],['Letzte Mikrofonkalibrierung',get(report,'Letzte Mikrofonkalibrierung')]],
       [['Kalibrator',get(report,'Kalibrator')],['Seriennummer',get(report,'Kalibrator-Seriennummer')],
       ['Firmware / Raster',get(report,'Firmware')+' / '+get(report,'Logintervall')]],146,7.2,39,35,2);
     function correction(key){
@@ -299,7 +299,8 @@
       return short(v)+' · '+(state.startsWith('Ja')?'bereits im Gerätelog':state.startsWith('Nein')?'nicht im Gerätelog':'Anwendung ungeklärt');
     }
     heading('Korrekturen und Funktionsprüfung',174);
-    pairs([['Korrektur LAeq (k1)',correction('k1')],['Korrektur LCpeak (k2)',correction('k2')]],
+    pairs([['Korrektur LAeq (k1)',correction('k1')],['Korrektur LCpeak (k2)',correction('k2')],
+      ['K-Werte ermittelt am',get(report,'K-Werte ermittelt am')]],
       [['Prüfung davor',get(report,'Funktionsprüfung vor Messung')],['Prüfung danach',get(report,'Funktionsprüfung nach Messung')]],181,8,51,37,2);
     heading('Protokollabschluss',204);
     const closing=[['Ort',get(report,'Berichtsort'),M,48],['Datum',formatDate(get(report,'Berichtsdatum')),M+58,40],['Name',get(report,'Erstellt von'),M+105,77]];
