@@ -184,8 +184,25 @@ test('Kompaktes PDF enthält zwei Seiten, Messwerte, Diagramme und aktuelle Prev
     assert.ok(text.includes(key),'Fehlt im PDF: '+key);
   assert.equal(doc.pages.length,2);
   assert.match(text,/Keine Grenzwertüberschreitung in den auswertbaren Messwerten/);
-  assert.match(text,/keine DIN-Konformitätsbescheinigung/i);
+  assert.doesNotMatch(text,/DIN-Konformitätsbescheinigung/i);
   assert.equal(doc.props.author,'pegelTool '+r.toolVersion);
+});
+test('XL3-Zeitpunkte erscheinen in Bericht und PDF; fehlende Zeitpunkte werden nicht erfunden',()=>{
+  const input=structuredClone(model);
+  input.instrument.microphone.calibrationInfo='2026-11-15 14:35';
+  input.measurement.ksetDate='2026-11-15 14:41';
+  const r=makeReport({model:input});
+  const rows=r.sections.flatMap(s=>s.rows);
+  for(const [label,value] of [['Letzte Mikrofonkalibrierung','15.11.2026, 14:35 Uhr'],['K-Werte ermittelt am','15.11.2026, 14:41 Uhr']]){
+    assert.ok(rows.some(x=>x.label===label&&x.value===value&&x.source==='Geräteheader'));
+    assert.ok(reportModule.renderHtml(r).includes(value));
+    assert.ok(pdf.create(r,FakePDF).pages[1].join('').includes(value));
+  }
+  const missing=makeReport();
+  for(const label of ['Letzte Mikrofonkalibrierung','K-Werte ermittelt am']){
+    assert.ok(missing.sections.flatMap(s=>s.rows).some(x=>x.label===label&&x.value==='Nicht angegeben'));
+  }
+  assert.doesNotMatch(pdf.create(missing,FakePDF).output(),/15\.11\.2026, 14:/);
 });
 test('Kompaktes PDF zeigt Teilzeit und LCpeak-Überschreitung auch im Randblock',()=>{
   const r=makeReport({evaluation:{...evaluation,blocks:[{...incompleteBlock,dataCoverageState:'partial-edge',laeqPartialDb:95,lcpeakObservedDb:137}]}});
