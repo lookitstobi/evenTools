@@ -268,6 +268,41 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
       assert.ok(bytes.includes(Buffer.from('%%EOF')));
       assert.ok(bytes.length>1000);
+      // The default PDF includes the exact complete JSON export and retains its signature widget.
+      assert.equal(await page.locator('#embedPdfProject').isChecked(),true);
+      assert.equal(await page.locator('#embedPdfProjectExport').isChecked(),true);
+      const embedded=await page.evaluate(async raw=>{
+        const bytes=Uint8Array.from(raw);
+        const state=await PegelToolReportPdf.extractProject(bytes,PDFLib);
+        const doc=await PDFLib.PDFDocument.load(bytes);
+        return {state,signature:doc.getForm().getFields().some(f=>f.getName()==='Digitale_Signatur')};
+      },Array.from(bytes));
+      assert.equal(embedded.signature,true);
+      const withoutStamp=state=>{const {savedAt,...rest}=state;return rest;};
+      assert.deepEqual(withoutStamp(embedded.state),withoutStamp(saved));
+      // Re-open using the normal project picker; preserve PA, raw log and manual input.
+      await page.locator('#eventName').fill('PDF-Wiederherstellung prüfen');
+      await page.locator('#stateInput').setInputFiles({
+        name:'bericht.pdf',mimeType:'application/pdf',buffer:bytes});
+      await page.waitForFunction(()=>document.querySelector('#parseInfo')?.textContent.includes('Projekt aus Messbericht geladen'));
+      const pdfLoaded=await page.evaluate(()=>buildStateObject());
+      assert.deepEqual(withoutStamp(pdfLoaded),withoutStamp(saved));
+      // Opt-out is shared by the two checkbox controls; ordinary PDFs stay ordinary.
+      await page.locator('#embedPdfProjectExport').uncheck();
+      assert.equal(await page.locator('#embedPdfProject').isChecked(),false);
+      const plainWaiting=page.waitForEvent('download',{timeout:15000});
+      await page.locator('#workflow-group-export button').filter({hasText:'Messbericht als PDF exportieren'}).click();
+      const plain=await plainWaiting;
+      await plain.saveAs(downloadPath('bericht-ohne-projekt.pdf'));
+      const plainBytes=fs.readFileSync(downloadPath('bericht-ohne-projekt.pdf'));
+      const rejected=page.waitForEvent('dialog');
+      await page.locator('#stateInput').setInputFiles({
+        name:'bericht-ohne-projekt.pdf',mimeType:'application/pdf',buffer:plainBytes});
+      assert.match((await rejected).message(),/keine eingebettete pegelTool-Projektdatei/);
+      await page.waitForFunction(()=>!document.querySelector('#stateInput').disabled);
+      assert.deepEqual(withoutStamp(await page.evaluate(()=>buildStateObject())),withoutStamp(saved));
+      await page.locator('#embedPdfProject').check();
+      assert.equal(await page.locator('#embedPdfProjectExport').isChecked(),true);
 
       await page.screenshot({path:downloadPath('desktop.png'),fullPage:true});
       await page.setViewportSize({width:390,height:844});

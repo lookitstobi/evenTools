@@ -177,7 +177,20 @@
       action('Projekt speichern (HTML)','btnExportHtml',true));
 
     exportArea.appendChild(sections.signature);
-    exportArea.append(exportText,actions);
+    const headerOption=doc.getElementById('embedPdfProject');
+    const embedLabel=make('label','pdf-project-option');
+    const embedOption=make('input','');
+    embedOption.type='checkbox';
+    embedOption.id='embedPdfProjectExport';
+    embedOption.checked=headerOption ? headerOption.checked : true;
+    embedLabel.append(embedOption,doc.createTextNode('Projektdatei in PDF einbetten'));
+    const embedHelp=make('p','pdf-project-help',
+      'Mit Projektdatei: Das PDF enthält auch vollständige Messdaten, Rohlog und Eingaben. Empfänger können sie auslesen.');
+    if(headerOption){
+      headerOption.addEventListener('change',()=>{embedOption.checked=headerOption.checked;});
+      embedOption.addEventListener('change',()=>{headerOption.checked=embedOption.checked;});
+    }
+    exportArea.append(exportText,embedLabel,embedHelp,actions);
     groupsById.export=exportArea;
     main.appendChild(exportArea);
     // Skip automatic and standard preset values in the regular entry flow.

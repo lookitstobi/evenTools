@@ -263,3 +263,28 @@ test('Integration: ein Exportpfad, Bildschirmbericht, keine alten Generatoren',(
   assert.doesNotMatch(html,/function generateTemplatePDF/);
   assert.doesNotMatch(html,/id="btnPdf"/);
 });
+
+
+test('PDF project attachment: lossless roundtrip, opt-out, signature and invalid JSON',async()=>{
+  const lib=require('../../../app/tools/pegelTool/vendor/pdf-lib.min.js');
+  const pdfModule=require('../../../app/tools/pegelTool/report/pdf.js');
+  const createBase=async()=>{
+    const pdf=await lib.PDFDocument.create();
+    pdf.addPage();pdf.addPage();
+    const bytes=await pdf.save();
+    return {output:()=>bytes};
+  };
+  const project={sourceApp:'pegelTool',schemaVersion:2,form:{eventName:'Grüße 🎵'},
+    logLoaded:true,samples:[{level:99.1}],logText:'Original\r\nÖ'};
+  const bytes=await pdfModule.withSignature(await createBase(),lib,project);
+  assert.deepEqual(await pdfModule.extractProject(bytes,lib),project);
+  const signedReady=await lib.PDFDocument.load(bytes);
+  assert.ok(signedReady.getForm().getFields().some(f=>f.getName()==='Digitale_Signatur'));
+  const plain=await pdfModule.withSignature(await createBase(),lib);
+  await assert.rejects(pdfModule.extractProject(plain,lib),/keine eingebettete/);
+  const invalid=await lib.PDFDocument.create();invalid.addPage();
+  await invalid.attach(new TextEncoder().encode('not json'),'pegelTool.project.json',{mimeType:'application/json'});
+  await assert.rejects(pdfModule.extractProject(await invalid.save(),lib),/gültiges UTF-8-JSON/);
+  const wrong=await pdfModule.withSignature(await createBase(),lib,{...project,sourceApp:'other'});
+  await assert.rejects(pdfModule.extractProject(wrong,lib),/Kein vollständiger/);
+});

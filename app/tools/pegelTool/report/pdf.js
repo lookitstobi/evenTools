@@ -316,7 +316,7 @@
     return doc;
   }
   // Append a real unsigned signature widget, not a text-input or simulated signature.
-  async function withSignature(doc,lib){
+  async function withSignature(doc,lib,project=null){
     if(!lib?.PDFDocument)throw new Error('PDF-Signaturmodul nicht verfügbar.');
     const pdf=await lib.PDFDocument.load(doc.output('arraybuffer'));
     const page=pdf.getPages()[1],ctx=pdf.context;
@@ -333,7 +333,71 @@
     const form=pdf.getForm();
     form.acroForm.addField(ref);
     form.acroForm.dict.set(lib.PDFName.of('SigFlags'),lib.PDFNumber.of(3));
+    if(project!==null){
+      const data=new TextEncoder().encode(JSON.stringify(project));
+      if(data.length>MAX_PROJECT_BYTES) throw new Error('Projektdatei über 128 MiB.');
+      await pdf.attach(data,PROJECT_ATTACHMENT,{
+        mimeType:'application/json',
+        description:'Bearbeitbarer pegelTool-Projektstand einschließlich Messdaten und Rohlog'
+      });
+    }
     return pdf.save({updateFieldAppearances:false});
   }
-  return Object.freeze({create,printable,withSignature});
+
+  // Standard PDF EmbeddedFiles name tree. Never execute PDF actions or attachments.
+  const PROJECT_ATTACHMENT='pegelTool.project.json';
+  const MAX_PROJECT_BYTES=128*1024*1024;
+  async function extractProject(bytes,lib){
+    if(!lib?.PDFDocument || !lib.decodePDFRawStream)
+      throw new Error('PDF-Projektmodul nicht verfügbar.');
+    const pdf=await lib.PDFDocument.load(bytes);
+    const key=name=>lib.PDFName.of(name);
+    const names=pdf.catalog.lookupMaybe(key('Names'),lib.PDFDict);
+    const root=names?.lookupMaybe(key('EmbeddedFiles'),lib.PDFDict);
+    const visited=new Set(),matches=[];
+    function visit(node,depth){
+      if(!node) return;
+      if(depth>32 || visited.size>=4096 || visited.has(node))
+        throw new Error('Ungültiger PDF-Anhangsbaum.');
+      visited.add(node);
+      const entries=node.lookupMaybe(key('Names'),lib.PDFArray);
+      if(entries){
+        if(entries.size()%2 || entries.size()>8192)
+          throw new Error('Ungültige PDF-Anhangsliste.');
+        for(let i=0;i<entries.size();i+=2){
+          const name=entries.lookup(i);
+          if((name instanceof lib.PDFString || name instanceof lib.PDFHexString) &&
+              name.decodeText()===PROJECT_ATTACHMENT)
+            matches.push(entries.lookup(i+1,lib.PDFDict));
+        }
+      }
+      const kids=node.lookupMaybe(key('Kids'),lib.PDFArray);
+      if(kids){
+        if(kids.size()>4096) throw new Error('PDF-Anhangsbaum zu groß.');
+        for(let i=0;i<kids.size();i++)visit(kids.lookup(i,lib.PDFDict),depth+1);
+      }
+    }
+    visit(root,0);
+    if(!matches.length) throw new Error('Dieses PDF enthält keine eingebettete pegelTool-Projektdatei.');
+    if(matches.length!==1) throw new Error('Mehrdeutige pegelTool-Projektanhänge im PDF.');
+    const ef=matches[0].lookupMaybe(key('EF'),lib.PDFDict);
+    const stream=ef?.lookupMaybe(key('UF'),lib.PDFRawStream) ||
+      ef?.lookupMaybe(key('F'),lib.PDFRawStream);
+    if(!stream) throw new Error('Eingebettete Projektdatei fehlt oder ist beschädigt.');
+    const params=stream.dict.lookupMaybe(key('Params'),lib.PDFDict);
+    const size=params?.lookupMaybe(key('Size'),lib.PDFNumber)?.asNumber();
+    if(size>MAX_PROJECT_BYTES || stream.getContents().length>MAX_PROJECT_BYTES)
+      throw new Error('Eingebettete Projektdatei über 128 MiB.');
+    const decoded=lib.decodePDFRawStream(stream).decode();
+    if(decoded.length>MAX_PROJECT_BYTES) throw new Error('Eingebettete Projektdatei über 128 MiB.');
+    let project;
+    try{project=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(decoded));}
+    catch(err){throw new Error('Eingebettete Projektdatei ist kein gültiges UTF-8-JSON.');}
+    if(!project || project.sourceApp!=='pegelTool' || !Number.isInteger(project.schemaVersion) ||
+      project.recoveryPartial || !project.form || !project.logLoaded ||
+      !Array.isArray(project.samples) || !project.samples.length)
+      throw new Error('Kein vollständiger pegelTool-Projektstand im PDF.');
+    return project;
+  }
+  return Object.freeze({create,printable,withSignature,extractProject});
 });
