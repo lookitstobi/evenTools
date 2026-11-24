@@ -8,7 +8,7 @@
   else root.PegelToolReport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const VERSION = '1.1.0';
+  const VERSION = '2.0.0';
   const EMPTY = 'Nicht angegeben';
   const asText = v => (v === null || v === undefined || String(v).trim() === '') ? EMPTY : String(v).trim();
   const num = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
