@@ -25,7 +25,7 @@
   const valid=v=>v!==null&&v!==undefined&&clean(v)!==''&&!/^(Nicht angegeben|Nicht ermittelt|Keine Zeilennachweise|---)$/i.test(clean(v));
   const euro=v=>finite(v)?v.toFixed(2).replace('.',','):'-';
   const one=v=>finite(v)?v.toFixed(1).replace('.',','):'-';
-  const short=v=>valid(v)?printable(v):'Nicht dokumentiert';
+  const short=v=>valid(v)?printable(v):'—';
   function get(report,label){
     for(const sec of report.sections||[]) for(const r of sec.rows||[])
       if(r.label===label)return r.value;
@@ -37,7 +37,7 @@
     if(typeof JsPdf!=='function')throw new Error('jsPDF ist nicht verfügbar.');
     const doc=new JsPdf({unit:'mm',format:'a4',compress:true});
     const charts=Array.isArray(opts&&opts.chartSamples)?opts.chartSamples:[];
-    const W=210,H=297,M=13,CW=184;
+    const W=210,H=297,M=14,CW=182;
     const RGB=c=>doc.setFillColor(...c);
     const stroke=c=>doc.setDrawColor(...c);
     const ink=c=>doc.setTextColor(...c);
@@ -71,8 +71,8 @@
       return a;
     }
     function footer(pg){
-      hair(M,285,W-M,285);
-      label('pegelTool '+short(report.toolVersion)+'  |  Technische Messwertübersicht',M,289,6.4,COLOR.muted);
+      hair(M,285,W-M,285,[170,182,193],.18);
+      label('pegelTool '+short(report.toolVersion)+'  |  Schallpegel-Messprotokoll  |  '+date,M,290,6.4,COLOR.muted);
       label('Seite '+pg+' / 2',W-M,289,6.4,COLOR.muted,false,'right');
     }
     const rawPeriods=report.blocks.map(b=>b.raw||{});
@@ -84,215 +84,256 @@
     const anyExceed=(finite(laeMax)&&laeMax>99)||(finite(lcMax)&&lcMax>135);
     const partial=rawPeriods.filter(b=>b.dataQuality!=='complete').length;
     const status=anyExceed?'Grenzwert in erfassten Daten überschritten':
-      fullLAeq.length&&allPeak.length?'Keine Überschreitung in auswertbaren Messwerten':
+      fullLAeq.length&&allPeak.length?'Keine Grenzwertüberschreitung in den auswertbaren Messwerten':
       fullLAeq.length||allPeak.length?'Nur teilweise auswertbar - eine Messgröße fehlt':
       'Keine ausreichend auswertbaren Messwerte';
     const statusColor=anyExceed?COLOR.red:fullLAeq.length&&allPeak.length?COLOR.green:COLOR.amber;
     const statusBg=anyExceed?COLOR.redBg:fullLAeq.length&&allPeak.length?COLOR.greenBg:COLOR.warnBg;
     const venue=short(get(report,'Veranstaltungsort'));
-    const date=short(get(report,'Messdatum'));
+    const date=formatDate(get(report,'Messdatum'));
     const eventName=short(get(report,'Veranstaltung'));
 
     doc.setProperties({title:'Schallpegel-Messprotokoll',subject:short(report.normVersion),
       author:'pegelTool '+short(report.toolVersion),keywords:'Schallpegel, Messprotokoll, LAeq, LCpeak'});
 
-    // PAGE ONE - rapid overview
-    box(0,0,W,34,COLOR.navy);
-    box(M,11,2.2,15,COLOR.yellow,1);
-    label('PEGELTOOL / MESSPROTOKOLL',M+7,11,8.3,[177,192,204],true);
-    label('Schallpegelmessung',M+7,21.3,19.5,COLOR.white,true);
-    label(short(report.normVersion)+'  |  Technische Messwertübersicht',M+7,28,7.5,[202,217,229]);
-    label('PDF / A4',W-M,11,7.0,COLOR.yellow,true,'right');
-
-    label('VERANSTALTUNG / MESSORT',M,41.5,6.9,COLOR.muted,true);
-    label(fit(eventName,CW,13.2,true),M,49.5,13.2,COLOR.navy,true);
-    label(fit(venue+'  |  '+date,CW,8.4),M,56.6,8.4,COLOR.muted);
-    hair(M,60,W-M,60);
-
-    const kY=64,kH=35,kG=3.6,kW=(CW-2*kG)/3;
-    for(let i=0;i<3;i++) box(M+i*(kW+kG),kY,kW,kH,COLOR.pale,2);
-    box(M,kY,1.2,kH,COLOR.cyan);
-    box(M+kW+kG,kY,1.2,kH,COLOR.cyan);
-    box(M+2*(kW+kG),kY,1.2,kH,COLOR.yellow);
-    label('LAeq, 30 min / MAX',M+4,kY+8,6.7,COLOR.muted,true);
-    label('LCpeak / MAX',M+kW+kG+4,kY+8,6.7,COLOR.muted,true);
-    label('DATENABDECKUNG',M+2*(kW+kG)+4,kY+8,6.7,COLOR.muted,true);
-    label(euro(laeMax),M+4,kY+21.5,18,COLOR.navy,true);
-    label('dB(A)',M+38,kY+21.5,7.4,COLOR.muted,true);
-    label('99 dB(A) Vergleichswert',M+4,kY+30,6.5,COLOR.muted);
-    label(one(lcMax),M+kW+kG+4,kY+21.5,18,COLOR.navy,true);
-    label('dB(C)',M+kW+kG+43,kY+21.5,7.4,COLOR.muted,true);
-    label('135 dB(C) Vergleichswert',M+kW+kG+4,kY+30,6.5,COLOR.muted);
-    label(complete.length+' / '+report.blocks.length,M+2*(kW+kG)+4,kY+21.5,18,COLOR.navy,true);
-    label('vollständige Zeitblöcke',M+2*(kW+kG)+4,kY+28,6.4,COLOR.text);
-    label(partial+' unvollständig/Teilzeit',M+2*(kW+kG)+4,kY+33,6.2,COLOR.muted);
-
-    box(M,103,CW,16,statusBg,2);
-    box(M+4,108,4.8,4.8,statusColor,2.4);
-    label(fit(status,CW-18,9.1,true),M+12,109.5,9.1,statusColor,true);
-    label('Nur erfasste Messdaten; keine DIN-Konformitätsbescheinigung.',M+12,115.2,6.8,COLOR.muted);
-
-    function drawChart(x,y,w,h,title,subtitle,key,ymin,ymax,limit,color){
-      box(x,y,w,h,COLOR.white,2,COLOR.border);
-      label(title,x+5,y+9,10,COLOR.navy,true);
-      label(fit(subtitle,w-10,7),x+5,y+14,7,COLOR.muted);
-      const vals=charts.map(s=>s[key]).filter(finite);
-      if(vals.length){ymin=Math.min(ymin,Math.floor(Math.min(...vals)/10)*10);ymax=Math.max(ymax,Math.ceil(Math.max(...vals)/10)*10);}
-      const px=x+14,py=y+20,pw=w-20,ph=h-27;
-      box(px,py,pw,ph,COLOR.pale);
-      for(let t=Math.ceil(ymin/10)*10;t<=ymax;t+=10){
+    function formatDate(v){
+      const m=clean(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m?m[3]+'.'+m[2]+'.'+m[1]:short(v);
+    }
+    function time(v){
+      const m=clean(v).match(/\b\d{2}:\d{2}(?::\d{2})?\b/);
+      return m?m[0]:'—';
+    }
+    const startTime=get(report,'Messbeginn laut Log'),endTime=get(report,'Messende laut Log');
+    const timeRange=time(startTime)+'–'+time(endTime);
+    const gridColor=[170,182,193],stripe=[239,242,244];
+    function heading(title,y,right){
+      label(title,M,y,10.8,COLOR.text,true);
+      if(right)label(fit(right,76,7),W-M,y,7,COLOR.muted,false,'right');
+      hair(M,y+2,W-M,y+2,gridColor,.18);
+    }
+    function pairs(left,right,y,rowH=6.1,leftLabel=39,rightLabel=41,maxLines=1){
+      const split=M+CW/2+1;
+      let yy=y;
+      for(let i=0;i<Math.max(left.length,right.length);i++){
+        let n=1;
+        for(const [pair,x,lw,w] of [[left[i],M,leftLabel,90],[right[i],split+4,rightLabel,86]]){
+          if(!pair)continue;
+          label(pair[0],x,yy,7.2,COLOR.muted,true);
+          const ls=wrapped(pair[1],w-lw-3,7.25,maxLines);
+          ls.forEach((v,j)=>label(v,x+lw,yy+j*3.15,7.25,COLOR.text));
+          n=Math.max(n,ls.length);
+        }
+        yy+=Math.max(rowH,n*3.15+1.6);
+      }
+      hair(split,y-3,split,yy-2,COLOR.border,.16);
+      return yy;
+    }
+    function numericRow(y,left,right,colorL=COLOR.text,colorR=COLOR.text){
+      label(left[0],M,y,7.1,COLOR.muted);
+      label(left[1],M+56,y,9.1,colorL,true);
+      label(right[0],M+94,y,7.0,COLOR.muted);
+      label(right[1],W-M,y,9.1,colorR,true,'right');
+      hair(M,y+2.5,W-M,y+2.5,COLOR.border,.17);
+    }
+    const metrics=report.metrics||{};
+    const countLA=finite(metrics.laeqExceededCount)?metrics.laeqExceededCount:rawPeriods.filter(b=>finite(b.laeq30Db)&&b.laeq30Db>99).length;
+    const countLC=metrics.lcpeakExceededCount;
+    const secondsLC=finite(metrics.lcpeakExceededSeconds)?metrics.lcpeakExceededSeconds:
+      finite(countLC)&&finite(metrics.intervalSeconds)?countLC*metrics.intervalSeconds:null;
+    const mins=s=>finite(s)?(s===0?'0':String(Number((s/60).toFixed(2))).replace('.',','))+' Min':'—';
+    const level=(v,d,unit)=>finite(v)?(d===2?euro(v):one(v))+' '+unit:'—';
+    const speakerItems=items=>(items||[]).filter(it=>it.qty>0).map(it=>it.qty+' × '+clean(it.type==='custom'?it.customType:it.type).replace(/^L-ACOUSTIC[S]?\s*/i,'')).join(' + ');
+    function paRows(){
+      const groups=report.paGroups||[], rows=[];
+      const find=id=>groups.find(g=>g.id===id);
+      const text=g=>g?speakerItems(g.items)||'Stückzahl offen':'';
+      const pair=(title,l,r)=>{
+        if(!l&&!r)return;
+        const a=text(l),b=text(r);
+        rows.push([title,l&&r&&a===b?'links / rechts: je '+a:[l?'L: '+a:'',r?'R: '+b:''].filter(Boolean).join(' | ')]);
+      };
+      pair('Main PA',find('mainL'),find('mainR'));
+      if(find('center'))rows.push(['Center-Cluster',text(find('center'))]);
+      pair('Sidefills L / R',find('sideL'),find('sideR'));
+      const fills=groups.filter(g=>/^ff/.test(g.id));
+      if(fills.length){
+        const n=fills.flatMap(g=>g.items||[]).reduce((sum,it)=>sum+(it.qty||0),0);
+        rows.push(['Frontfills',n+' × 5XT ('+fills.map(g=>g.label.split(' – ')[0].replace(/^Frontfill\s*/,'').replace(/\s+/g,'')).join(', ')+')']);
+      }
+      for(const g of groups.filter(g=>!['mainL','mainR','center','sideL','sideR'].includes(g.id)&&!/^ff/.test(g.id)))
+        rows.push([g.label.split(' – ')[0],text(g)]);
+      if(!groups.length&&valid(get(report,'PA-Komponenten')))rows.push(['PA-Komponenten',speakerItems(report.paItems)||get(report,'PA-Komponenten')]);
+      const extras=(report.paItems||[]).filter(it=>it.type==='custom');
+      if(groups.length&&extras.length)rows.push(['Weitere Komponenten',speakerItems(extras)]);
+      if(valid(get(report,'Zusätzliche Lautsprecher / Sonderaufbau')))rows.push(['Zusatz',get(report,'Zusätzliche Lautsprecher / Sonderaufbau')]);
+      if(!rows.length)rows.push(['Beschallungsanlage','—']);
+      return rows;
+    }
+    // PAGE 1: white report header, dense data tables and two charts.
+    label('Schallpegel-Messprotokoll',M,17,17,COLOR.text,true);
+    label(short(report.normVersion)+' · Messdatenübersicht',W-M,17,6.8,COLOR.muted,false,'right');
+    label(fit(date+'  |  '+venue,CW,8),M,24,8,COLOR.muted);
+    box(M,28,CW,9,statusBg);
+    box(M,28,1.5,9,statusColor);
+    label(fit(status,CW-6,9.6,true),M+4,34.1,9.6,statusColor,true);
+    heading('Veranstaltung und Messorte',44);
+    const organizer=get(report,'Veranstalter / Anschrift');
+    pairs([['Veranstaltung',eventName],['Veranstalter',String(organizer).split(/\r?\n/)[0]],['Veranstaltungsort',venue],
+      ['VA-Beschreibung',get(report,'Veranstaltungsbeschreibung')],['Messperson',get(report,'Messperson')]],
+      [['Messdatum',date],['Messzeit',timeRange],['Tatsächlicher Messort',get(report,'Tatsächlicher Messort')],
+      ['Ort der lautesten Immission',get(report,'Maßgeblicher Immissionsort')],['Anschrift',get(report,'Anschrift / Ortsangabe')]],51,6.1,39,41,1);
+    heading('Messwerte und Grenzwertvergleich',86);
+    numericRow(93,['Max. LAeq,30min',level(laeMax,2,'dB(A)')],['Max. LCpeak',level(lcMax,1,'dB(C)')],
+      finite(laeMax)?laeMax>99?COLOR.red:COLOR.green:COLOR.muted,finite(lcMax)?lcMax>135?COLOR.red:COLOR.green:COLOR.muted);
+    numericRow(101,['LAeq: betroffene 30-Min.-Zeitfenster',mins(countLA*1800)],['LCpeak: erfasste Überschreitungsintervalle',mins(secondsLC)],
+      countLA?COLOR.red:COLOR.green,finite(secondsLC)?secondsLC>0?COLOR.red:COLOR.green:COLOR.muted);
+    numericRow(109,['30-Minuten-Zeitblöcke',String(rawPeriods.length)],['Vollständig erfasst',complete.length+' / '+rawPeriods.length]);
+    numericRow(117,['LAeq-Vergleichswert','99 dB(A)'],['LCpeak-Vergleichswert','135 dB(C)']);
+    label('Zeitangaben: betroffene 30-Minuten-Blöcke bzw. erfasste Logintervalle; keine Impulsdauer.',M,124,6.5,COLOR.muted);
+    heading('Beschallungsanlage',134);
+    const rows=paRows();
+    const rowH=rows.length>4?Math.min(6,24/rows.length):6;
+    rows.slice(0,8).forEach(([k,v],i)=>{
+      label(k,M,141+i*rowH,7.3,COLOR.muted,true);
+      label(fit(v,CW-43,7.4),M+42,141+i*rowH,7.4,COLOR.text);
+    });
+    if(rows.length>8)label('Weitere Komponenten im Projekt.',M,165,6.5,COLOR.muted);
+    hair(M,162,W-M,162,gridColor,.18);
+    function drawChart(y,h,title,subtitle,key,ymin,ymax,limit,color){
+      label(title,M,y+5.5,9.1,COLOR.text,true);
+      label(fit(subtitle,84,6.7),W-M,y+5.5,6.7,COLOR.muted,false,'right');
+      const values=charts.map(s=>s[key]).filter(finite);
+      if(values.length){ymin=Math.min(ymin,Math.floor(Math.min(...values)/20)*20);ymax=Math.max(ymax,Math.ceil(Math.max(...values)/20)*20);}
+      const px=M+13,py=y+11,pw=CW-15,ph=h-17;
+      for(let t=Math.ceil(ymin/20)*20;t<=ymax;t+=20){
         const yy=py+ph-(t-ymin)/(ymax-ymin)*ph;
-        hair(px,yy,px+pw,yy,[229,235,240],.12);
-        label(String(t),px-2,yy+.75,6,COLOR.muted,false,'right');
+        hair(px,yy,px+pw,yy,COLOR.border,.16);
+        label(String(t),px-2,yy+.6,6.1,COLOR.muted,false,'right');
       }
       const threshold=py+ph-(limit-ymin)/(ymax-ymin)*ph;
-      stroke(COLOR.amber);doc.setLineWidth(.43);doc.setLineDashPattern([2,1.8],0);
+      stroke(COLOR.muted);doc.setLineWidth(.2);doc.setLineDashPattern([1.2,1.2],0);
       doc.line(px,threshold,px+pw,threshold);doc.setLineDashPattern([],0);
-      label(limit+' dB',px+pw-1,threshold-1.4,6.3,COLOR.amber,true,'right');
-      const times=[0,.25,.5,.75,1];
-      times.forEach(fr=>{
-        const idx=Math.round(fr*Math.max(0,charts.length-1));
-        const s=charts[idx]||{};
-        if(!s.time)return;
-        const xx=px+fr*pw;
-        label(clean(s.time).slice(0,5),xx,py+ph+4.3,6.1,COLOR.muted,false,'center');
-      });
-      let prev=null,highest=null;
-      const n=Math.min(charts.length,900);
-      for(let i=0;i<n;i++){
-        const z=charts[Math.min(charts.length-1,Math.floor(i*charts.length/n))]||{};
-        const v=z[key];
-        if(!finite(v)){prev=null;continue;}
-        const xx=px+(i/Math.max(1,n-1))*pw;
-        const yy=py+ph-Math.max(0,Math.min(1,(v-ymin)/(ymax-ymin)))*ph;
-        if(prev){
-          stroke(color);doc.setLineWidth(.3);doc.line(prev.x,prev.y,xx,yy);
+      label(limit+' dB',px+pw,threshold-1.5,6.4,COLOR.muted,false,'right');
+      const clock=s=>{const m=clean(s?.time).match(/(\d{2}):(\d{2})(?::(\d{2}))?/);return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3]||0):null;};
+      let offset=0,prevTime=null;
+      const times=charts.map(s=>{const t=clock(s);if(t===null)return null;if(prevTime!==null&&t<prevTime-43200)offset+=86400;prevTime=t;return t+offset;});
+      const first=times[0],last=times[times.length-1],timed=finite(first)&&finite(last)&&last>first;
+      if(timed){
+        const step=last-first>12*3600?4*3600:last-first>6*3600?2*3600:last-first<3600?900:3600;
+        for(let t=Math.ceil(first/step)*step;t<=last;t+=step){
+          const xx=px+(t-first)/(last-first)*pw;
+          hair(xx,py,xx,py+ph,COLOR.border,.14);
+          label(String(Math.floor(t/3600)%24).padStart(2,'0')+':'+String(Math.floor(t/60)%60).padStart(2,'0'),xx,py+ph+4,6.1,COLOR.muted,false,'center');
         }
+      }
+      let prev=null,highest=null;
+      charts.forEach((z,i)=>{
+        const v=z[key];if(!finite(v)){prev=null;return;}
+        const fraction=timed&&finite(times[i])?(times[i]-first)/(last-first):i/Math.max(1,charts.length-1);
+        const xx=px+fraction*pw,yy=py+ph-(v-ymin)/(ymax-ymin)*ph;
+        if(prev){stroke(color);doc.setLineWidth(.19);doc.line(prev.x,prev.y,xx,yy);}
         prev={x:xx,y:yy};
         if(!highest||v>highest.v)highest={v,x:xx,y:yy};
-      }
+      });
       if(highest){
-        RGB(COLOR.white);stroke(color);doc.setLineWidth(.48);
-        doc.circle(highest.x,highest.y,1.2,'FD');
-        const lx=Math.min(highest.x+3,px+pw-19);
-        label(one(highest.v)+' dB',lx,Math.max(py+3,highest.y-2.3),6.3,color,true);
-      }
-      if(!highest) label('Keine Diagrammdaten für den Export verfügbar.',x+w/2,y+h/2,8,COLOR.muted,false,'center');
+        RGB(COLOR.white);stroke(color);doc.setLineWidth(.24);doc.circle(highest.x,highest.y,.6,'FD');
+        label(one(highest.v)+' dB',Math.min(highest.x+3,px+pw-17),Math.max(py+2,highest.y-2),6.8,color,true);
+      }else label('Keine Diagrammdaten verfügbar.',M+CW/2,py+ph/2,8,COLOR.muted,false,'center');
+      hair(M,y+h,W-M,y+h,COLOR.border,.16);
     }
-    drawChart(M,123,CW,68,'01  Pegelverlauf LAeq,g30',
-      'Gleitender 30-Minuten-Pegel - informativ - XL3-Gerätedaten','LAeq_g30',40,105,99,COLOR.cyan);
-    drawChart(M,196,CW,67,'02  Spitzenpegel LCpeak',
-      'C-bewertete Spitzenwerte der aufgezeichneten Intervalle','LC',60,140,135,COLOR.blue);
-    label('Diagramme sind Zusatzanalysen; die festen Beurteilungsblöcke stehen auf Seite 2.',M,270,7,COLOR.muted);
-    label('Fehlende Messzeiten werden nicht rechnerisch ergänzt. Original-Log separat archivieren.',M,275,7,COLOR.muted);
+    drawChart(162,56,'01  Pegelverlauf LAeq,g30','Gleitender 30-Minuten-Pegel, informativ','LAeq_g30',40,100,99,[0,126,104]);
+    drawChart(218,56,'02  Spitzenpegel LCpeak','C-bewerteter Spitzenwert pro Logintervall','LC',60,140,135,[52,108,150]);
+    label('Original-Log separat archivieren; keine DIN-Konformitätsbescheinigung.',M,280,6.1,COLOR.muted);
     footer(1);
 
-    // PAGE TWO - timed assessment and documentation
+    // PAGE 2: time blocks, equipment, corrections and report completion.
     doc.addPage();
-    box(0,0,W,27,COLOR.navy);
-    box(M,8,2,12,COLOR.yellow,.8);
-    label('MESSDATEN UND NACHWEISE',M+6,15.5,14.5,COLOR.white,true);
-    label(fit(date+'  |  '+get(report,'Messgerät'),CW-6,7),M+6,22,7,[206,220,229]);
-    label('A4 / 2 SEITEN',W-M,11,7,COLOR.yellow,true,'right');
-    label('30-MINUTEN-BEURTEILUNGSZEITRÄUME',M,36,9.8,COLOR.navy,true);
-    label(complete.length+' vollständig / '+partial+' unvollständig',W-M,36,7.5,COLOR.muted,false,'right');
-
-    // Maximum twelve shown on paper; always expose truncation instead of
-    // silently suggesting a complete table for longer recordings.
+    label('Zeitblöcke und Messnachweise',M,17,16,COLOR.text,true);
+    label(fit(date+'  |  '+get(report,'Messgerät')+' / '+get(report,'Messmikrofon'),83,6.8),W-M,17,6.8,COLOR.muted,false,'right');
+    label('Messzeit '+timeRange+' · '+short(get(report,'Logintervall'))+'-Logintervall',M,24,8,COLOR.muted);
+    hair(M,29,W-M,29,gridColor,.18);
+    const edge=rawPeriods.filter(b=>b.dataCoverageState==='partial-edge').length;
+    heading('30-Minuten-Beurteilungszeiträume',37,complete.length+' vollständig / '+edge+' Teilzeit'+(partial>edge?' / '+(partial-edge)+' weitere':''));
     const cap=12;
     let chosen=report.blocks.map((b,i)=>({b,i}));
     if(chosen.length>cap){
-      const weight=({b,i})=>{
-        const r=b.raw||{};
-        return (r.dataQuality==='complete'?0:60)+
-          (finite(r.laeq30Db)&&r.laeq30Db>99?150:0)+
-          (finite(r.lcpeakObservedDb)&&r.lcpeakObservedDb>135?150:0)+
-          (finite(r.laeq30Db)?r.laeq30Db/2:0)+
-          (finite(r.lcpeakObservedDb)?r.lcpeakObservedDb/3:0)+
-          (i===0||i===report.blocks.length-1?80:0);
-      };
+      const weight=({b,i})=>{const r=b.raw||{};return (r.dataQuality==='complete'?0:60)+(finite(r.laeq30Db)&&r.laeq30Db>99?150:0)+(finite(r.lcpeakObservedDb)&&r.lcpeakObservedDb>135?150:0)+(i===0||i===report.blocks.length-1?80:0);};
       chosen=chosen.sort((a,b)=>weight(b)-weight(a)).slice(0,cap).sort((a,b)=>a.i-b.i);
     }
-    const tY=41,tH=6.8;
-    box(M,tY,CW,7,COLOR.navy2,1.5);
-    [['ZEITRAUM',M+3],['ABDECKUNG',M+52],['LAeq',M+91],['LCpeak',M+128],['STATUS',M+157]]
-      .forEach(([t,x])=>label(t,x,tY+4.7,6.4,COLOR.white,true));
-    chosen.forEach(({b,i},j)=>{
-      const y=tY+7+j*tH;
-      box(M,y,CW,tH,j%2?COLOR.pale:COLOR.white);
-      const r=b.raw||{};
-      const m1=clean(b.from).match(/(\d{2}:\d{2})/);
-      const m2=clean(b.to).match(/(\d{2}:\d{2})/);
-      const datePart=clean(b.from).match(/^\d{4}-(\d{2})-(\d{2})/);
-      label((datePart?datePart[2]+'.'+datePart[1]+'. ':'')+(m1?m1[1]:'--:--')+'-'+(m2?m2[1]:'--:--'),M+3,y+4.7,7.1,COLOR.navy,true);
-      const cov=finite(r.coveredSeconds)?Math.round(r.coveredSeconds)+' / '+Math.round(r.expectedSeconds||1800)+' s':short(b.coverage);
-      label(fit(cov,35,7),M+52,y+4.7,7,COLOR.text);
+    const tY=41,tH=chosen.length>9?6:8;
+    const xs=[M+2,M+45,M+90,M+118,M+147];
+    box(M,tY,CW,8,stripe);
+    ['Zeitraum','Abdeckung','LAeq dB(A)','LCpeak dB(C)','Bewertung'].forEach((v,i)=>label(v,xs[i],tY+5.2,7.3,COLOR.muted,true));
+    chosen.forEach(({b},i)=>{
+      const y=tY+8+i*tH,r=b.raw||{};
+      if(i%2)box(M,y,CW,tH,stripe);
+      const day=clean(b.from).slice(0,10),next=clean(b.to).slice(0,10);
+      const showDay=rawPeriods.some(p=>clean(p.start).slice(0,10)!==clean(startTime).slice(0,10));
+      const tm=(showDay?formatDate(day).slice(0,6)+' ':'')+time(b.from).slice(0,5)+'–'+(showDay&&next!==day?formatDate(next).slice(0,6)+' ':'')+time(b.to).slice(0,5);
+      label(fit(tm,41,7.4),xs[0],y+tH*.66,7.4,COLOR.text);
+      const fmt=n=>Math.round(n).toLocaleString('de-DE');
+      const cov=finite(r.coveredSeconds)?fmt(r.coveredSeconds)+' / '+fmt(r.expectedSeconds||1800)+' s':short(b.coverage);
+      label(cov,xs[1],y+tH*.66,7.4,COLOR.text);
       const full=finite(r.laeq30Db),val=full?r.laeq30Db:(r.laeqPartialDb??r.laeqObservedDb);
-      label(finite(val)?one(val)+(full?'':' *'):'-',M+91,y+4.7,7.8,COLOR.navy,true);
       const peak=finite(r.lcpeakObservedDb)?r.lcpeakObservedDb:r.lcpeakMaxDb;
-      label(one(peak),M+128,y+4.7,7.8,COLOR.navy,true);
-      const over=(full&&finite(val)&&val>99)||(finite(peak)&&peak>135);
-      const state=over?'Überschritten':r.dataQuality==='conflict'?'Zeitkonflikt':r.dataCoverageState==='gap'?'Messlücke':full&&finite(peak)&&r.dataQuality==='complete'?'Nicht überschritten':r.dataCoverageState==='partial-edge'?'Teilzeit':'Unvollständig';
-      label(state,M+157,y+4.7,6.2,over?COLOR.red:state==='Nicht überschritten'?COLOR.green:COLOR.amber,true);
+      label(finite(val)?full?euro(val):one(val)+'*':'—',xs[2],y+tH*.66,7.7,COLOR.text,true);
+      label(one(peak),xs[3],y+tH*.66,7.7,COLOR.text,true);
+      const over=(full&&val>99)||(finite(peak)&&peak>135);
+      const state=over?'Überschritten':r.dataCoverageState==='conflict'||r.dataQuality==='conflict'?'Zeitkonflikt':r.dataCoverageState==='gap'?'Messlücke':full&&finite(peak)&&r.dataQuality==='complete'?'Unter Grenze':r.dataCoverageState==='partial-edge'?'Teilzeit':'Unvollständig';
+      label(state,xs[4],y+tH*.66,7.1,over?COLOR.red:state==='Unter Grenze'?COLOR.green:COLOR.amber);
+      hair(M,y+tH,W-M,y+tH,COLOR.border,.13);
     });
-    const last=tY+7+chosen.length*tH;
-    hair(M,last,W-M,last);
-    if(report.blocks.length>chosen.length)
-      label('Auswahl von '+chosen.length+' / '+report.blocks.length+' Zeitfenstern (auffällige/teilweise erfasste priorisiert). Vollständige Daten im Projekt/XL3-Report.',M,last+5.3,6.4,COLOR.amber);
-    else
-      label('* LAeq über erfasste Teilzeit, kein vollständiger LAeq,30min. LCpeak = Maximum des erfassten Intervalls.',M,last+5.3,6.3,COLOR.muted);
-    label('* Teilzeit-LAeq ist kein LAeq,30min; 99 dB(A) nur für volle Fenster, LCpeak 135 dB(C).',M,last+9.8,6.3,COLOR.muted);
-
-    const panelY=Math.max(136,last+13);
-    const panelBottom=242;
-    const panelH=panelBottom-panelY;
-    const panelW=(CW-4)/2;
-    box(M,panelY,panelW,panelH,COLOR.white,2,COLOR.border);
-    box(M+panelW+4,panelY,panelW,panelH,COLOR.white,2,COLOR.border);
-    function field(x,y,title,value,width,maxLines=1){
-      label(title.toUpperCase(),x,y,5.9,COLOR.muted,true);
-      const ls=wrapped(value,width,7.4,maxLines);
-      ls.forEach((s,i)=>label(s,x,y+4.5+i*4,7.4,COLOR.text));
-      return y+8.1+(ls.length-1)*3.8;
+    const last=tY+8+chosen.length*tH;
+    label('* LAeq der tatsächlich erfassten Teilzeit; kein vollständiger 30-Minuten-Mittelungspegel.',M,last+5,6.5,COLOR.muted);
+    if(chosen.length<report.blocks.length)label('Auswahl von '+chosen.length+' / '+report.blocks.length+' Zeitfenstern; vollständige Tabelle im Projekt.',M,last+9,6.5,COLOR.amber);
+    heading('Messsystem',139);
+    pairs([['Messgerät',get(report,'Messgerät')+' · Seriennr. '+get(report,'Messgerät-Seriennummer')],
+      ['Messmikrofon',get(report,'Messmikrofon')+' · Seriennr. '+get(report,'Mikrofon-Seriennummer')],
+      ['Logdatei',report.sourceLog]],
+      [['Kalibrator',get(report,'Kalibrator')],['Seriennummer',get(report,'Kalibrator-Seriennummer')],
+      ['Firmware / Raster',get(report,'Firmware')+' / '+get(report,'Logintervall')]],146,7.2,39,35,2);
+    function correction(key){
+      const v=get(report,key+' – '+(key==='k1'?'LAeq':'LCpeak'));
+      const state=get(report,key+' – im Gerätelog angewandt?');
+      return short(v)+' · '+(state.startsWith('Ja')?'bereits im Gerätelog':state.startsWith('Nein')?'nicht im Gerätelog':'Anwendung ungeklärt');
     }
-    const L=M+4,R=M+panelW+8,F=panelW-8;
-    label('01  VERANSTALTUNG UND MESSORT',L,panelY+7,8.1,COLOR.navy,true);
-    hair(L,panelY+9,L+F,panelY+9);
-    let a=panelY+15;
-    a=field(L,a,'Veranstalter',get(report,'Veranstalter / Anschrift'),F,2);
-    a=field(L,a,'Ort / Anschrift',venue+' / '+get(report,'Anschrift / Ortsangabe'),F,2);
-    a=field(L,a,'Messperson',get(report,'Messperson'),F);
-    a=field(L,a,'Messposition',get(report,'Tatsächlicher Messort'),F,2);
-    a=field(L,a,'Maßgeblicher Immissionsort',get(report,'Maßgeblicher Immissionsort'),F,2);
-    a=field(L,a,'FOH-Techniker',get(report,'FOH-Techniker'),F);
-    a=field(L,a,'Ersatzmessort',get(report,'Ersatzmessort'),F);
-
-    label('02  MESSGERÄT UND KORREKTUREN',R,panelY+7,8.1,COLOR.navy,true);
-    hair(R,panelY+9,R+F,panelY+9);
-    let b=panelY+15;
-    b=field(R,b,'Messgerät / Seriennr.',get(report,'Messgerät')+' / '+get(report,'Messgerät-Seriennummer'),F);
-    b=field(R,b,'Mikrofon / Seriennr.',get(report,'Messmikrofon')+' / '+get(report,'Mikrofon-Seriennummer'),F);
-    b=field(R,b,'Messbeginn - Messende',get(report,'Messbeginn laut Log')+' bis '+get(report,'Messende laut Log'),F,2);
-    b=field(R,b,'Korrekturen',get(report,'k1 – LAeq')+' / '+get(report,'k2 – LCpeak'),F);
-    b=field(R,b,'Korrekturstatus','k1: '+get(report,'k1 – im Gerätelog angewandt?')+'; k2: '+get(report,'k2 – im Gerätelog angewandt?'),F,2);
-    b=field(R,b,'kset date (XL3)',get(report,'kset date (XL3)'),F);
-    b=field(R,b,'Kalibrator',get(report,'Kalibrator')+' / '+get(report,'Kalibrator-Seriennummer'),F);
-    b=field(R,b,'Prüfung vor/nach',get(report,'Funktionsprüfung vor Messung')+' / '+get(report,'Funktionsprüfung nach Messung'),F);
-    if(a>panelBottom-2||b>panelBottom-2)
-      label('Weitere Formularangaben und Nachweise sind im gespeicherten Projekt enthalten.',M,panelBottom+2,6,COLOR.amber);
-
-    box(M,246,CW,17,COLOR.pale,2);
-    label('BESCHALLUNGSANLAGE',M+4,251.5,6.3,COLOR.muted,true);
-    label(fit(get(report,'PA-Komponenten'),CW-8,7.8),M+4,256,7.8,COLOR.navy,true);
-    if(valid(get(report,'Zusätzliche Lautsprecher / Sonderaufbau')))label(fit('Zusatz: '+get(report,'Zusätzliche Lautsprecher / Sonderaufbau'),CW-8,6.5),M+4,260.5,6.5,COLOR.muted);
-    label('Protokolllage: '+(report.documentationComplete?'vollständig':'offene Angaben')+
-      '  |  Technische Nachweise: '+(report.evidenceComplete?'vorhanden':'teilweise offen')+
-      '  |  Hinweise: '+(Array.isArray(report.issues)?report.issues.length:0)+' (Details im Projekt)',M,269,7,COLOR.muted);
-    label('Quelle: '+fit(report.sourceLog,CW-26,6.3),M,273.2,6.3,COLOR.muted);
-    label(fit('Bericht: '+get(report,'Berichtsort')+', '+get(report,'Berichtsdatum')+'  |  '+get(report,'Erstellt von'),135,7.4),M,278,7.4,COLOR.text);
-    label('Unterschrift: __________________',W-M,278,7.4,COLOR.text,false,'right');
+    heading('Korrekturen und Funktionsprüfung',174);
+    pairs([['Korrektur LAeq (k1)',correction('k1')],['Korrektur LCpeak (k2)',correction('k2')]],
+      [['Prüfung davor',get(report,'Funktionsprüfung vor Messung')],['Prüfung danach',get(report,'Funktionsprüfung nach Messung')]],181,8,51,37,2);
+    heading('Protokollabschluss',204);
+    const closing=[['Ort',get(report,'Berichtsort'),M,48],['Datum',formatDate(get(report,'Berichtsdatum')),M+58,40],['Name',get(report,'Erstellt von'),M+105,77]];
+    closing.forEach(([k,v,x,w])=>{
+      label(k,x,213,7.4,COLOR.muted,true);
+      label(fit(v,w,8.3),x,221,8.3,COLOR.text);
+      hair(x,224,x+w,224,gridColor,.18);
+    });
+    label('Digitale Signatur',M,234,9,COLOR.text,true);
+    label('Signaturfeld für PDF-Signaturanwendungen',W-M,234,6.8,COLOR.muted,false,'right');
+    box(M,239,CW,34,COLOR.white,.8,gridColor);
+    label('Zum digitalen Signieren hier klicken / Signatur einfügen',M+5,246,7.3,COLOR.muted);
     footer(2);
     return doc;
   }
-  return Object.freeze({create,printable});
+  // Append a real unsigned signature widget, not a text-input or simulated signature.
+  async function withSignature(doc,lib){
+    if(!lib?.PDFDocument)throw new Error('PDF-Signaturmodul nicht verfügbar.');
+    const pdf=await lib.PDFDocument.load(doc.output('arraybuffer'));
+    const page=pdf.getPages()[1],ctx=pdf.context;
+    const mm=72/25.4;
+    const widget=ctx.obj({
+      Type:'Annot',Subtype:'Widget',FT:'Sig',
+      T:lib.PDFString.of('Digitale_Signatur'),
+      TU:lib.PDFHexString.fromText('Digitale Signatur des Protokollverfassers'),
+      F:4,Rect:[14*mm,page.getHeight()-273*mm,196*mm,page.getHeight()-239*mm],
+      P:page.ref,BS:{W:0}
+    });
+    const ref=ctx.register(widget);
+    page.node.addAnnot(ref);
+    const form=pdf.getForm();
+    form.acroForm.addField(ref);
+    form.acroForm.dict.set(lib.PDFName.of('SigFlags'),lib.PDFNumber.of(3));
+    return pdf.save({updateFieldAppearances:false});
+  }
+  return Object.freeze({create,printable,withSignature});
 });
