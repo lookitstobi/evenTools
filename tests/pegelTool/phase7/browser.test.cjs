@@ -131,6 +131,37 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(await page.locator('.header-menu summary svg.header-action-icon').count(),1);
       assert.equal(await page.locator('.header .pdf-project-option svg.header-action-icon').count(),1);
       assert.equal(await page.getByRole('button',{name:'Projekt öffnen',exact:true}).count(),1);
+      // Recovery is initially hidden; explicitly show it as happens after local autosave.
+      await page.evaluate(()=>{
+        localStorage.setItem(RECOVERY_STORAGE_KEY,JSON.stringify(buildStateObject()));
+        updateRecoveryButton();
+      });
+      for(const width of [1366,1024,768,390]){
+        await page.setViewportSize({width,height:900});
+        const buttons=await page.evaluate(()=>{
+          const header=document.querySelector('.header').getBoundingClientRect();
+          return [...document.querySelectorAll('.header-main-actions button')].map(btn=>{
+            const box=btn.getBoundingClientRect(),icon=btn.querySelector('svg').getBoundingClientRect();
+            const textNode=[...btn.childNodes].find(node=>node.nodeType===3 && node.textContent.trim());
+            const range=document.createRange();range.selectNode(textNode);
+            const label=range.getBoundingClientRect();
+            return {id:btn.id,height:box.height,left:box.left,right:box.right,top:box.top,bottom:box.bottom,
+              inside:box.left>=header.left && box.right<=header.right+1,
+              inline:label.left>=icon.right+5 &&
+                Math.abs((label.top+label.bottom)/2-(icon.top+icon.bottom)/2)<=2};
+          });
+        });
+        for(const b of buttons){
+          assert.ok(b.inside,'Header button clipped at '+width+': '+b.id);
+          assert.ok(b.inline,'Icon and text must share one line at '+width+': '+b.id);
+          assert.equal(b.height,buttons[0].height,'Equal button heights at '+width);
+          for(const other of buttons.filter(x=>x.id!==b.id))
+            assert.ok(b.right<=other.left || b.left>=other.right || b.bottom<=other.top || b.top>=other.bottom,
+              'Overlapping header buttons at '+width);
+        }
+      }
+      await page.setViewportSize({width:1366,height:900});
+      await page.evaluate(()=>{localStorage.removeItem(RECOVERY_STORAGE_KEY);updateRecoveryButton();});
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),true);
 
       // Inject a real XL3 kset header field into the synthetic browser fixture.

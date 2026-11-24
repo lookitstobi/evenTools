@@ -349,7 +349,21 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
 
 /* Single-page layout from first render; no legacy tab strip or clipped desktop scrolling. */
 html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
-.header{position:sticky;top:0}
+.header{position:sticky;top:0;column-gap:14px;row-gap:10px}
+.header > .compliance-dot{margin:0}
+.header > .title{min-width:0}
+.header-controls{min-width:0;max-width:100%;margin-left:0;gap:10px 14px}
+.header-main-actions,.header-secondary-actions{min-width:0;max-width:100%;gap:8px 10px;align-items:center;flex-wrap:wrap}
+.header .icon-btn,.header .menu-item-btn{flex:0 0 auto;min-height:36px;line-height:18px;padding:8px 12px;justify-content:center;gap:8px}
+.header .menu-item-btn{justify-content:flex-start}
+.header .pdf-project-option{flex:0 0 auto;max-width:100%;min-height:36px}
+.header .chips-offset{margin-left:0}
+@media(max-width:900px){
+  .header-controls{width:100%;justify-content:flex-start}
+}
+@media(max-width:600px){
+  .header .icon-btn,.header .menu-item-btn{min-height:44px}
+}
 #main{position:relative;top:auto;bottom:auto;left:auto;right:auto}
 #main.workflow-main,#main.workflow-single-page{position:relative;top:auto;bottom:auto;overflow:visible}
 .workflow-nav,.workflow-tab,.workflow-panel,.workflow-footer{display:none!important}
@@ -919,7 +933,8 @@ function updateRecoveryButton(){
   if(!btn) return;
   let hasState = false;
   try{ hasState = !!localStorage.getItem(RECOVERY_STORAGE_KEY); }catch(e){ hasState = false; }
-  btn.style.display = hasState ? 'block' : 'none';
+  // Preserve icon/text flex alignment when a saved session becomes available.
+  btn.style.display = hasState ? '' : 'none';
   btn.disabled = !hasState;
 }
 
