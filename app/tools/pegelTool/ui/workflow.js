@@ -180,14 +180,22 @@
     exportArea.append(exportText,actions);
     groupsById.export=exportArea;
     main.appendChild(exportArea);
-    // Skip automatic read-only values; manual inputs use ordinary DOM tab order.
+    // Skip automatic and standard preset values in the regular entry flow.
+    // They remain mouse-editable, including venue and address exceptions.
+    const presetFields=new Set(['datumMessung','location','ortAdresse','umwelt',
+      'organisator','kalibratorModell','kalibratorSN','berichtsort','berichtDatum']);
     const allFields=Array.from(main.querySelectorAll('input,select,textarea'));
     for(const field of allFields){
-      if(field.hasAttribute('readonly') || field.readOnly || field.disabled){
+      if(presetFields.has(field.id) || field.hasAttribute('readonly') || field.readOnly || field.disabled){
         field.tabIndex=-1;
       }else if(field.hasAttribute('tabindex')){
         field.removeAttribute('tabindex');
       }
+    }
+    // Section headings and auxiliary reset controls are not form entries.
+    // PA group toggles and final export actions remain usable by keyboard.
+    for(const control of main.querySelectorAll('summary,#btnClearPA')){
+      control.tabIndex=-1;
     }
     for(const old of oldPanels)old.remove();
     for(const old of oldGroups)old.remove();
