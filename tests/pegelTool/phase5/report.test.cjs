@@ -180,17 +180,17 @@ test('Kompaktes PDF enthält zwei Seiten, Messwerte, Diagramme und aktuelle Prev
   const r=makeReport();
   const doc=pdf.create(r,FakePDF,{chartSamples:[{time:'18:00:00',LAeq_g30:85,LC:110},{time:'18:30:00',LAeq_g30:86,LC:125}]});
   const text=doc.output().replace(/\r?\n/g,'');
-  for(const key of ['Testkonzert','Testveranstalter','NTI-01','97,25','124,8','CAL-01','01  Pegelverlauf','02  Spitzenpegel','XL3_Archiv.txt','Publikum Mitte','Bestätigt / Bestätigt','Musterlautsprecher','1 Zusatzlautsprecher'])
+  for(const key of ['Testkonzert','Testveranstalter','NTI-01','97,25','124,8','CAL-01','01  Pegelverlauf','02  Spitzenpegel','XL3_Archiv.txt','Publikum Mitte','Bestätigt','Digitale Signatur','Schallpegel-Messprotokoll','Veranstaltung und Messorte','Beschallungsanlage','Messsystem','Protokollabschluss','Musterlautsprecher','1 Zusatzlautsprecher'])
     assert.ok(text.includes(key),'Fehlt im PDF: '+key);
   assert.equal(doc.pages.length,2);
-  assert.match(text,/Keine Überschreitung in auswertbaren Messwerten/);
+  assert.match(text,/Keine Grenzwertüberschreitung in den auswertbaren Messwerten/);
   assert.match(text,/keine DIN-Konformitätsbescheinigung/i);
   assert.equal(doc.props.author,'pegelTool '+r.toolVersion);
 });
 test('Kompaktes PDF zeigt Teilzeit und LCpeak-Überschreitung auch im Randblock',()=>{
   const r=makeReport({evaluation:{...evaluation,blocks:[{...incompleteBlock,dataCoverageState:'partial-edge',laeqPartialDb:95,lcpeakObservedDb:137}]}});
   const text=pdf.create(r,FakePDF).output();
-  assert.match(text,/95,0 \*/);
+  assert.match(text,/95,0\*/);
   assert.match(text,/137,0/);
   assert.match(text,/Grenzwert in erfassten Daten überschritten/);
 });
@@ -198,7 +198,7 @@ test('Fehlender LCpeak ergibt keine grüne Gesamtentwarnung',()=>{
   const r=makeReport({evaluation:{...evaluation,blocks:[{...completeBlock,dataQuality:'incomplete',lcpeakMaxDb:null}]}});
   const text=pdf.create(r,FakePDF).output();
   assert.match(text,/Nur teilweise auswertbar/);
-  assert.doesNotMatch(text,/Keine Überschreitung in auswertbaren Messwerten/);
+  assert.doesNotMatch(text,/Keine Grenzwertüberschreitung in den auswertbaren Messwerten/);
 });
 test('PDF-Aufbau verändert das gemeinsame Berichtsmodell nicht',()=>{
   const r=makeReport(), before=JSON.stringify(r);
@@ -230,7 +230,7 @@ test('PDF-Renderer gibt bei unbrauchbaren Daten konkrete Fehler aus',()=>{
   assert.throws(()=>pdf.create(makeReport(),null),/jsPDF/);
 });
 
-test('Echter lokaler jsPDF-Export erzeugt valide PDF-Bytes mit mehreren Seiten',()=>{
+test('Echter lokaler jsPDF-Export erzeugt zwei signierbare PDF-Seiten',async()=>{
   const {jsPDF}=require('../../../app/tools/pegelTool/vendor/jspdf.umd.min.js');
   assert.equal(typeof jsPDF,'function');
   const report=makeReport();
@@ -241,6 +241,13 @@ test('Echter lokaler jsPDF-Export erzeugt valide PDF-Bytes mit mehreren Seiten',
   assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
   assert.ok(bytes.length>1000);
   assert.ok(bytes.toString('latin1').includes('%%EOF'));
+  const lib=require('../../../app/tools/pegelTool/vendor/pdf-lib.min.js');
+  const signedReady=await pdf.withSignature(doc,lib);
+  const parsed=await lib.PDFDocument.load(signedReady);
+  const signature=parsed.getForm().getSignature('Digitale_Signatur');
+  assert.equal(parsed.getPageCount(),2);
+  assert.equal(signature.getName(),'Digitale_Signatur');
+  assert.equal(signature.acroField.getWidgets().length,1);
 });
 
 test('Integration: ein Exportpfad, Bildschirmbericht, keine alten Generatoren',()=>{
