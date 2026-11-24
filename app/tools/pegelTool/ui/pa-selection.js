@@ -1,5 +1,5 @@
 /* Interactive PA selection. A schematic drawing, not a rigging plan.
- * All speaker quantities are tied to defined physical groups, never free guesses.
+ * Quantities are editable for defined speaker types; legacy variants remain compatible.
  */
 (function(root,factory){
   'use strict';
@@ -83,7 +83,7 @@
   }
   function groupItems(group,variants,quantities){
     const choice=group.options.find(option=>option.id===(variants||{})[group.id]);
-    const defaults=group.options.length?(choice?choice.items:[]):group.fixed;
+    const defaults=group.options.length?(choice?[TYPE.ks,TYPE.focus,TYPE.wide].map(type=>[type,choice.items.find(item=>item[0]===type)?.[1]||0]):[]):group.fixed;
     const custom=(quantities||{})[group.id]||{};
     return defaults.map(([type,qty])=>{
       const override=custom[type];
@@ -158,28 +158,24 @@
         const items=groupItems(group,variants,quantities);
         const count=items.reduce((total,item)=>total+item.qty,0);
         const label=/ · \d+$/.test(node.label)?node.label.replace(/ · \d+$/,' · '+count):node.label;
-        return '<button type="button" class="pa-node pa-node--'+node.kind+(selected.has(group.id)?' is-selected':'')+
+        return '<button type="button" tabindex="-1" class="pa-node pa-node--'+node.kind+(selected.has(group.id)?' is-selected':'')+
           '" data-pa-group="'+esc(group.id)+'" style="left:'+node.x+'%;top:'+node.y+'%" aria-pressed="'+selected.has(group.id)+
           '" aria-label="'+esc(groupTitle(group,variants,quantities))+' – '+esc(label)+'" title="'+esc(groupTitle(group,variants,quantities))+'">'+
           speakerSvg(node.kind)+'<span class="pa-node-label">'+esc(label)+'</span></button>';
       })).join('');
       const rows=groups.map(group=>{
         const checked=selected.has(group.id);
-        const choices=group.options.map(option=>'<option value="'+esc(option.id)+'"'+
-          (variants[group.id]===option.id?' selected':'')+'>'+esc(option.label)+'</option>').join('');
-        const chooser=choices?'<label class="pa-variant-label">'+esc(group.title)+' – Variante'+
-          '<select data-pa-variant="'+esc(group.id)+'" aria-label="'+esc(group.title)+' – Variante"'+
-          (checked?'':' disabled')+'><option value="">Variante wählen…</option>'+choices+'</select></label>':'';
-        const qtyFields=checked?groupItems(group,variants,quantities).map(item=>
+        const items=groupItems(group,variants,quantities);
+        const fields=items.length?items:group.options.length?[TYPE.ks,TYPE.focus,TYPE.wide].map(type=>({type,qty:0})):[];
+        const qtyFields=fields.map(item=>
           '<label class="pa-qty-label">'+esc(item.type.replace('L-ACOUSTIC ','') )+
           '<input type="number" min="0" max="200" step="1" value="'+item.qty+
           '" data-pa-qty-group="'+esc(group.id)+'" data-pa-qty-type="'+esc(item.type)+
-          '" aria-label="'+esc(group.title+' – Anzahl '+item.type)+'"></label>').join(''):'';
+          '" aria-label="'+esc(group.title+' – Anzahl '+item.type)+'"'+(checked?'':' disabled')+'></label>').join('');
         return '<div class="pa-group-row"><button type="button" class="pa-group-toggle'+
           (checked?' is-selected':'')+'" data-pa-group="'+esc(group.id)+'" aria-pressed="'+checked+'">'+
-          '<span class="pa-check">'+(checked?'✓':'')+'</span>'+esc(groupTitle(group,variants,quantities))+'</button>'+
-          (chooser?'<div class="pa-qty-grid">'+chooser+'</div>':'')+
-          (qtyFields?'<div class="pa-qty-grid">'+qtyFields+'</div>':'')+'</div>';
+          '<span class="pa-check">'+(checked?'✓':'')+'</span><span class="pa-group-name">'+esc(groupTitle(group,variants,quantities))+'</span></button>'+
+          '<div class="pa-qty-grid">'+qtyFields+'</div></div>';
       }).join('');
       root.innerHTML='<div class="pa-picker"><div class="pa-plan">'+
         '<div class="pa-plan-heading">'+(location===AKS?'Alfried-Krupp-Saal':'Nationalbank-Pavillon')+
@@ -207,6 +203,8 @@
       const id=btn.getAttribute('data-pa-group');
       if(!groupsFor(location).some(group=>group.id===id))return;
       selected.has(id)?selected.delete(id):selected.add(id);
+      const group=groupsFor(location).find(g=>g.id===id);
+      if(selected.has(id)&&group.options.length&&!variants[id])variants[id]='ks4';
       render();
       const focus=root.querySelector('.pa-group-toggle[data-pa-group="'+id+'"]');
       if(focus)focus.focus({preventScroll:true});
@@ -220,30 +218,32 @@
         const type=field.getAttribute('data-pa-qty-type');
         const amount=Number(field.value);
         if(!group||!selected.has(qtyGroup)||
-          !groupItems(group,variants,quantities).some(item=>item.type===type)||
+          !(group.options.length?[TYPE.ks,TYPE.focus,TYPE.wide].includes(type):groupItems(group,variants,quantities).some(item=>item.type===type))||
           !/^\d+$/.test(field.value.trim())||!Number.isInteger(amount)||amount<0||amount>200){
           field.setCustomValidity('Bitte eine ganze Zahl von 0 bis 200 eingeben.');
           field.reportValidity();return;
         }
         field.setCustomValidity('');
+        if(group.options.length&&!variants[qtyGroup]){
+          variants[qtyGroup]='ks4';
+          quantities[qtyGroup]={[TYPE.ks]:0,[TYPE.focus]:0,[TYPE.wide]:0};
+        }
         quantities[qtyGroup]={...(quantities[qtyGroup]||{}),[type]:amount};
-        render();
-        const focus=Array.from(root.querySelectorAll('[data-pa-qty-group]'))
-          .find(input=>input.getAttribute('data-pa-qty-group')===qtyGroup&&
-            input.getAttribute('data-pa-qty-type')===type);
-        if(focus)focus.focus({preventScroll:true});
-        onChange();return;
+        // Do not replace the active inputs on blur: native Tab/Shift+Tab must
+        // reach the adjacent control instead of losing or restoring focus.
+        const title=groupTitle(group,variants,quantities);
+        const toggle=root.querySelector('.pa-group-toggle[data-pa-group="'+qtyGroup+'"] .pa-group-name');
+        if(toggle)toggle.textContent=title;
+        const count=groupItems(group,variants,quantities).reduce((sum,item)=>sum+item.qty,0);
+        for(const node of root.querySelectorAll('.pa-node[data-pa-group="'+qtyGroup+'"]')){
+          const label=node.querySelector('.pa-node-label');
+          if(label)label.textContent=label.textContent.replace(/ · \d+$/,' · '+count);
+          node.title=title;
+          node.setAttribute('aria-label',title+' – '+(label?label.textContent:''));
+        }
+        showUnresolved();
+        onChange();
       }
-      const id=field&&field.getAttribute('data-pa-variant');
-      if(!id)return;
-      const group=groupsFor(location).find(g=>g.id===id);
-      if(!group||!selected.has(id)||!group.options.length)return;
-      const value=field.value;
-      if(value && !group.options.some(option=>option.id===value))return;
-      variants[id]=value;
-      delete quantities[id]; // A different variant starts with its defined component quantities.
-      render();
-      onChange();
     });
     function setLocation(next){
       location=String(next||'');
