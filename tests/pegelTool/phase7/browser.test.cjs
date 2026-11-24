@@ -181,7 +181,14 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       const sideSubs=page.locator('[data-pa-qty-group="sideL"][data-pa-qty-type="L-ACOUSTIC KS21"]');
       await sideSubs.fill('2');
       await sideSubs.press('Tab');
-      assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('data-pa-qty-type')),'L-ACOUSTIC A10 Focus');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'paZusatz');
+      assert.equal(await page.locator('#paContainer button:not([tabindex="-1"]), #paContainer input:not([tabindex="-1"])').count(),0);
+      await page.locator('#foh').focus();
+      await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'paZusatz');
+      await page.keyboard.press('Shift+Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'foh');
+      assert.equal(await page.locator('[data-workflow-section="corrections"], #ersatzMessort').count(),0);
       let changed=await page.evaluate(()=>buildStateObject());
       assert.equal(changed.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,6);
       // Override component counts without altering group selection or the other side.
