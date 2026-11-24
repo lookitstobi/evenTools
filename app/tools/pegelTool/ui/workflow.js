@@ -14,20 +14,19 @@
     {id:'setup', title:'Messaufbau / Korrekturen', description:'Veranstaltung, Messstellen, PA, k1/k2 und Kalibrierung dokumentieren.'},
     {id:'assessment', title:'Bewertung', description:'Feste Halbstundenblöcke prüfen; Zusatzanalyse getrennt ansehen.'},
     {id:'protocol', title:'Protokoll', description:'Fehlende Nachweise ergänzen und den Bericht kontrollieren.'},
-    {id:'export', title:'Export', description:'Vorläufigen technischen Bericht oder Projektstand speichern.'}
+    {id:'export', title:'Export', description:'Messbericht oder Projektstand speichern.'}
   ]);
   const allowed = new Set(STEPS.map(s=>s.id));
   const arr = x => Array.isArray(x) ? x : [];
   function assessmentStatus(snapshot) {
-    const s=snapshot || {}, record=s.record || {}, review=s.review || {},
-      model=s.importModel, assessment=record.assessment || {};
+    const s=snapshot || {}, record=s.record || {},
+      model=s.importModel, assessment=record.assessment || {},
+      overall=s.evaluation?.overall || {};
     if (!model || !arr(model.samples).length) return 'Noch nicht geprüft';
-    // All conditions must be present. A numeric comparison by itself is NEVER an approval.
-    const eligible=record.normReview === 'verified' && review.reportFullyChecked === true &&
-      review.documentationComplete === true && review.evidenceComplete === true;
-    if (!eligible) return 'Nicht beurteilbar';
-    if (assessment.normativeStatus === 'exceeded') return 'Grenzwert überschritten';
-    if (assessment.normativeStatus === 'compliant') return 'Grenzwert eingehalten';
+    const result=overall.measurementStatus || assessment.measurementStatus;
+    if (result === 'exceeded') return 'Grenzwert überschritten';
+    if (result === 'within-limits') return 'Keine Überschreitung in auswertbaren Messdaten';
+    if (result === 'partial') return 'Nur teilweise auswertbar';
     return 'Nicht beurteilbar';
   }
   function collectIssues(snapshot) {
@@ -70,182 +69,208 @@
         warnings.length || evidenceIssues.length ? 'Prüfhinweise' : 'Daten vorhanden',
       setup: !review ? 'Noch offen' : formIssues.length ? formIssues.length+' Angaben offen' : 'Angaben erfasst',
       assessment: !blocks.length ? 'Noch nicht geprüft' :
-        blocks.some(b=>b.dataQuality !== 'complete') ? 'Datenlücken prüfen' : 'Technisch berechnet',
+        blocks.some(b=>b.dataCoverageState === 'gap' || b.dataCoverageState === 'conflict' ||
+          (!b.dataCoverageState && b.dataQuality !== 'complete')) ? 'Datenlücken prüfen' :
+          blocks.some(b=>b.dataCoverageState === 'partial-edge') ? 'Teilzeitblöcke ausgewertet' : 'Technisch berechnet',
       protocol: !review ? 'Noch offen' : formIssues.length || evidenceIssues.length ?
-        'Nachweise offen' : 'Erfasst (vorläufig)',
-      export: s.canExport ? 'Vorläufig verfügbar' : 'Noch nicht verfügbar'
+        'Nachweise offen' : 'Angaben erfasst',
+      export: s.canExport ? 'Verfügbar' : 'Noch nicht verfügbar'
     };
     return {status,steps,issues:collectIssues(s),
       hasImport:!!model,canExport:!!s.canExport,
       blockCount:blocks.length,missingForm:formIssues.length,missingEvidence:evidenceIssues.length,
-      // The unresolved original-norm check is always visible regardless of field completeness.
-      normNotice:'Originalnorm DIN 15905-5:2022-07 noch nicht abschließend abgeglichen. Keine DIN-Konformitätsbescheinigung.'};
+      normNotice:''};
   }
+  // One continuous workspace. go() scrolls to a section rather than hiding panels.
   function mount(opts) {
     const doc=opts && opts.document, getSnapshot=opts && opts.getSnapshot;
     if (!doc || typeof getSnapshot !== 'function') return null;
-    const main=doc.getElementById('main'), header=doc.querySelector('header.header');
+    const main=doc.getElementById('main'),header=doc.querySelector('header.header');
     if(!main || !header || !doc.body) return null;
-    // HTML project exports serialize the currently mounted DOM. A second load
-    // must rebuild controls/listeners, not leave two navigation shells behind.
-    const staleShell=doc.querySelector('.workflow-shell');
-    const stalePanels=Array.from(main.querySelectorAll('.workflow-panel'));
-    const sectionNames=['metrics','blocks','charts','log','review','preview',
-      'eventAndEvidence','description','signature','pa','corrections'];
+    const names=['eventAndEvidence','description','signature','pa',
+      'log','deviceEvidence','review','blocks','metrics','charts','preview'];
     const sections={};
-    for (const name of sectionNames) {
+    for(const name of names) {
       sections[name]=main.querySelector('[data-workflow-section="'+name+'"]');
-      if(!sections[name]) return null; // Keep the original UI usable on partial deployments.
+      if(!sections[name]) return null;
     }
     const make=(tag,cls,value)=>{
       const e=doc.createElement(tag);
-      if(cls) e.className=cls;
-      if(value!==undefined) e.textContent=value;
+      if(cls)e.className=cls;
+      if(value!==undefined)e.textContent=value;
       return e;
     };
+    // Exported standalone HTML may contain the previously mounted workflow shell.
+    const staleShell=doc.querySelector('.workflow-shell');
+    const oldPanels=Array.from(main.querySelectorAll('.workflow-panel'));
+    const oldGroups=Array.from(main.querySelectorAll('.workflow-group'));
+    // Scrub any residual Phase-6 navigation before an XL3 file is loaded too.
+    const oldNavigation=typeof doc.querySelectorAll==='function'
+      ? Array.from(doc.querySelectorAll('.workflow-nav,.workflow-tab,.workflow-footer')) : [];
     const shell=make('div','workflow-shell');
-    const nav=make('nav','workflow-nav');
-    nav.setAttribute('aria-label','Bearbeitungsschritte');
     const overview=make('section','workflow-overview');
     overview.setAttribute('aria-live','polite');
     const status=make('strong','workflow-overall-status');
-    const note=make('p','workflow-norm-note');
-    const issueHeading=make('p','workflow-issue-heading');
-    const issueList=make('ul','workflow-issues');
-    overview.append(status,note,issueHeading,issueList);
-    shell.append(nav,overview);
+    overview.append(status);
+    const short=make('section','workflow-shortinfo');
+    const shortTitle=make('h3','workflow-shortinfo-title','Messdaten und Ergebnisse');
+    const shortValues=make('div','workflow-shortinfo-values');
+    const shortFields=[
+      ['Messbeginn','start'],['Messende','end'],
+      ['k1','k1'],['k2','k2'],
+      ['LAeq,30min (Maximum)','laeq'],['LCpeak (Maximum)','lcpeak']
+    ];
+    const shortNodes={};
+    for(const pair of shortFields){
+      const item=make('div','workflow-shortinfo-item');
+      item.appendChild(make('span','workflow-shortinfo-label',pair[0]));
+      const value=make('strong','workflow-shortinfo-value','—');
+      item.appendChild(value);
+      shortValues.appendChild(item);shortNodes[pair[1]]=value;
+    }
+    short.append(shortTitle,shortValues);
+    shell.append(overview,short);
     doc.body.insertBefore(shell,main);
-    const panelMap={},navMap={};
-    function action(label,handler,secondary) {
-      const btn=make('button',secondary ? 'secondary' : '',label);
-      btn.type='button';btn.addEventListener('click',handler);return btn;
+    // Charts remain in #main so saved standalone HTML can rehydrate them.
+    // Move the existing chart node, never clone its canvases or their state.
+    main.appendChild(sections.charts);
+    const groups=[
+      {id:'setup',title:'01 · Veranstaltung und Personal',sections:['eventAndEvidence','description']},
+      {id:'quality',title:'02 · Beschallung und Messbedingungen',sections:['pa']},
+      {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','log','deviceEvidence']},
+      {id:'protocol',title:'04 · Prüfung und Protokoll',sections:['review','preview']}
+    ];
+    const groupsById={},alerts={};
+    function createCollapsibleGroup(id,title,extraClass=''){
+      const part=make('details','workflow-group'+(extraClass?' '+extraClass:''));
+      part.id='workflow-group-'+id;
+      part.open=true; // Only the nested PDF preview and parser details start closed.
+      const heading=make('summary','workflow-group-heading');
+      heading.appendChild(make('h2','workflow-group-title',title));
+      const alert=make('span','workflow-group-alert','!');
+      alert.setAttribute('aria-label','Angaben fehlen');
+      alert.title='Erforderliche Angaben fehlen';
+      alert.hidden=true;
+      heading.appendChild(alert);
+      part.appendChild(heading);
+      alerts[id]=alert;
+      return part;
     }
-    function paragraph(text,cls) {return make('p',cls || 'workflow-description',text);}
-    const owners={
-      import:[],
-      quality:['log'],
-      setup:['eventAndEvidence','pa','corrections'],
-      assessment:['blocks','metrics','charts'],
-      protocol:['review','description','signature','preview'],
-      export:[]
-    };
-    const fragments={};
-    for(const step of STEPS) {
-      const b=make('button','workflow-tab');
-      b.type='button'; b.setAttribute('aria-controls','workflow-panel-'+step.id);
-      b.setAttribute('aria-label',step.title);
-      const title=make('span','workflow-tab-title',(STEPS.indexOf(step)+1)+'. '+step.title);
-      const sub=make('small','workflow-tab-status','Noch offen');
-      b.append(title,sub);
-      b.addEventListener('click',()=>go(step.id));
-      nav.appendChild(b); navMap[step.id]={button:b,status:sub};
+    for(const group of groups){
+      const part=createCollapsibleGroup(group.id,group.title);
+      for(const name of group.sections)part.appendChild(sections[name]);
+      groupsById[group.id]=part;
+      main.appendChild(part);
+    }
+    const exportArea=createCollapsibleGroup('export','05 · Unterschrift und Export','workflow-export');
+    const exportText=make('p','workflow-inline-status','Ohne überprüfbaren Import noch kein PDF möglich.');
+    const actions=make('div','workflow-actions');
+    function action(label,target,secondary){
+      const btn=make('button',secondary?'secondary':'',label);
+      btn.type='button';
+      btn.addEventListener('click',()=>doc.getElementById(target)?.click());
+      return btn;
+    }
+    const exportButton=action('Messbericht als PDF exportieren','btnPdfTemplate');
+    actions.append(exportButton,
+      action('Projekt speichern (JSON)','btnSaveState',true),
+      action('Projekt speichern (HTML)','btnExportHtml',true));
 
-      const panel=make('section','workflow-panel');
-      panel.id='workflow-panel-'+step.id;
-      panel.setAttribute('aria-label',step.title);
-      panel.hidden=true;
-      const heading=make('div','workflow-panel-heading');
-      heading.append(make('h2','',step.title),paragraph(step.description));
-      panel.appendChild(heading);
-      if(step.id==='import') {
-        const card=make('div','section workflow-intro');
-        card.append(paragraph('Importiere ein NTi-XL3-Log oder öffne ein gespeichertes Projekt. Der Import ersetzt den aktuellen Datensatz erst bei erfolgreicher Prüfung.'));
-        const actions=make('div','workflow-actions');
-        actions.append(action('XL3-Log auswählen',()=>doc.getElementById('btnImport')?.click()),
-          action('Projektdatei öffnen',()=>doc.getElementById('btnLoadState')?.click(),true),
-          action('Letzte Sitzung laden',()=>doc.getElementById('btnRecover')?.click(),true));
-        card.appendChild(actions); panel.appendChild(card);
-        fragments.importText=paragraph('Noch keine Messdaten geladen.','workflow-inline-status');
-        panel.appendChild(fragments.importText);
-      }
-      if(step.id==='quality') {
-        const card=make('div','section workflow-quality-card');
-        card.append(make('h3','','Import- und Datenqualität'));
-        fragments.qualityText=paragraph('Noch keine Messdaten geladen.','workflow-inline-status');
-        card.appendChild(fragments.qualityText); panel.appendChild(card);
-      }
-      if(step.id==='assessment') {
-        panel.append(paragraph('Die 30-Minuten-Auswertung ist technisch vorläufig. Die nachfolgenden gleitenden Werte und Diagramme dienen ausschließlich der Zusatzanalyse.','workflow-notice'));
-      }
-      if(step.id==='export') {
-        const card=make('div','section');
-        card.append(make('h3','','Vorläufiges Messprotokoll'));
-        card.append(paragraph('Der PDF-Inhalt entspricht der Vorschau unter „Protokoll“. Offene Daten- und Normnachweise werden im Bericht aufgeführt.','workflow-description'));
-        fragments.exportText=paragraph('Ohne überprüfbaren Import noch kein PDF möglich.','workflow-inline-status');
-        const actions=make('div','workflow-actions');
-        fragments.exportButton=action('Messbericht als PDF exportieren',()=>doc.getElementById('btnPdfTemplate')?.click());
-        actions.append(fragments.exportButton,
-          action('Projekt speichern (JSON)',()=>doc.getElementById('btnSaveState')?.click(),true),
-          action('Projekt speichern (HTML)',()=>doc.getElementById('btnExportHtml')?.click(),true));
-        card.append(fragments.exportText,actions);
-        panel.appendChild(card);
-      }
-      for(const name of owners[step.id]) panel.appendChild(sections[name]);
-      const footer=make('div','workflow-footer');
-      const index=STEPS.indexOf(step);
-      if(index>0) footer.appendChild(action('Zurück: '+STEPS[index-1].title,()=>go(STEPS[index-1].id),true));
-      if(index<STEPS.length-1) footer.appendChild(action('Weiter: '+STEPS[index+1].title,()=>go(STEPS[index+1].id)));
-      panel.appendChild(footer);
-      panelMap[step.id]=panel;main.appendChild(panel);
+    exportArea.appendChild(sections.signature);
+    const headerOption=doc.getElementById('embedPdfProject');
+    const embedLabel=make('label','pdf-project-option');
+    const embedOption=make('input','');
+    embedOption.type='checkbox';
+    embedOption.id='embedPdfProjectExport';
+    embedOption.checked=headerOption ? headerOption.checked : true;
+    embedLabel.append(embedOption,make('span','','Projektdatei in PDF einbetten'));
+    const embedHelp=make('p','pdf-project-help',
+      'Mit Projektdatei: Das PDF enthält auch vollständige Messdaten, Rohlog und Eingaben. Empfänger können sie auslesen.');
+    if(headerOption){
+      headerOption.addEventListener('change',()=>{embedOption.checked=headerOption.checked;});
+      embedOption.addEventListener('change',()=>{headerOption.checked=embedOption.checked;});
     }
-    // Sections are now in their new owners. Old exported shells/panels are safe to remove.
-    for(const old of stalePanels) old.remove();
-    if(staleShell) staleShell.remove();
-    // Remove obsolete two-column wrappers only after all sections were moved.
-    for(const id of ['leftColumn','rightColumn']) doc.getElementById(id)?.remove();
-    main.classList.add('workflow-main');
-    let current='import';
-    function go(id) {
-      if(!allowed.has(id)) return false;
-      current=id;
-      for(const step of STEPS) {
-        const selected=step.id===id;
-        panelMap[step.id].hidden=!selected;
-        navMap[step.id].button.classList.toggle('is-active',selected);
-        if(selected) navMap[step.id].button.setAttribute('aria-current','step');
-        else navMap[step.id].button.removeAttribute('aria-current');
+    exportArea.append(exportText,embedLabel,embedHelp,actions);
+    groupsById.export=exportArea;
+    main.appendChild(exportArea);
+    // Skip automatic and standard preset values in the regular entry flow.
+    // They remain mouse-editable, including venue and address exceptions.
+    const presetFields=new Set(['datumMessung','location','ortAdresse','umwelt',
+      'organisator','kalibratorModell','kalibratorSN','berichtsort','berichtDatum']);
+    const allFields=Array.from(main.querySelectorAll('input,select,textarea'));
+    for(const field of allFields){
+      if(presetFields.has(field.id) || field.hasAttribute('data-pa-qty-group') || field.hasAttribute('readonly') || field.readOnly || field.disabled){
+        field.tabIndex=-1;
+      }else if(field.hasAttribute('tabindex')){
+        field.removeAttribute('tabindex');
       }
-      if(typeof opts.onActivate==='function') opts.onActivate(id);
-      if(shell.scrollIntoView) shell.scrollIntoView({behavior:'auto',block:'start'});
+    }
+    // Section headings and auxiliary reset controls are not form entries.
+    // PA controls are mouse-editable; final export actions remain keyboard accessible.
+    for(const control of main.querySelectorAll('summary,#btnClearPA')){
+      control.tabIndex=-1;
+    }
+    for(const old of oldPanels)old.remove();
+    for(const old of oldGroups)old.remove();
+    for(const old of oldNavigation)old.remove();
+    if(staleShell)staleShell.remove();
+    for(const id of ['leftColumn','rightColumn'])doc.getElementById(id)?.remove();
+    main.classList.add('workflow-main','workflow-single-page');
+    function go(id){
+      const mapped=id==='import'?'setup':id;
+      if(!groupsById[mapped])return false;
+      const target=groupsById[mapped];
+      target.open=true;
+      if(typeof opts.onActivate==='function')opts.onActivate(mapped);
+      if(target.scrollIntoView)target.scrollIntoView({behavior:'auto',block:'start'});
       return true;
     }
-    function refresh() {
-      const currentSnapshot=getSnapshot(),summary=summarize(currentSnapshot);
-      status.textContent='Beurteilungsstatus: '+summary.status;
-      status.dataset.state=summary.status==='Noch nicht geprüft' ? 'empty' :
-        summary.status==='Nicht beurteilbar' ? 'unknown' :
-        summary.status==='Grenzwert überschritten' ? 'bad' : 'ok';
-      note.textContent=summary.normNotice;
-      issueHeading.textContent=summary.issues.length ?
-        'Priorisierte Prüfhinweise ('+summary.issues.length+'):' : 'Keine zusätzlichen technischen Prüfhinweise.';
-      issueList.replaceChildren();
-      for(const issue of summary.issues.slice(0,5)) {
-        const li=make('li','',''+issue.source+': '+issue.message);
-        issueList.appendChild(li);
-      }
-      if(summary.issues.length>5) issueList.appendChild(make('li','',
-        '… weitere '+(summary.issues.length-5)+' Hinweise unter Datenprüfung / Protokoll.'));
-      for(const step of STEPS) navMap[step.id].status.textContent=summary.steps[step.id];
-      fragments.importText.textContent=summary.hasImport ?
-        'Messdaten sind geladen. Unter „Datenprüfung“ den Importstatus und die Rohdatenangaben kontrollieren.' :
-        'Noch keine Messdaten geladen. PDF und Bewertung bleiben bis zum Import gesperrt.';
-      const retryErrors=arr(currentSnapshot.lastImportAttempt && currentSnapshot.lastImportAttempt.errors);
-      const loadedText=summary.hasImport ?
-        'Datei: '+(currentSnapshot.logFileName || 'Name nicht bekannt')+
-        ' · '+summary.blockCount+' technische Zeitblöcke · '+summary.missingEvidence+
-        ' offene Messnachweise · '+summary.missingForm+' offene Protokollangaben.' :
-        'Bitte zuerst ein XL3-Log importieren oder ein Projekt öffnen.';
-      fragments.qualityText.textContent=retryErrors.length ?
-        'Letzter Importversuch abgewiesen ('+retryErrors.length+' Fehler). Vorherige Messdaten bleiben erhalten. '+loadedText :
-        loadedText;
-      fragments.exportButton.disabled=!summary.canExport;
-      fragments.exportText.textContent=summary.canExport ?
-        'Technischer PDF-Export verfügbar – weiterhin keine bestätigte DIN-Konformität.' :
+    function refresh(){
+      const snapshot=getSnapshot(),summary=summarize(snapshot);
+      const overall=snapshot.evaluation?.overall || {};
+      const laeq=overall.comparisonLAeq,peak=overall.comparisonLCpeak;
+      const hasExceedance=laeq==='above'||peak==='above';
+      const bothAssessed=laeq==='at-or-below'&&peak==='at-or-below';
+      status.textContent=hasExceedance?'Grenzwerte überschritten':bothAssessed?'Keine Überschreitung':'—';
+      const model=snapshot.importModel || {};
+      const measurement=model.measurement || {}, corrections=model.corrections || {};
+      const dateText=value=>value ? String(value).replace('T',' ') : '—';
+      shortNodes.start.textContent=dateText(measurement.start);
+      shortNodes.end.textContent=dateText(measurement.end);
+      const fmtDb=x=>Number.isFinite(x?.valueDb)
+        ? x.valueDb.toFixed(1).replace('.',',')+' dB' : '—';
+      shortNodes.k1.textContent=fmtDb(corrections.k1);
+      shortNodes.k2.textContent=fmtDb(corrections.k2);
+      // Use fixed 30-minute interval assessments, not the informational
+      // rolling traces and not a zero fallback when no block was assessed.
+      const fmtLevel=(value,unit)=>Number.isFinite(value)
+        ? value.toFixed(1).replace('.',',')+' '+unit : '—';
+      shortNodes.laeq.textContent=fmtLevel(overall.laeqMaxDb,'dB(A)');
+      shortNodes.lcpeak.textContent=fmtLevel(overall.lcpeakMaxDb,'dB(C)');
+      status.dataset.state=hasExceedance?'bad':bothAssessed?'ok':'empty';
+      const review=snapshot.review||{};
+      const issues=Array.isArray(review.formIssues)?review.formIssues:[];
+      const evidence=Array.isArray(review.evidenceIssues)?review.evidenceIssues:[];
+      const fields=new Set(issues.map(item=>item.field).filter(Boolean));
+      const any=(...ids)=>ids.some(id=>fields.has(id));
+      const missing={
+        setup:any('eventName','datumMessung','location','ortAdresse','organisator','messungVon'),
+        quality:any('paContainer','paAnordnung','paZusatz')||
+          issues.some(item=>String(item.code||'').startsWith('PA_')),
+        assessment:any('messposition','messort','messortTyp','kalibratorModell',
+          'kalibratorSN','kalVorBestaetigt','kalNachBestaetigt')||
+          evidence.some(item=>/METER_|MIC_|CALIBRATION_|LOG_MISSING|MEASUREMENT_TIME_MISSING/.test(item.code||'')),
+        protocol:issues.length>0||evidence.length>0,
+        export:any('berichtName','berichtDatum','berichtsort')
+      };
+      for(const [id,alert] of Object.entries(alerts))alert.hidden=!missing[id];
+      exportButton.disabled=!summary.canExport;
+      exportText.textContent=summary.canExport?'PDF-Export verfügbar.':
         'PDF noch nicht verfügbar: Import, Bewertung oder PDF-Modul fehlen.';
       return summary;
     }
-    go('import');refresh();
-    return Object.freeze({go,refresh,currentStep:()=>current});
+    refresh();
+    return Object.freeze({go,refresh,currentStep:()=> 'all'});
   }
   return Object.freeze({STEPS,assessmentStatus,collectIssues,summarize,mount});
 });
