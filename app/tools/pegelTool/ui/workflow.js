@@ -186,14 +186,14 @@
       'organisator','kalibratorModell','kalibratorSN','berichtsort','berichtDatum']);
     const allFields=Array.from(main.querySelectorAll('input,select,textarea'));
     for(const field of allFields){
-      if(presetFields.has(field.id) || field.hasAttribute('readonly') || field.readOnly || field.disabled){
+      if(presetFields.has(field.id) || field.hasAttribute('data-pa-qty-group') || field.hasAttribute('readonly') || field.readOnly || field.disabled){
         field.tabIndex=-1;
       }else if(field.hasAttribute('tabindex')){
         field.removeAttribute('tabindex');
       }
     }
     // Section headings and auxiliary reset controls are not form entries.
-    // PA group toggles and final export actions remain usable by keyboard.
+    // PA controls are mouse-editable; final export actions remain keyboard accessible.
     for(const control of main.querySelectorAll('summary,#btnClearPA')){
       control.tabIndex=-1;
     }
