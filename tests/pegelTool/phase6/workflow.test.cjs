@@ -76,7 +76,7 @@ test('missing half-hour blocks and unproven fields remain visible',()=>{
 });
 test('existing HTML sections, scripts and project actions are retained',()=>{
   for(const name of ['metrics','blocks','charts','log','review','preview',
-    'eventAndEvidence','description','signature','pa','corrections','deviceEvidence']){
+    'eventAndEvidence','description','signature','pa','deviceEvidence']){
     assert.match(HTML,new RegExp('data-workflow-section="'+name+'"'));
   }
   for(const id of ['fileInput','btnImport','btnSaveState','btnLoadState',
@@ -124,7 +124,7 @@ function fakeDom(){
   const left=make('div','leftColumn'),right=make('div','rightColumn');
   body.append(header,main);main.append(left,right);
   for(const id of ['metrics','blocks','charts','log','review','preview','eventAndEvidence',
-    'description','signature','pa','corrections','deviceEvidence'])sections.set(id,make('div',id+'Section'));
+    'description','signature','pa','deviceEvidence'])sections.set(id,make('div',id+'Section'));
   for(const id of ['btnImport','btnLoadState','btnSaveState','btnExportHtml','btnPdfTemplate','btnRecover'])
     make('button',id);
   body.insertBefore=(e,target)=>{

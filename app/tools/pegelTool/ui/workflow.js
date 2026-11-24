@@ -87,7 +87,7 @@
     if (!doc || typeof getSnapshot !== 'function') return null;
     const main=doc.getElementById('main'),header=doc.querySelector('header.header');
     if(!main || !header || !doc.body) return null;
-    const names=['eventAndEvidence','description','signature','pa','corrections',
+    const names=['eventAndEvidence','description','signature','pa',
       'log','deviceEvidence','review','blocks','metrics','charts','preview'];
     const sections={};
     for(const name of names) {
@@ -136,7 +136,7 @@
     main.appendChild(sections.charts);
     const groups=[
       {id:'setup',title:'01 · Veranstaltung und Personal',sections:['eventAndEvidence','description']},
-      {id:'quality',title:'02 · Beschallung und Messbedingungen',sections:['pa','corrections']},
+      {id:'quality',title:'02 · Beschallung und Messbedingungen',sections:['pa']},
       {id:'assessment',title:'03 · Messwerte und XL3-Gerätedaten',sections:['blocks','metrics','log','deviceEvidence']},
       {id:'protocol',title:'04 · Prüfung und Protokoll',sections:['review','preview']}
     ];
@@ -186,14 +186,14 @@
       'organisator','kalibratorModell','kalibratorSN','berichtsort','berichtDatum']);
     const allFields=Array.from(main.querySelectorAll('input,select,textarea'));
     for(const field of allFields){
-      if(presetFields.has(field.id) || field.hasAttribute('readonly') || field.readOnly || field.disabled){
+      if(presetFields.has(field.id) || field.hasAttribute('data-pa-qty-group') || field.hasAttribute('readonly') || field.readOnly || field.disabled){
         field.tabIndex=-1;
       }else if(field.hasAttribute('tabindex')){
         field.removeAttribute('tabindex');
       }
     }
     // Section headings and auxiliary reset controls are not form entries.
-    // PA group toggles and final export actions remain usable by keyboard.
+    // PA controls are mouse-editable; final export actions remain keyboard accessible.
     for(const control of main.querySelectorAll('summary,#btnClearPA')){
       control.tabIndex=-1;
     }
@@ -242,7 +242,7 @@
       const any=(...ids)=>ids.some(id=>fields.has(id));
       const missing={
         setup:any('eventName','datumMessung','location','ortAdresse','organisator','messungVon'),
-        quality:any('paContainer','paAnordnung','paZusatz','ersatzMessort')||
+        quality:any('paContainer','paAnordnung','paZusatz')||
           issues.some(item=>String(item.code||'').startsWith('PA_')),
         assessment:any('messposition','messort','messortTyp','kalibratorModell',
           'kalibratorSN','kalVorBestaetigt','kalNachBestaetigt')||

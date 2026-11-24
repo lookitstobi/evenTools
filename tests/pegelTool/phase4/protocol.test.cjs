@@ -87,9 +87,12 @@ test('Unterschiedliche Alt-Immissionsorte bleiben erkennbar',()=>{
   assert.equal(record.places.legacyAssessmentLAeq,'Reihe 1');
   assert.equal(record.places.legacyAssessmentLCpeak,'Balkon');
 });
-test('Ersatzmessort braucht Beschreibung und darf nicht identisch zum Immissionsort sein',()=>{
+test('Ersatzmessort verwendet die Messposition und darf nicht identisch zum Immissionsort sein',()=>{
   const r=protocol.validate(input({form:{messortTyp:'ersatz',ersatzMessort:'',messposition:'Publikum Mitte'}}));
-  assert.ok(r.formIssues.some(x=>x.field==='ersatzMessort'));
+  assert.ok(!r.formIssues.some(x=>x.field==='ersatzMessort'));
+  const data=input({form:{messortTyp:'ersatz',messposition:'FOH',ersatzMessort:''}});
+  assert.equal(protocol.buildRecord(data).places.substitute,'FOH');
+  assert.ok(!protocol.FIELD_IDS.includes('ersatzMessort'));
   assert.ok(hasIssue(r.formIssues,'REPLACEMENT_UNCLEAR'));
 });
 test('Eigene Veranstaltungsorte akzeptieren ausschließlich den textlich beschriebenen PA-Sonderaufbau',()=>{

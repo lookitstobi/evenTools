@@ -26,7 +26,6 @@
     ['berichtName','Protokollverfasser','pflicht'],
     ['berichtDatum','Datum der Protokollerstellung','pflicht'],
     ['berichtsort','Ort der Protokollerstellung','pflicht'],
-    ['ersatzMessort','Beschreibung Ersatzmessort','bedingt'],
     ['paAnordnung','Aufstellung der Beschallungsanlage','optional'],
     ['paZusatz','Zusätzliche Lautsprecher / Sonderaufbau','optional'],
     ['abweichungBeschreibung','Abweichungen / besondere Ereignisse','optional'],
@@ -56,7 +55,6 @@
       (m[4]===undefined || Number(m[4])<60);
   };
   const condition = function (rule, form) {
-    if(rule.id === 'ersatzMessort') return trim(form.messortTyp)==='ersatz';
     return rule.category === 'pflicht';
   };
   const issue = function (code, message, field) {return {code:code, message:message, field:field || null};};
@@ -213,7 +211,7 @@
         assessmentLCpeak:values.messort,
         legacyAssessmentLAeq:trim(legacy.messortLAeq)||null,
         legacyAssessmentLCpeak:trim(legacy.messortLCpeak)||null,
-        substitute:values.messortTyp === 'ersatz' ? values.ersatzMessort : null
+        substitute:values.messortTyp === 'ersatz' ? values.messposition : null
       },
       corrections:{
         k1:{device:model && model.corrections && model.corrections.k1 || null, determination:trim(legacy.k1Ermittlung),
