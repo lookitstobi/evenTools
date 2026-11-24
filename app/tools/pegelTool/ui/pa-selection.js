@@ -159,7 +159,7 @@
         const count=items.reduce((total,item)=>total+item.qty,0);
         const label=/ · \d+$/.test(node.label)?node.label.replace(/ · \d+$/,' · '+count):node.label;
         return '<button type="button" tabindex="-1" class="pa-node pa-node--'+node.kind+(selected.has(group.id)?' is-selected':'')+
-          '" data-pa-group="'+esc(group.id)+'" style="left:'+node.x+'%;top:'+node.y+'%" aria-pressed="'+selected.has(group.id)+
+          '" data-pa-group="'+esc(group.id)+'" data-pa-x="'+node.x+'" data-pa-y="'+node.y+'" aria-pressed="'+selected.has(group.id)+
           '" aria-label="'+esc(groupTitle(group,variants,quantities))+' – '+esc(label)+'" title="'+esc(groupTitle(group,variants,quantities))+'">'+
           speakerSvg(node.kind)+'<span class="pa-node-label">'+esc(label)+'</span></button>';
       })).join('');
@@ -188,6 +188,12 @@
         '<p class="pa-options-help">Seiten separat auswählbar; Frontfill-Paare werden gemeinsam geschaltet.</p>'+
         rows+'<div class="pa-unresolved" role="status" aria-live="polite"></div>'+
         '</div></div>';
+      // Production CSP blocks parsed style attributes. Set individual CSSOM
+      // properties on the new nodes instead; no CSP relaxation is necessary.
+      for(const element of root.querySelectorAll('.pa-node')){
+        element.style.left=element.dataset.paX+'%';
+        element.style.top=element.dataset.paY+'%';
+      }
       showUnresolved();
     }
     function resetToPreset(){
