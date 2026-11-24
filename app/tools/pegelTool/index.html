@@ -74,6 +74,9 @@ h3{font-size:18px;margin:0;font-weight:700}
 .icon-btn:disabled{opacity:.35;cursor:not-allowed}
 .header-main-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .header-secondary-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+label.pdf-project-option{display:flex;align-items:center;gap:7px;margin:0;color:var(--text);font-size:12px;text-transform:none;letter-spacing:0;cursor:pointer}
+label.pdf-project-option input[type="checkbox"]{width:16px!important;height:16px!important;margin:0!important;padding:0;accent-color:var(--accent);flex:none}
+.pdf-project-help{font-size:12px;color:var(--text-secondary);margin:5px 0 10px}
 .header-menu{position:relative}
 .header-menu summary{list-style:none}
 .header-menu summary::-webkit-details-marker{display:none}
@@ -378,23 +381,24 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
   <div class="header-controls">
     <div class="header-main-actions">
       <button id="btnImport" class="icon-btn subtle" type="button" title="Rohlog importieren und Messdaten auswerten">Log importieren</button>
+      <button id="btnLoadState" class="icon-btn subtle" type="button" title="Projekt aus JSON, HTML oder einem pegelTool-PDF öffnen">Projekt öffnen</button>
       <button id="btnPdfTemplate" class="icon-btn" type="button" disabled title="Messprotokoll als PDF exportieren">PDF exportieren</button>
       <button id="btnRecover" class="icon-btn subtle" type="button" title="Stellt den zuletzt lokal im Browser gespeicherten Stand auf diesem PC wieder her.">Letzte Sitzung laden</button>
     </div>
     <div class="header-secondary-actions">
+      <label class="pdf-project-option" title="Empfänger können die vollständigen Projektdaten einschließlich Rohlog auslesen."><input id="embedPdfProject" type="checkbox" checked> Projektdatei in PDF einbetten</label>
       <details class="header-menu">
         <summary class="icon-btn subtle menu-trigger" title="Erweiterte Export- und Projektaktionen anzeigen">Erweitert</summary>
         <div class="header-dropdown">
           <div class="menu-list">
             <button id="btnExportHtml" class="menu-item-btn" type="button" title="Erstellt eine lokal oeffenbare HTML-Datei mit dem aktuellen Stand, die spaeter auch wieder geladen werden kann.">Projekt speichern (HTML)</button>
             <button id="btnSaveState" class="menu-item-btn" type="button" title="Speichert Log, Diagramme und Eingaben als bearbeitbare Projektdatei fuer spaeteres Weiterarbeiten.">Projekt speichern (JSON)</button>
-            <button id="btnLoadState" class="menu-item-btn" type="button" title="Laedt eine gespeicherte Projektdatei oder exportierte HTML-Datei und setzt die Bearbeitung an diesem Stand fort.">Projekt laden (JSON)</button>
           </div>
         </div>
       </details>
     </div>
     <input type="file" id="fileInput" class="hidden-file" accept=".txt" />
-    <input type="file" id="stateInput" class="hidden-file" accept=".json,.nti,.html,.htm" />
+    <input type="file" id="stateInput" class="hidden-file" accept=".json,.nti,.html,.htm,.pdf,application/pdf" />
     <div class="chips chips-offset">
       <div class="chip"><span class="dot warn" id="dotLog"></span><span id="chipLog">Log: nicht geladen</span></div>
       <div class="chip"><span class="dot warn" id="dotSummary"></span><span id="chipSummary">Summary: —</span></div>
@@ -1214,26 +1218,44 @@ function parseStateFromText(name, text){
   return JSON.parse(text);
 }
 
-function handleStateFileInputChange(e){
-  const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+async function handleStateFileInputChange(e){
+  const input=e.target;
+  const f=input.files && input.files[0];
   if(!f) return;
-
-  const reader = new FileReader();
-  reader.onload = (evt)=>{
-    try{
-      const text = String(evt.target.result || '');
-      const parsed = parseStateFromText(f.name, text);
-      applySavedState(parsed, { persistRecovery:true });
-      if(!parsed.recoveryPartial && parsed.schemaVersion !== 1)
-        setText('parseInfo', `Gespeicherter Stand geladen (${f.name}).`);
-    }catch(err){
-      console.error(err);
-      alert('Stand konnte nicht geladen werden: ' + String(err && err.message ? err.message : err));
-    }finally{
-      if(e.target) e.target.value = '';
+  input.value='';
+  input.disabled=true;
+  let previous=null;
+  try{
+    const prefix=new Uint8Array(await f.slice(0,5).arrayBuffer());
+    const isPdf=/\.pdf$/i.test(f.name) || f.type==='application/pdf' ||
+      String.fromCharCode(...prefix)==='%PDF-';
+    let parsed;
+    if(isPdf){
+      if(f.size>128*1024*1024) throw new Error('PDF-Datei über 128 MiB.');
+      const backend=window.PegelToolReportPdf;
+      if(!backend?.extractProject) throw new Error('PDF-Projektmodul nicht geladen.');
+      parsed=await backend.extractProject(await f.arrayBuffer(),window.PDFLib);
+      const normalized=normalizeState(parsed);
+      if(!normalized?.importModel || !normalized.samples.length ||
+        !Array.isArray(normalized.importModel.samples) || !normalized.importModel.samples.length)
+        throw new Error('PDF enthält keinen vollständigen, unterstützten Messprojektstand.');
+    }else{
+      parsed=parseStateFromText(f.name,await f.text());
+      if(!normalizeState(parsed)) throw new Error('Ungültiger Projektstand.');
     }
-  };
-  reader.readAsText(f);
+    previous=buildStateObject();
+    applySavedState(parsed,{persistRecovery:true});
+    if(!parsed.recoveryPartial && parsed.schemaVersion!==1)
+      setText('parseInfo',isPdf ? `Projekt aus Messbericht geladen (${f.name}).` :
+        `Gespeicherter Stand geladen (${f.name}).`);
+  }catch(err){
+    if(previous){
+      try{applySavedState(previous,{persistRecovery:false});}
+      catch(restoreErr){console.error('Projekt-Rollback fehlgeschlagen',restoreErr);}
+    }
+    console.error(err);
+    alert('Stand konnte nicht geladen werden: '+String(err?.message || err));
+  }finally{input.disabled=false;}
 }
 
 function setDot(dotId, state){
@@ -2197,7 +2219,9 @@ async function generatePDF(){
   if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
   const documentPdf=backend.create(report,JsPdf,{chartSamples});
   const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
-  const signedReadyBytes=await backend.withSignature(documentPdf,window.PDFLib);
+  const embed=el('embedPdfProject').checked;
+  const project=embed ? buildStateObject() : null;
+  const signedReadyBytes=await backend.withSignature(documentPdf,window.PDFLib,project);
   const blob=new Blob([signedReadyBytes],{type:'application/pdf'});
   triggerDownload(blob,filename,false);
   // Die Vorschau zeigt exakt dieselben PDF-Bytes wie der Download.
@@ -2208,7 +2232,7 @@ async function generatePDF(){
     catch(err){console.warn('PDF-Vorschau nicht möglich',err);}
     setTimeout(()=>URL.revokeObjectURL(url),120000);
   }
-  setText('parseInfo','Messprotokoll als PDF exportiert.');
+  setText('parseInfo',embed?'Messprotokoll mit Projektdatei als PDF exportiert.':'Messprotokoll ohne Projektdatei als PDF exportiert.');
 }
 
 function exportHTML(){
@@ -2264,7 +2288,7 @@ el('btnSaveState').addEventListener('click', ()=>{
 el('btnLoadState').addEventListener('click', ()=>{
   closeHeaderMenus();
   const inp = el('stateInput');
-  if(inp) inp.click();
+  if(inp && !inp.disabled) inp.click();
 });
 el('stateInput').addEventListener('change', handleStateFileInputChange);
 el('btnRecover').addEventListener('click', ()=>{
