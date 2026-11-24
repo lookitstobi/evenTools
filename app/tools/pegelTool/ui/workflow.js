@@ -183,7 +183,7 @@
     embedOption.type='checkbox';
     embedOption.id='embedPdfProjectExport';
     embedOption.checked=headerOption ? headerOption.checked : true;
-    embedLabel.append(embedOption,doc.createTextNode('Projektdatei in PDF einbetten'));
+    embedLabel.append(embedOption,make('span','','Projektdatei in PDF einbetten'));
     const embedHelp=make('p','pdf-project-help',
       'Mit Projektdatei: Das PDF enthält auch vollständige Messdaten, Rohlog und Eingaben. Empfänger können sie auslesen.');
     if(headerOption){
