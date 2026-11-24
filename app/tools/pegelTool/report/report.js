@@ -37,6 +37,11 @@
     return parts.join(', ');
   }
   function asDate(value) {return asText(value).replace('T',' ');}
+  function logDateTime(value) {
+    const s=asDate(value);
+    const m=/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}(?::\d{2})?)$/.exec(s);
+    return m ? m[3]+'.'+m[2]+'.'+m[1]+', '+m[4]+' Uhr' : s;
+  }
   function build(record, options) {
     if (!record || !record.review || !record.assessment)
       throw new Error('Berichtsdatenbestand aus Phase 4 fehlt.');
@@ -65,7 +70,6 @@
         row('LCpeak-Berechnung','Höchster gültiger Intervall-Spitzenwert im Block, keine Mittelung'),
         row('Quell-Logdatei',opts.sourceFileName || 'Nicht vermerkt'),
         row('Messbeginn laut Log',measurement.start),row('Messende laut Log',measurement.end),
-         row('kset date (XL3)',measurement.ksetDate),
         row('Logintervall',num(measurement.intervalSeconds) === null ? EMPTY : measurement.intervalSeconds + ' s'),
         row('Zeitzone / Offset',measurement.timeZone),
         row('Zeitstempel-Anker',record.assessment.assumptions && record.assessment.assumptions.timestampAnchor),
@@ -73,6 +77,7 @@
         row('Messgerät',meter.deviceModel), row('Messgerät-Seriennummer',meter.serial),
         row('Firmware',meter.firmware),row('Messmikrofon',microphone.type),
         row('Mikrofon-Seriennummer',microphone.serial),
+        row('Letzte Mikrofonkalibrierung',logDateTime(microphone.calibrationInfo),microphone.calibrationInfo?'device-header':null),
         row('Import-Datenqualität',record.importQuality && record.importQuality.status),
         row('Messreihen-Anzahl',num(record.sampleCount) === null ? EMPTY : String(record.sampleCount))]},
       {title:'Messstellen und Beschallungsanlage',rows:[
@@ -103,6 +108,7 @@
         row('k2 – im Gerätelog angewandt?',correctionState(corr.k2)),
         ...(corr.k2 && corr.k2.determination ? [row('k2 – Ermittlung aus Altprojekt',corr.k2.determination)] : []),
         row('k2 – Originalspalte',corr.k2 && corr.k2.column && corr.k2.column.column),
+        row('K-Werte ermittelt am',logDateTime(measurement.ksetDate),measurement.ksetDate?'device-header':null),
         row('Kalibrator',calibration.device && calibration.device.model),
         row('Kalibrator-Seriennummer',calibration.device && calibration.device.serial),
         row('Funktionsprüfung vor Messung',before.confirmed?'Bestätigt':'Nicht bestätigt',o.kalVorBestaetigt),
