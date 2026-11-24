@@ -223,7 +223,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       await page.keyboard.press('Tab');
       assert.equal(await page.evaluate(()=>document.activeElement.id),'beschreibung');
       await page.keyboard.press('Tab');
-      assert.equal(await page.evaluate(()=>document.activeElement.id),'datumMessung');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'messungVon');
 
       const jsonWaiting=page.waitForEvent('download',{timeout:15000});
       await page.locator('#workflow-group-export button').filter({hasText:'Projekt speichern (JSON)'}).click();
