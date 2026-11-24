@@ -610,11 +610,6 @@ html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
         <button class="secondary" id="btnClearPA" type="button">Auswahl zurücksetzen</button>
       </div>
     </div>
-    <div class="section" data-workflow-section="corrections">
-      <h3>Ersatzmessort und Korrekturbestimmung</h3>
-      <label>Beschreibung Ersatzmessort</label>
-      <input id="ersatzMessort" placeholder="Konkrete Messposition und Bezug zum Publikum" />
-    </div>
   </div>
 </div>
 
@@ -695,7 +690,7 @@ const FORM_FIELD_IDS = window.PegelToolProtocol ? window.PegelToolProtocol.FIELD
 ];
 let recoverySaveTimer = null;
 let recoveryFallbackNotified = false;
-const RETIRED_FORM_IDS = ['ortBestaetigt','veranstaltungsBeginn','veranstaltungsEnde',
+const RETIRED_FORM_IDS = ['ersatzMessort','ortBestaetigt','veranstaltungsBeginn','veranstaltungsEnde',
   'messortLAeq','messortLCpeak','kalVorZeit','kalVorWert','kalNachZeit','kalNachWert',
   'paBestaetigt','abweichungVorhanden','altBestaetigt','k1Ermittlung','k2Ermittlung'];
 let legacyProtocol = {};
@@ -836,6 +831,8 @@ function normalizeState(raw){
   for(const id of RETIRED_FORM_IDS){
     if(srcForm[id] !== undefined && preserved[id] === undefined) preserved[id]=String(srcForm[id]);
   }
+  if(!normalizedForm.messposition && normalizedForm.messortTyp==='ersatz' && preserved.ersatzMessort)
+    normalizedForm.messposition=preserved.ersatzMessort;
   if(!normalizedForm.messort && preserved.messortLAeq &&
       preserved.messortLAeq===preserved.messortLCpeak) normalizedForm.messort=preserved.messortLAeq;
   const storedOrigins = raw.protocolMeta && raw.protocolMeta.schemaVersion === 1
