@@ -311,6 +311,20 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       // The default PDF includes the exact complete JSON export and retains its signature widget.
       assert.equal(await page.locator('#embedPdfProject').isChecked(),true);
       assert.equal(await page.locator('#embedPdfProjectExport').isChecked(),true);
+      for(const id of ['embedPdfProject','embedPdfProjectExport']){
+        const style=await page.locator('#'+id).evaluate(node=>({
+          appearance:getComputedStyle(node).appearance,
+          width:node.getBoundingClientRect().width,height:node.getBoundingClientRect().height,
+          mark:getComputedStyle(node,'::before').opacity
+        }));
+        assert.equal(style.appearance,'none');
+        assert.equal(style.width,18);assert.equal(style.height,18);assert.equal(style.mark,'1');
+      }
+      await page.locator('#embedPdfProject').focus();
+      await page.keyboard.press('Space');
+      assert.equal(await page.locator('#embedPdfProjectExport').isChecked(),false);
+      await page.keyboard.press('Space');
+      assert.equal(await page.locator('#embedPdfProjectExport').isChecked(),true);
       const embedded=await page.evaluate(async raw=>{
         const bytes=Uint8Array.from(raw);
         const state=await PegelToolReportPdf.extractProject(bytes,PDFLib);

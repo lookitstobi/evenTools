@@ -78,7 +78,25 @@ h3{font-size:18px;margin:0;font-weight:700}
 .header-main-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .header-secondary-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 label.pdf-project-option{display:flex;align-items:center;gap:7px;margin:0;color:var(--text);font-size:12px;text-transform:none;letter-spacing:0;cursor:pointer}
-label.pdf-project-option input[type="checkbox"]{width:16px!important;height:16px!important;margin:0!important;padding:0;accent-color:var(--accent);flex:none}
+label.pdf-project-option input[type="checkbox"]{
+  appearance:none;-webkit-appearance:none;display:inline-grid;place-content:center;
+  width:18px!important;height:18px!important;min-height:18px;flex:0 0 18px;
+  margin:0!important;padding:0!important;border:1px solid rgba(255,255,255,.38);
+  border-radius:5px;background:rgba(0,0,0,.14);cursor:pointer;box-shadow:none;
+  transition:background .15s ease,border-color .15s ease;
+}
+label.pdf-project-option input[type="checkbox"]::before{
+  content:'';width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;
+  transform:translateY(-1px) rotate(-45deg);opacity:0;
+}
+label.pdf-project-option input[type="checkbox"]:checked{background:#5478ff;border-color:#5478ff}
+label.pdf-project-option input[type="checkbox"]:checked::before{opacity:1}
+label.pdf-project-option:hover input[type="checkbox"]{border-color:#8ba3ff}
+label.pdf-project-option input[type="checkbox"]:focus-visible{outline:2px solid #8ba3ff;outline-offset:3px;box-shadow:none}
+@media(forced-colors:active){
+  label.pdf-project-option input[type="checkbox"]{appearance:auto;-webkit-appearance:auto;forced-color-adjust:auto}
+  label.pdf-project-option input[type="checkbox"]::before{content:none}
+}
 .pdf-project-help{font-size:12px;color:var(--text-secondary);margin:5px 0 10px}
 .header-menu{position:relative}
 .header-menu summary{list-style:none}
