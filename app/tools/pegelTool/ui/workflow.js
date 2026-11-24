@@ -192,6 +192,11 @@
         field.removeAttribute('tabindex');
       }
     }
+    // Section headings and auxiliary reset controls are not form entries.
+    // PA group toggles and final export actions remain usable by keyboard.
+    for(const control of main.querySelectorAll('summary,#btnClearPA')){
+      control.tabIndex=-1;
+    }
     for(const old of oldPanels)old.remove();
     for(const old of oldGroups)old.remove();
     for(const old of oldNavigation)old.remove();
