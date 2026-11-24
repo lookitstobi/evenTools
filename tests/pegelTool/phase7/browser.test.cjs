@@ -171,7 +171,17 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.match(await page.locator('#chipLog').innerText(),/vorherige Messung geladen/i);
 
       // The two sides start with 4 × KS21 + Focus + Wide each; each side can change.
-      await page.locator('#paContainer [data-pa-variant="sideL"]').selectOption('ks2');
+      await page.locator('#beschreibung').focus();
+      await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'messungVon');
+      await page.keyboard.press('Shift+Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'beschreibung');
+      assert.equal(await page.locator('[data-pa-qty-group="sideL"]').count(),3);
+      assert.equal(await page.locator('[data-pa-qty-group="sideR"]').count(),3);
+      const sideSubs=page.locator('[data-pa-qty-group="sideL"][data-pa-qty-type="L-ACOUSTIC KS21"]');
+      await sideSubs.fill('2');
+      await sideSubs.press('Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('data-pa-qty-type')),'L-ACOUSTIC A10 Focus');
       let changed=await page.evaluate(()=>buildStateObject());
       assert.equal(changed.paItems.find(x=>x.type==='L-ACOUSTIC KS21').qty,6);
       // Override component counts without altering group selection or the other side.
@@ -229,7 +239,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(saved.form.paZusatz,'2 × zusätzliche Delaylautsprecher');
       assert.deepEqual(saved.paSelection.selected,paBeforeSave.paSelection.selected);
       assert.equal(saved.paSelection.schemaVersion,3);
-      assert.equal(saved.paSelection.variants.sideL,'ks2');
+      assert.equal(saved.paSelection.variants.sideL,'ks4');
       assert.equal(saved.paSelection.quantities.sideL['L-ACOUSTIC KS21'],3);
       assert.equal(saved.paSelection.quantities.mainL['L-ACOUSTIC KARA II'],10);
 
@@ -282,7 +292,7 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(loaded.form.kalNachBestaetigt,'ja');
       assert.equal(await page.locator('#kalNachBestaetigt').isChecked(),true);
       assert.deepEqual(loaded.paSelection.selected,saved.paSelection.selected);
-      assert.equal(loaded.paSelection.variants.sideL,'ks2');
+      assert.equal(loaded.paSelection.variants.sideL,'ks4');
       assert.equal(loaded.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,9);
       assert.equal(documentedStatus(await page.locator('body').innerText()),true);
 
