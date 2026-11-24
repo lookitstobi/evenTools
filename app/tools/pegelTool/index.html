@@ -2200,7 +2200,8 @@ async function generatePDF(){
   if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
   const documentPdf=backend.create(report,JsPdf,{chartSamples});
   const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
-  const blob=documentPdf.output('blob');
+  const signedReadyBytes=await backend.withSignature(documentPdf,window.PDFLib);
+  const blob=new Blob([signedReadyBytes],{type:'application/pdf'});
   triggerDownload(blob,filename,false);
   // Die Vorschau zeigt exakt dieselben PDF-Bytes wie der Download.
   const previewWindow=consumeReservedPdfPreviewWindow();

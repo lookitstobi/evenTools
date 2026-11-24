@@ -166,6 +166,13 @@
       subtitle:'Messprotokoll zur Auswertung von Schallpegelmessungen',
       warning:'',
       sections,blocks:blockRows,issues,
+      paGroups:(record.paGroups||[]).map(g=>({id:g.id,label:g.label,items:(g.items||[]).map(it=>({...it})),unresolved:[...(g.unresolved||[])]})),
+      paItems:(record.paItems||[]).map(it=>({...it})),
+      metrics:{laeqExceededCount:overall.laeqExceededCount,lcpeakExceededCount:overall.lcpeakExceededCount,
+        intervalSeconds:measurement.intervalSeconds,
+        lcpeakExceededSeconds:Array.isArray(overall.lcpeakExceededIntervals)&&
+          overall.lcpeakExceededIntervals.every(p=>Number.isFinite(p.durationSeconds))
+          ?overall.lcpeakExceededIntervals.reduce((sum,p)=>sum+p.durationSeconds,0):null},
       documentationComplete:!!record.review.documentationComplete,
       evidenceComplete:!!record.review.evidenceComplete,
       reportFullyChecked:checked,
