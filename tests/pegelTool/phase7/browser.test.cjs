@@ -122,6 +122,15 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
       assert.equal(first.paItems.find(x=>x.type==='L-ACOUSTIC 5XT').qty,7);
       assert.equal(first.paSelection.variants.sideL,'ks4');
       assert.equal(first.paSelection.variants.sideR,'ks4');
+      // Header icons are decorative: visible text and accessible button names remain intact.
+      for(const id of ['btnImport','btnLoadState','btnPdfTemplate','btnRecover','btnExportHtml','btnSaveState']){
+        const button=page.locator('#'+id);
+        assert.equal(await button.locator('svg.header-action-icon[aria-hidden="true"]').count(),1);
+        assert.ok((await button.textContent()).trim().length>0);
+      }
+      assert.equal(await page.locator('.header-menu summary svg.header-action-icon').count(),1);
+      assert.equal(await page.locator('.header .pdf-project-option svg.header-action-icon').count(),1);
+      assert.equal(await page.getByRole('button',{name:'Projekt öffnen',exact:true}).count(),1);
       assert.equal(await page.locator('#btnPdfTemplate').isDisabled(),true);
 
       // Inject a real XL3 kset header field into the synthetic browser fixture.
