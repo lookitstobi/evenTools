@@ -2176,7 +2176,7 @@ async function generatePDF(){
   const JsPdf=window.jspdf?.jsPDF;
   const backend=window.PegelToolReportPdf;
   if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
-  const documentPdf=backend.create(report,JsPdf);
+  const documentPdf=backend.create(report,JsPdf,{chartSamples});
   const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
   const blob=documentPdf.output('blob');
   triggerDownload(blob,filename,false);
