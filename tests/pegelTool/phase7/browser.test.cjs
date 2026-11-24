@@ -1,7 +1,8 @@
 'use strict';
 // Phase 7 true Chromium workflow smoke test with synthetic log files.
 // The test server emulates only the approved toolserve.php file routing;
-// it does NOT exercise PHP authentication, production CSP or actual DIN compliance.
+// it does NOT exercise PHP authentication or actual DIN compliance.
+// The separate PA layout test exercises the production style CSP.
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -429,3 +430,62 @@ test('Chromium: import → assess → save JSON/HTML → reload → PDF; mobile 
     }
   });
 function documentedStatus(text){return /Grenzwerte überschritten/i.test(text);}
+
+
+test('Chromium: PA positions survive the production style CSP in both halls', {timeout:30000},async()=>{
+  const server=serve();
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+  try {
+    const page=await browser.newPage({viewport:{width:1189,height:900}});
+    const nonce='pegeltool-pa-csp-test';
+    const css=[...fs.readFileSync(path.join(BASE,'index.html'),'utf8').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
+      .map(match=>match[1]).join('\n');
+    await page.route('**/pa-csp-test',route=>route.fulfill({
+      contentType:'text/html; charset=utf-8',
+      headers:{'Content-Security-Policy':"default-src 'self'; style-src 'self' 'nonce-"+nonce+"'; script-src 'self' 'nonce-"+nonce+"'"},
+      body:'<!doctype html><html><head><style nonce="'+nonce+'">'+css+'</style></head><body>'+
+        '<div id="paContainer"></div><script src="/toolserve.php?name=pegelTool&amp;file=ui/pa-selection.js"></script>'+
+        '<script nonce="'+nonce+'">window.paTest=PegelToolPA.mount({root:document.getElementById("paContainer"),location:PegelToolPA.AKS});</script></body></html>'
+    }));
+    await page.goto('http://127.0.0.1:'+server.address().port+'/pa-csp-test');
+    async function assertPositions(){
+      const result=await page.evaluate(()=>{
+        const plan=document.querySelector('.pa-stage-plan');
+        const rect=plan.getBoundingClientRect();
+        const expected=PegelToolPA.CONFIG[window.paTest.getState().location].flatMap(g=>g.nodes);
+        const actual=[...plan.querySelectorAll('.pa-node')].map(el=>{
+          const b=el.getBoundingClientRect();
+          return {x:(b.left+b.width/2-rect.left-plan.clientLeft)/plan.clientWidth*100,
+            y:(b.top+b.height/2-rect.top-plan.clientTop)/plan.clientHeight*100};
+        });
+        return {expected,actual};
+      });
+      assert.equal(result.actual.length,result.expected.length);
+      for(const [i,p] of result.expected.entries()){
+        const actual=result.actual[i];
+        assert.ok(Math.abs(actual.x-p.x)<1 && Math.abs(actual.y-p.y)<1,
+          p.label+' at '+JSON.stringify(actual)+' instead of '+p.x+'%, '+p.y+'%');
+      }
+      assert.equal(new Set(result.actual.map(p=>Math.round(p.x)+','+Math.round(p.y))).size,result.actual.length);
+    }
+    await assertPositions();
+    const pair=page.locator('.pa-node[data-pa-group="ff19"]');
+    await pair.first().click();
+    assert.equal(await page.locator('.pa-node[data-pa-group="ff19"][aria-pressed="true"]').count(),2);
+    assert.equal(await page.locator('.pa-group-toggle[data-pa-group="ff19"]').getAttribute('aria-pressed'),'true');
+    await assertPositions();
+    await page.setViewportSize({width:1024,height:900});
+    await assertPositions();
+    await page.evaluate(()=>window.paTest.setLocation(PegelToolPA.PAV));
+    await assertPositions();
+    await page.locator('.pa-group-toggle[data-pa-group="ff17"]').click();
+    assert.equal(await page.locator('.pa-node[data-pa-group="ff17"][aria-pressed="false"]').count(),2);
+    await assertPositions();
+    await page.evaluate(()=>window.paTest.setState(PegelToolPA.presetFor(PegelToolPA.PAV)));
+    await assertPositions();
+  } finally {
+    await browser.close();
+    await new Promise(resolve=>server.close(resolve));
+  }
+});
