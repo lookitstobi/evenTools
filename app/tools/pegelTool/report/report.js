@@ -83,7 +83,7 @@
           ? [row('Altprojekt: Immissionsort LAeq (ungeklärt)',places.legacyAssessmentLAeq),
              row('Altprojekt: Immissionsort LCpeak (ungeklärt)',places.legacyAssessmentLCpeak)] : []),
         row('Messorttyp',v.messortTyp === 'ersatz' ? 'Ersatzmessort' : v.messortTyp === 'direkt' ? 'Direktmessung' : EMPTY,o.messortTyp),
-        row('Ersatzmessort',places.substitute,o.ersatzMessort),
+        row('Ersatzmessort',places.substitute,o.messposition),
         row('PA-Aufstellung',v.paAnordnung,o.paAnordnung),
         row('Ausgewählte Lautsprechergruppen',(record.paGroups || []).map(group=>{
           const speakers=(group.items || []).map(it=>asText(it.qty)+' × '+asText(it.type)).join(', ');
