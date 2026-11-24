@@ -49,13 +49,14 @@ test('Abgelegtes Alt-Feld lautestePosition wird nicht in Werte oder Immissionsor
   assert.equal(record.values.messort,'Publikum Mitte');
   assert.ok(!Object.prototype.hasOwnProperty.call(record.values,'lautestePosition'));
 });
-test('Vollstaendige Eingaben koennen ohne Anzeige-Nachweise nicht als voll geprueft gelten',()=>{
+test('Vollstaendige Eingaben zeigen keine Warnung fuer nicht abfragbare historische Belege',()=>{
   const r=protocol.validate(input());
   assert.equal(r.documentationComplete,true);
-  assert.equal(r.evidenceComplete,false);
+  assert.equal(r.evidenceComplete,true);
   assert.equal(r.reportFullyChecked,false);
-  assert.ok(hasIssue(r.evidenceIssues,'CALIBRATION_VOR_EVIDENCE_MISSING'));
-  assert.ok(hasIssue(r.evidenceIssues,'CALIBRATION_NACH_EVIDENCE_MISSING'));
+  assert.deepEqual(r.evidenceIssues,[]);
+  assert.ok(hasIssue(r.archivalEvidenceIssues,'CALIBRATION_VOR_EVIDENCE_MISSING'));
+  assert.ok(hasIssue(r.archivalEvidenceIssues,'CALIBRATION_NACH_EVIDENCE_MISSING'));
 });
 test('Beide Bestätigungen sind Pflicht, keine Daten werden erraten',()=>{
   const r=protocol.validate(input({form:{kalVorBestaetigt:'',kalNachBestaetigt:'nein',messort:''}}));
@@ -105,16 +106,20 @@ test('Nicht aufgelöste Sidefill-Varianten bleiben Fehler',()=>{
   const r=protocol.validate(input({paSelectionIssues:['Sidefill links: Variante fehlt']}));
   assert.ok(hasIssue(r.formIssues,'PA_GROUP_QUANTITY_MISSING'));
 });
-test('Korrekturen bleiben einmalig, ungeklaerte Herkunft bleibt als Nachweisproblem',()=>{
+test('Korrekturmethoden bleiben intern nachvollziehbar, ohne sichtbare Warnung',()=>{
   const imported=structuredClone(model);
   imported.corrections.k1.valueDb=-11.7;
   imported.corrections.k2.valueDb=-8.1;
   const r=protocol.validate(input({form:{messortTyp:'ersatz',ersatzMessort:'FOH'},
     importModel:imported}));
-  assert.ok(hasIssue(r.evidenceIssues,'CORRECTION_METHOD_NOT_DOCUMENTED'));
+  assert.ok(hasIssue(r.archivalEvidenceIssues,'CORRECTION_METHOD_NOT_DOCUMENTED'));
+  assert.deepEqual(r.evidenceIssues,[]);
+  imported.columns.laeqDt.correctionApplied=null;
+  assert.ok(hasIssue(protocol.validate(input({form:{messortTyp:'ersatz'},importModel:imported})).evidenceIssues,'CORRECTION_UNRESOLVED'));
+  imported.columns.laeqDt.correctionApplied=true;
   const withEvidence=protocol.validate(input({form:{messortTyp:'ersatz',ersatzMessort:'FOH'},
     importModel:imported,legacyProtocol:{k1Ermittlung:'Vergleichsmessung',k2Ermittlung:'Vergleichsmessung'}}));
-  assert.ok(!hasIssue(withEvidence.evidenceIssues,'CORRECTION_METHOD_NOT_DOCUMENTED'));
+  assert.ok(!hasIssue(withEvidence.archivalEvidenceIssues,'CORRECTION_METHOD_NOT_DOCUMENTED'));
 });
 test('Geräte- und Importfehler bleiben unabhaengig von UI-Feldern beurteilungsrelevant',()=>{
   const r=protocol.validate(input({importModel:null,evaluation:null}));
@@ -127,4 +132,32 @@ test('Ungültiges Datum und defekte PA-Positionen werden abgelehnt',()=>{
     paItems:[{type:'custom',customType:'',qty:0}]}));
   assert.ok(r.formIssues.some(x=>x.field==='datumMessung'));
   assert.ok(hasIssue(r.formIssues,'PA_NOT_DOCUMENTED'));
+});
+
+test('Erwartete Teilzeit ist kein offener Nachweis, echte Luecken im Randblock schon',()=>{
+  const Engine=require('../../../app/tools/pegelTool/evaluation/engine.js');
+  const at=Date.parse('2026-11-16T18:00:00Z');
+  const span=(a,b)=>({startMs:at+a*1000,endMs:at+b*1000,laeqDb:90,lcpeakDb:120});
+  const evalOf=intervals=>{const e=Engine.buildBlocks(intervals);e.assumptions.timestampAnchorEvidence='verified';return e;};
+  const good=evalOf([span(30,1800),span(1800,3600),span(3600,3660)]);
+  assert.deepEqual(good.blocks.map(b=>b.dataCoverageState),['partial-edge','full','partial-edge']);
+  assert.deepEqual(protocol.validate(input({evaluation:good})).evidenceIssues,[]);
+  const bad=evalOf([span(30,60),span(72,1800),span(1800,3600),span(3600,3610),span(3615,3660)]);
+  assert.deepEqual(bad.blocks.map(b=>b.dataCoverageState),['gap','full','gap']);
+  assert.equal(bad.overall.hasMeasurementGaps,true);
+  const issues=protocol.validate(input({evaluation:bad})).evidenceIssues;
+  assert.equal(issues.length,2);
+  assert.match(issues[0].message,/18:01:00.*18:01:12.*12 s fehlen/);
+  assert.match(issues[1].message,/19:00:10.*19:00:15.*5 s fehlen/);
+});
+test('Zeitkonflikt und fehlende Messwerte werden konkret gemeldet',()=>{
+  const Engine=require('../../../app/tools/pegelTool/evaluation/engine.js');
+  const at=Date.parse('2026-11-16T18:00:00Z');
+  const e=Engine.buildBlocks([{startMs:at,endMs:at+1000,laeqDb:null,lcpeakDb:120},
+    {startMs:at,endMs:at+1000,laeqDb:90,lcpeakDb:120},
+    {startMs:at+1000,endMs:at+2000,laeqDb:null,lcpeakDb:null}]);
+  e.assumptions.timestampAnchorEvidence='verified';
+  const warnings=protocol.validate(input({evaluation:e})).evidenceIssues;
+  for (const code of ['OVERLAPPING_SAMPLES','INVALID_LAEQ_DATA','INVALID_LCPEAK_DATA'])
+    assert.ok(warnings.some(w=>w.code===code && w.message.includes('18:00:00')));
 });

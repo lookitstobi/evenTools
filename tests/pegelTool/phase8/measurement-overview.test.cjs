@@ -128,3 +128,13 @@ test('New interface is wired to actual technical fields rather than documentatio
   assert.match(html,/setVal\('kset', header\.kset/);
   assert.doesNotMatch(html,/const complete=overall\.measurementStatus !== 'not-assessable'/);
 });
+
+test('PDF-Dateiname enthält genau den vorgesehenen Suffix',()=>{
+  const html=fs.readFileSync(path.join(ROOT,'app/tools/pegelTool/index.html'),'utf8');
+  const source=html.match(/function sanitizeBaseName\(\)\{[\s\S]*?\n\}/)[0];
+  const vm=require('node:vm');
+  const getVal=id=>id==='datumMessung'?'2026-11-15':'Sounds of Heimat - Nouamane Lahlou';
+  const name=vm.runInNewContext(source+'\nsanitizeBaseName()+".pdf"',{getVal});
+  assert.equal(name,'2026-11-15 - Sounds of Heimat - Nouamane Lahlou Messprotokoll.pdf');
+  assert.match(html,/const filename=sanitizeBaseName\(\)\+'\.pdf';/);
+});

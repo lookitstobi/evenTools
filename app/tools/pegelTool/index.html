@@ -1110,7 +1110,7 @@ function consumeReservedPdfPreviewWindow(){
 function sanitizeBaseName(){
   const datum = getVal('datumMessung').trim() || 'kein-datum';
   const ev = getVal('eventName').trim() || 'unbenannt';
-  return `${datum} - ${ev} - Messprotokoll`.replace(/[^a-z0-9\-_. ]/gi,'').replace(/\s+/g,' ').trim();
+  return `${datum} - ${ev} Messprotokoll`.replace(/[<>:"/\\|?*\x00-\x1f]/g,'').replace(/\s+/g,' ').trim();
 }
 
 function saveStateFile(){
@@ -1280,14 +1280,9 @@ function markRequiredFields(){
   if(issues){
     issues.replaceChildren();
     const problems = [...review.formIssues, ...review.evidenceIssues];
-    for(const problem of problems.slice(0,9)){
+    for(const problem of problems){
       const li=document.createElement('li');
       li.textContent=problem.message;
-      issues.appendChild(li);
-    }
-    if(problems.length > 9){
-      const li=document.createElement('li');
-      li.textContent='… und ' + (problems.length-9) + ' weitere offene Punkte.';
       issues.appendChild(li);
     }
   }
@@ -2179,7 +2174,7 @@ async function generatePDF(){
   const backend=window.PegelToolReportPdf;
   if(!JsPdf || !backend) throw new Error('PDF-Modul nicht geladen.');
   const documentPdf=backend.create(report,JsPdf,{chartSamples});
-  const filename=sanitizeBaseName()+' - Messprotokoll.pdf';
+  const filename=sanitizeBaseName()+'.pdf';
   const embed=el('embedPdfProject').checked;
   const project=embed ? buildStateObject() : null;
   const signedReadyBytes=await backend.withSignature(documentPdf,window.PDFLib,project);
