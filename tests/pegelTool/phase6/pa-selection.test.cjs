@@ -8,7 +8,7 @@ const qty=(items,type)=>items.find(x=>x.type===type)?.qty||0;
 
 test('AKS preset: 2 × 12 Kara, each side 4 KS21 + Focus + Wide, 7 frontfills',()=>{
   const preset=PA.presetFor(PA.AKS);
-  assert.equal(preset.schemaVersion,2);
+  assert.equal(preset.schemaVersion,3);
   assert.deepEqual(preset.variants,{sideL:'ks4',sideR:'ks4'});
   assert.deepEqual(preset.selected,['mainL','mainR','sideL','sideR','ff28','ff37','ff46','ff5']);
   const items=PA.itemsFor(preset);
@@ -40,7 +40,7 @@ test('AKS: left and right main hangs can be chosen independently; center is opti
   assert.match(labels[1],/rechts – 12/);
   assert.match(labels[2],/Center-Cluster/);
 });
-test('AKS sidefill: exactly four defined alternatives, not editable arbitrary counts',()=>{
+test('AKS sidefill: legacy alternatives retain their exact default counts',()=>{
   assert.deepEqual(PA.SIDE_OPTIONS.map(x=>x.id),['ks2','ks4','focus','wide']);
   const all=[
     {id:'ks2',ks:2,focus:1,wide:1},
@@ -88,4 +88,15 @@ test('Unknown location/IDs cannot generate speaker quantities',()=>{
   assert.deepEqual(PA.itemsFor(state(PA.AKS,['unknown'])),[]);
   assert.deepEqual(PA.summaryFor(state(PA.AKS,[])),[]);
   assert.deepEqual(PA.presetFor('Eigene Angabe').selected,[]);
+});
+
+test('Sidefill quantities independently override all three types, even with legacy single-type variants',()=>{
+  const s={...state(PA.AKS,['sideL','sideR'],{sideL:'focus',sideR:'ks4'}),schemaVersion:3,
+    quantities:{sideL:{[PA.TYPE.ks]:3,[PA.TYPE.focus]:0,[PA.TYPE.wide]:2}}};
+  const items=PA.itemsFor(s);
+  assert.equal(qty(items,PA.TYPE.ks),7);
+  assert.equal(qty(items,PA.TYPE.focus),1);
+  assert.equal(qty(items,PA.TYPE.wide),3);
+  assert.deepEqual(PA.unresolvedFor(s),[]);
+  assert.deepEqual(PA.summaryFor(s)[0].items,[{type:PA.TYPE.ks,qty:3},{type:PA.TYPE.wide,qty:2}]);
 });
